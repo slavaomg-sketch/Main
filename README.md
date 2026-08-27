@@ -49,39 +49,65 @@
 2. Придумайте имя и адрес бота, скопируйте **токен**.
 3. Узнайте свой Telegram ID у [@userinfobot](https://t.me/userinfobot).
 
-### 2. Настроить
+### 2. Развернуть на VPS
+
+Один раз на сервере (Ubuntu 22.04/24.04 или Debian 11/12):
 
 ```bash
-cp .env.example .env
-nano .env          # впишите BOT_TOKEN и свой ID в ADMIN_IDS
+sudo apt update && sudo apt install -y git
+git clone https://github.com/slavaomg-sketch/Main.git ~/reminder-bot-src
+cd ~/reminder-bot-src
+sudo bash deploy/install.sh
 ```
 
-### 3. Запустить
+Установщик сам поставит Python и зависимости, создаст отдельного
+пользователя `reminderbot`, спросит токен и ваш Telegram ID, настроит
+автозапуск и ежедневный бэкап. Повторный запуск скрипта безопасен —
+он обновляет код, не трогая базу и настройки.
 
-**Вариант А — Docker (рекомендую для сервера):**
+Порты открывать не нужно: бот сам ходит в Telegram (long polling),
+входящих соединений не принимает.
+
+<details>
+<summary>Если репозиторий приватный и <code>git clone</code> просит пароль</summary>
+
+Либо создайте на GitHub Personal Access Token (Settings → Developer settings →
+Tokens) и клонируйте так:
 
 ```bash
+git clone https://ВАШ_ТОКЕН@github.com/slavaomg-sketch/Main.git ~/reminder-bot-src
+```
+
+Либо просто скопируйте папку с проекта на сервер со своего компьютера:
+
+```bash
+scp -r ./Main root@ВАШ_СЕРВЕР:~/reminder-bot-src
+```
+
+Во втором случае `update.sh` работать не будет — обновляйтесь тем же `scp`
+и повторным запуском `install.sh`.
+</details>
+
+<details>
+<summary>Альтернатива — Docker</summary>
+
+```bash
+cp .env.example .env && nano .env
 docker compose up -d --build
-docker compose logs -f bot      # посмотреть, что запустилось
+docker compose logs -f bot
 ```
+</details>
 
-**Вариант Б — напрямую:**
+<details>
+<summary>Альтернатива — локальный запуск для проверки</summary>
 
 ```bash
 make install
 make run
 ```
+</details>
 
-**Вариант В — systemd на Ubuntu-сервере:**
-
-```bash
-sudo cp deploy/reminder-bot.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now reminder-bot
-sudo journalctl -u reminder-bot -f
-```
-
-### 4. Первый запуск
+### 3. Первый запуск
 
 1. Откройте своего бота в Telegram → `/start`. Вы увидите кнопку **🛠 Админка**.
 2. **Админка → ➕ Создать напоминание** — задайте название, чек-лист, время и дни.
@@ -162,10 +188,53 @@ make lint
 
 ---
 
-## Резервная копия
+## Эксплуатация сервера
 
-Все данные — в одном файле `data/bot.db`:
+| Задача | Команда |
+|---|---|
+| Состояние | `sudo systemctl status reminder-bot` |
+| Логи в реальном времени | `sudo journalctl -u reminder-bot -f` |
+| Логи за сегодня | `sudo journalctl -u reminder-bot --since today` |
+| Перезапуск | `sudo systemctl restart reminder-bot` |
+| Остановить | `sudo systemctl stop reminder-bot` |
+| Обновить до свежей версии | `sudo bash ~/reminder-bot-src/deploy/update.sh` |
+| Бэкап прямо сейчас | `sudo -u reminderbot bash /opt/reminder-bot/deploy/backup.sh` |
+| Восстановить из копии | `sudo bash /opt/reminder-bot/deploy/restore.sh` |
+| Изменить настройки | `sudo nano /opt/reminder-bot/.env` затем перезапуск |
+| Удалить бота | `sudo bash /opt/reminder-bot/deploy/uninstall.sh` |
+
+**Что где лежит**
+
+```
+/opt/reminder-bot/
+├── bot/          код
+├── .venv/        зависимости
+├── .env          токен и настройки (права 600, читает только reminderbot)
+├── data/bot.db   вся база: сотрудники, напоминания, история отметок
+└── backups/      копии базы за последние 30 дней
+```
+
+**Резервные копии** создаются автоматически каждую ночь в 03:30 таймером
+systemd (`sudo systemctl list-timers reminder-bot*`) и хранятся 30 дней.
+Копия снимается штатным механизмом SQLite, поэтому остаётся целостной
+даже если в этот момент кто-то отмечает галочки.
+
+Скачать копию к себе на компьютер:
 
 ```bash
-cp data/bot.db backup-$(date +%F).db
+scp root@ВАШ_СЕРВЕР:/opt/reminder-bot/backups/*.gz .
 ```
+
+**Безопасность.** Бот работает от системного пользователя без права входа,
+systemd-юнит закрывает ему доступ к остальной файловой системе (`ProtectSystem=strict`),
+писать он может только в свою папку `data/`.
+
+**Если бот не отвечает**
+
+```bash
+sudo systemctl status reminder-bot        # запущен ли
+sudo journalctl -u reminder-bot -n 50     # последние 50 строк лога
+```
+
+Чаще всего причина — опечатка в токене (`Telegram отклонил токен` в логе)
+или сервер без интернета (`Нет связи с Telegram`).

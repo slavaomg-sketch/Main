@@ -1,23 +1,43 @@
-# Автозапуск бота на сервере без Docker.
-# 1. Скопировать: sudo cp deploy/reminder-bot.service /etc/systemd/system/
-# 2. Поправить пути User/WorkingDirectory под свой сервер
-# 3. sudo systemctl daemon-reload && sudo systemctl enable --now reminder-bot
+# Шаблон systemd-юнита. Плейсхолдеры подставляет deploy/install.sh —
+# вручную править и копировать не нужно.
 
 [Unit]
 Description=Telegram reminder bot
+Documentation=https://github.com/slavaomg-sketch/Main
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=botuser
-WorkingDirectory=/opt/reminder-bot
-EnvironmentFile=/opt/reminder-bot/.env
-ExecStart=/opt/reminder-bot/.venv/bin/python -m bot.main
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+ExecStart=__APP_DIR__/.venv/bin/python -m bot.main
+
 Restart=always
 RestartSec=10
+# Если бот падает при старте (например, неверный токен) — не долбиться бесконечно.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
 StandardOutput=journal
 StandardError=journal
+SyslogIdentifier=reminder-bot
+
+# Боту нужен только исходящий HTTPS и своя папка data — остальное закрываем.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=__APP_DIR__/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target

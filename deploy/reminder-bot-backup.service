@@ -1,0 +1,19 @@
+# Разовая задача резервного копирования базы. Запускается таймером.
+
+[Unit]
+Description=Backup reminder bot database
+After=reminder-bot.service
+
+[Service]
+Type=oneshot
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+ExecStart=__APP_DIR__/deploy/backup.sh
+SyslogIdentifier=reminder-bot-backup
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=__APP_DIR__/data __APP_DIR__/backups

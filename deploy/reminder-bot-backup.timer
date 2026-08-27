@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily backup of reminder bot database
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Если сервер был выключен — сделать бэкап после включения.
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target
