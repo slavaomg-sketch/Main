@@ -1,0 +1,23 @@
+# Автозапуск бота на сервере без Docker.
+# 1. Скопировать: sudo cp deploy/reminder-bot.service /etc/systemd/system/
+# 2. Поправить пути User/WorkingDirectory под свой сервер
+# 3. sudo systemctl daemon-reload && sudo systemctl enable --now reminder-bot
+
+[Unit]
+Description=Telegram reminder bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=botuser
+WorkingDirectory=/opt/reminder-bot
+EnvironmentFile=/opt/reminder-bot/.env
+ExecStart=/opt/reminder-bot/.venv/bin/python -m bot.main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
