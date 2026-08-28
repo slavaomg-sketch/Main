@@ -403,6 +403,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .hud-charge { filter: drop-shadow(0 0 6px rgba(255,90,60,0.8)); }
 .hud-fuse { color: #ff8a5c; }
 .hud-fuse b { color: #ffd0b0; }
+.hud-grav { color: #c69bf0; }
 </style>
 </head>
 <body>
@@ -416,6 +417,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       <span class="stat" title="Собрано инфотронов"><b id="hud-info">0</b><i>/</i><span id="hud-need">0</span> ⬤</span>
       <span class="stat hud-charge" id="hud-carry" title="Красный заряд в руках" hidden>🧨</span>
       <span class="stat hud-fuse" id="hud-fuse" title="Запал горит" hidden>⏱ <b id="hud-fuse-n">0</b></span>
+      <span class="stat hud-grav" id="hud-grav" title="Тяжесть включена" hidden>⬇ тяжесть</span>
       <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
       <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
       <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
@@ -515,7 +517,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     BUG: 17,         // жук: с места не сходит, но раз в цикл вспыхивает и бьёт соседа
     YELLOW: 18,      // жёлтый диск: толкается в любую сторону и не падает
     RED: 19,         // красный диск: Мёрфи носит его с собой и кладёт куда нужно
-    TERMINAL: 20     // терминал: нажатие поджигает все жёлтые и красные диски
+    TERMINAL: 20,    // терминал: нажатие поджигает все жёлтые и красные диски
+    GRAV_ON: 21,     // гравипереключатель: включает тяжесть — падать начинает и Мёрфи
+    GRAV_OFF: 22     // и выключает её обратно
   };
 
   var NAMES = {};
@@ -544,7 +548,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     '5': Tiles.BUG, '6': Tiles.BUG, '7': Tiles.BUG, '8': Tiles.BUG, '9': Tiles.BUG,
     'Y': Tiles.YELLOW,
     'R': Tiles.RED,
-    'T': Tiles.TERMINAL
+    'T': Tiles.TERMINAL,
+    '+': Tiles.GRAV_ON,
+    '-': Tiles.GRAV_OFF
   };
 
   // Сдвиг фазы жука по символу карты ('B' — нулевая фаза).
@@ -2660,6 +2666,37 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       ]
     },
     {
+      id: 71,
+      chapter: 8,
+      name: "Тяга",
+      hint: "Здесь работает тяжесть: Мёрфи падает в каждую дыру и подняться вверх уже не может — ни шагом, ни подкопом. Спускайся по сбойкам от пласта к пласту до нижнего штрека: там в стене рубильник невесомости. Щёлкнешь — и снова полетишь куда захочешь, хоть к выходу под самой кровлей.",
+      needed: 31,
+      map: [
+        "##################################################",
+        "#.M...........................................E.##",
+        "#.............*.*....................*..........##",
+        "#.....*.....*....*.......*.............*...*....##",
+        "############################################# ####",
+        "#..................*.*......*......*............##",
+        "#.....................*......*...*......*.......##",
+        "#..........*...........................*.*.**...##",
+        "#### #############################################",
+        "#.........*.....*.........*.....................##",
+        "#......................................*........##",
+        "#.........................................*.....##",
+        "############################################# ####",
+        "#.....*..........................*..............##",
+        "#......*...................*.................*..##",
+        "#.................................*.*...........##",
+        "#### #############################################",
+        "#.-.............................................##",
+        "#...O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O.O...##",
+        "#...O...O...O...O...O...O...O...O...O...O...O...##",
+        "##################################################",
+        "##################################################"
+      ]
+    },
+    {
       id: 90,
       chapter: 9,
       name: "Комбинат",
@@ -2865,7 +2902,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0 };
+    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0, falling: 0 };
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -2893,6 +2930,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.ticks = 0;
     this.moves = 0;
     this.fuse = 0;             // 0 — терминал не нажат; иначе тики до подрыва
+    this.gravity = !!this.level.gravity;   // тяжесть уровня: под ней Мёрфи не поднимается
     return this;
   };
 
@@ -2932,7 +2970,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     e.fy = this.fy.slice();
     e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
                  alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
-                 carry: this.murphy.carry };
+                 carry: this.murphy.carry, falling: this.murphy.falling };
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -2941,6 +2979,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     e.ticks = this.ticks;
     e.moves = this.moves;
     e.fuse = this.fuse;
+    e.gravity = this.gravity;
     return e;
   };
 
@@ -2950,7 +2989,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + this.murphy.carry;
+    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse +
+           '|' + this.murphy.carry + '|' + (this.gravity ? 'g' : '0') + this.murphy.falling;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -3029,6 +3069,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var m = this.murphy;
     m.pushing = 0;
     m.digging = 0;
+    if (m.falling) return;                       // в падении Мёрфи не управляется
     var d = input && input.dir !== undefined ? input.dir : -1;
     if (d < 0 || d > 3) return;
     m.facing = d;
@@ -3071,6 +3112,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       return;
     }
     if (t === T.TERMINAL) { this.pressTerminal(); return; }
+    // Гравипереключатели вмурованы в породу: в них упираются, а не входят.
+    if (t === T.GRAV_ON) { this.gravity = true; return; }
+    if (t === T.GRAV_OFF) { this.gravity = false; return; }
     if ((t === T.ZONK || t === T.ORANGE) && dy === 0) {
       var bi = this.idx(nx, ny);
       if (this.falling[bi]) return;                    // падающий зонк не толкнуть
@@ -3191,6 +3235,14 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     }
   };
 
+  /** Под тяжестью Мёрфи падает сам — и вверх ему уже не подняться. */
+  Engine.prototype.updateMurphyFall = function () {
+    var m = this.murphy;
+    if (!this.gravity || !m.alive) { m.falling = 0; return; }
+    if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepMurphyTo(m.x, m.y + 1); m.falling = 1; }
+    else m.falling = 0;
+  };
+
   /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
   Engine.prototype.pressTerminal = function () {
     if (this.fuse === 0) this.fuse = FUSE_TICKS;
@@ -3238,6 +3290,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
     this.updateExplosions();
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    if (this.status === 'playing') this.updateMurphyFall();
     this.updateFuse();
     this.updateGravity();
     this.updateMonsters();
@@ -3457,6 +3510,34 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.12, 0, 6.2832); g.fill();
     g.strokeStyle = 'rgba(255,255,255,0.6)';
     g.lineWidth = Math.max(1, s * 0.03); g.stroke();
+  }
+
+  // Гравирубильник: вмурованная в породу панель со стрелками. Вниз — тяжесть,
+  // вверх — невесомость; активный горит, погашенный тускнеет.
+  function drawGrav(g, s, on, live) {
+    g.fillStyle = '#0a0d16';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.11;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.1);
+    g.fillStyle = on ? '#2b2036' : '#16283a';
+    g.fill();
+    g.strokeStyle = on ? '#a06ad8' : '#4fa3d8';
+    g.lineWidth = Math.max(1, s * 0.055);
+    g.stroke();
+    g.save();
+    g.translate(s / 2, s / 2);
+    if (!on) g.rotate(Math.PI);
+    g.strokeStyle = live ? '#ffffff' : (on ? '#d9b6ff' : '#bfe6ff');
+    g.lineWidth = Math.max(1, s * 0.09);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (var k = -1; k <= 1; k += 2) {
+      var yy = k * s * 0.14;
+      g.beginPath();
+      g.moveTo(-s * 0.16, yy - s * 0.07); g.lineTo(0, yy + s * 0.07); g.lineTo(s * 0.16, yy - s * 0.07);
+      g.stroke();
+    }
+    g.restore();
   }
 
   function drawExit(g, s, open) {
@@ -3745,6 +3826,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     pack.tile[T.SNIKSNAK] = make(drawSnik);
     pack.tile[T.YELLOW] = make(function (g, s) { drawYellow(g, s, false); });
     pack.tile[T.RED] = make(function (g, s) { drawRed(g, s, false); });
+    pack.tile[T.GRAV_ON] = make(function (g, s) { drawGrav(g, s, true, false); });
+    pack.tile[T.GRAV_OFF] = make(function (g, s) { drawGrav(g, s, false, false); });
     pack.tile[T.EXIT] = make(function (g, s) { drawExit(g, s, false); });
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
@@ -3759,7 +3842,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   global.SP = Object.assign(global.SP, {
     Sprites: {
       build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
-      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal,
+      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal, drawGrav: drawGrav,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }
@@ -3877,6 +3960,14 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.GRAV_ON || t === T.GRAV_OFF) {
+          // включённый рубильник подсвечен: по нему видно, какая физика сейчас в силе
+          var live = engine.gravity === (t === T.GRAV_ON);
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawGrav(g, s, t === T.GRAV_ON, live);
+          g.restore();
+          continue;
+        }
         if (t === T.TERMINAL) {
           g.save(); g.translate(px, py);
           SP.Sprites.drawTerminal(g, s, engine.fuse > 0, timeMs);
@@ -4205,7 +4296,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
-   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n'
+   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n', 'hud-grav'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -4392,6 +4483,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     el['hud-carry'].hidden = !engine.murphy.carry;
     el['hud-fuse'].hidden = !engine.fuse;
     if (engine.fuse) el['hud-fuse-n'].textContent = engine.fuse;
+    el['hud-grav'].hidden = !engine.gravity;
   }
 
   function onWin() {

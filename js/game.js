@@ -8,7 +8,7 @@
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
-   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n'
+   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n', 'hud-grav'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -195,6 +195,7 @@
     el['hud-carry'].hidden = !engine.murphy.carry;
     el['hud-fuse'].hidden = !engine.fuse;
     if (engine.fuse) el['hud-fuse-n'].textContent = engine.fuse;
+    el['hud-grav'].hidden = !engine.gravity;
   }
 
   function onWin() {

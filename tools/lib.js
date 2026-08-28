@@ -110,6 +110,7 @@ function planStep(e, targets, allowPorts) {
     }
     var cx = cur % e.w, cy = (cur - cx) / e.w;
     for (var d = 0; d < 4; d++) {
+      if (d === 0 && e.gravity) continue;             // под тяжестью вверх не шагнуть
       var nx = cx + DIRS[d][0], ny = cy + DIRS[d][1];
       if (nx < 0 || ny < 0 || nx >= e.w || ny >= e.h) continue;
       // порт переносит на две клетки
@@ -121,7 +122,15 @@ function planStep(e, targets, allowPorts) {
         var ft = e.get(tx, ty);
         if (!(ft === T.EMPTY || ft === T.BASE || ft === T.INFOTRON)) continue;
       } else if (!walkableForPath(e, nx, ny, d)) continue;
-      var ni = ty * e.w + tx;
+      var pre = ty * e.w + tx;
+      var ly = ty;
+      if (e.gravity) while (e.get(tx, ly + 1) === T.EMPTY) ly++;   // и съезжает вниз до опоры
+      var ni = ly * e.w + tx;
+      if (goal[pre] || goal[ni]) {
+        var back = [d], n2 = cur;
+        while (n2 !== start) { back.push(firstDir[n2]); n2 = prev[n2]; }
+        return back.reverse();
+      }
       if (seen[ni]) continue;
       seen[ni] = 1;
       prev[ni] = cur;

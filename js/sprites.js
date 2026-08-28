@@ -190,6 +190,34 @@
     g.lineWidth = Math.max(1, s * 0.03); g.stroke();
   }
 
+  // Гравирубильник: вмурованная в породу панель со стрелками. Вниз — тяжесть,
+  // вверх — невесомость; активный горит, погашенный тускнеет.
+  function drawGrav(g, s, on, live) {
+    g.fillStyle = '#0a0d16';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.11;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.1);
+    g.fillStyle = on ? '#2b2036' : '#16283a';
+    g.fill();
+    g.strokeStyle = on ? '#a06ad8' : '#4fa3d8';
+    g.lineWidth = Math.max(1, s * 0.055);
+    g.stroke();
+    g.save();
+    g.translate(s / 2, s / 2);
+    if (!on) g.rotate(Math.PI);
+    g.strokeStyle = live ? '#ffffff' : (on ? '#d9b6ff' : '#bfe6ff');
+    g.lineWidth = Math.max(1, s * 0.09);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (var k = -1; k <= 1; k += 2) {
+      var yy = k * s * 0.14;
+      g.beginPath();
+      g.moveTo(-s * 0.16, yy - s * 0.07); g.lineTo(0, yy + s * 0.07); g.lineTo(s * 0.16, yy - s * 0.07);
+      g.stroke();
+    }
+    g.restore();
+  }
+
   function drawExit(g, s, open) {
     g.fillStyle = '#0a0d14';
     g.fillRect(0, 0, s, s);
@@ -476,6 +504,8 @@
     pack.tile[T.SNIKSNAK] = make(drawSnik);
     pack.tile[T.YELLOW] = make(function (g, s) { drawYellow(g, s, false); });
     pack.tile[T.RED] = make(function (g, s) { drawRed(g, s, false); });
+    pack.tile[T.GRAV_ON] = make(function (g, s) { drawGrav(g, s, true, false); });
+    pack.tile[T.GRAV_OFF] = make(function (g, s) { drawGrav(g, s, false, false); });
     pack.tile[T.EXIT] = make(function (g, s) { drawExit(g, s, false); });
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
@@ -490,7 +520,7 @@
   global.SP = Object.assign(global.SP, {
     Sprites: {
       build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
-      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal,
+      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal, drawGrav: drawGrav,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }

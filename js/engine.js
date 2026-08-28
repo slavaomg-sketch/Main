@@ -68,7 +68,7 @@
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0 };
+    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0, falling: 0 };
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -96,6 +96,7 @@
     this.ticks = 0;
     this.moves = 0;
     this.fuse = 0;             // 0 — терминал не нажат; иначе тики до подрыва
+    this.gravity = !!this.level.gravity;   // тяжесть уровня: под ней Мёрфи не поднимается
     return this;
   };
 
@@ -135,7 +136,7 @@
     e.fy = this.fy.slice();
     e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
                  alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
-                 carry: this.murphy.carry };
+                 carry: this.murphy.carry, falling: this.murphy.falling };
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -144,6 +145,7 @@
     e.ticks = this.ticks;
     e.moves = this.moves;
     e.fuse = this.fuse;
+    e.gravity = this.gravity;
     return e;
   };
 
@@ -153,7 +155,8 @@
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + this.murphy.carry;
+    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse +
+           '|' + this.murphy.carry + '|' + (this.gravity ? 'g' : '0') + this.murphy.falling;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -232,6 +235,7 @@
     var m = this.murphy;
     m.pushing = 0;
     m.digging = 0;
+    if (m.falling) return;                       // в падении Мёрфи не управляется
     var d = input && input.dir !== undefined ? input.dir : -1;
     if (d < 0 || d > 3) return;
     m.facing = d;
@@ -274,6 +278,9 @@
       return;
     }
     if (t === T.TERMINAL) { this.pressTerminal(); return; }
+    // Гравипереключатели вмурованы в породу: в них упираются, а не входят.
+    if (t === T.GRAV_ON) { this.gravity = true; return; }
+    if (t === T.GRAV_OFF) { this.gravity = false; return; }
     if ((t === T.ZONK || t === T.ORANGE) && dy === 0) {
       var bi = this.idx(nx, ny);
       if (this.falling[bi]) return;                    // падающий зонк не толкнуть
@@ -394,6 +401,14 @@
     }
   };
 
+  /** Под тяжестью Мёрфи падает сам — и вверх ему уже не подняться. */
+  Engine.prototype.updateMurphyFall = function () {
+    var m = this.murphy;
+    if (!this.gravity || !m.alive) { m.falling = 0; return; }
+    if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepMurphyTo(m.x, m.y + 1); m.falling = 1; }
+    else m.falling = 0;
+  };
+
   /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
   Engine.prototype.pressTerminal = function () {
     if (this.fuse === 0) this.fuse = FUSE_TICKS;
@@ -441,6 +456,7 @@
 
     this.updateExplosions();
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    if (this.status === 'playing') this.updateMurphyFall();
     this.updateFuse();
     this.updateGravity();
     this.updateMonsters();

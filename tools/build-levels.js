@@ -49,6 +49,7 @@ var levels = files.map(function (file) {
     name: meta.name || file.replace(/\.txt$/, ''),
     hint: meta.hint || '',
     needed: needed,
+    gravity: /^(on|1|yes|да)$/i.test(meta.gravity || '') || undefined,
     map: map,
     _file: file,
     _total: total,

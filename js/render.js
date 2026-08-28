@@ -108,6 +108,14 @@
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.GRAV_ON || t === T.GRAV_OFF) {
+          // включённый рубильник подсвечен: по нему видно, какая физика сейчас в силе
+          var live = engine.gravity === (t === T.GRAV_ON);
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawGrav(g, s, t === T.GRAV_ON, live);
+          g.restore();
+          continue;
+        }
         if (t === T.TERMINAL) {
           g.save(); g.translate(px, py);
           SP.Sprites.drawTerminal(g, s, engine.fuse > 0, timeMs);

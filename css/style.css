@@ -393,3 +393,4 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .hud-charge { filter: drop-shadow(0 0 6px rgba(255,90,60,0.8)); }
 .hud-fuse { color: #ff8a5c; }
 .hud-fuse b { color: #ffd0b0; }
+.hud-grav { color: #c69bf0; }
