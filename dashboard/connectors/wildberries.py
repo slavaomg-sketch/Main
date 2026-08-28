@@ -120,6 +120,7 @@ FINANCE_FIELDS = (
     "kvw",
     "penalty",
     "deduction",
+    "additionalPayment",
     "paidStorage",
     "paidAcceptance",
     "rebillLogisticCost",
@@ -135,7 +136,7 @@ FINANCE_FIELDS = (
 # Меняется вместе с набором полей выше и с тем, как строки раскладываются
 # по дням. Если в базе лежит выгрузка, сделанная по старым правилам, её
 # нужно повторить целиком — иначе старые месяцы останутся как были.
-FINANCE_FIELDS_VERSION = 3
+FINANCE_FIELDS_VERSION = 4
 
 # Ответ статистики: (дата начала выборки, когда получен, строки)
 _responses: dict[tuple[str, str], tuple[date, float, list[dict[str, Any]]]] = {}

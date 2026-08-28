@@ -82,7 +82,30 @@ def finance_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
         totals[f"{bucket}:эквайринг"] += abs(_num(row, "acquiringFee"))
         totals[f"{bucket}:ПВЗ"] += abs(_num(row, "ppvzReward"))
 
+        # Удержания живут в отдельных строках отчёта, а не в строках продаж:
+        # логистика, хранение, приёмка, штрафы. Считаем их по всем строкам.
+        totals["все:forPay"] += _num(row, "forPay")
+        for name, key in (
+            ("логистика", "rebillLogisticCost"),
+            ("хранение", "paidStorage"),
+            ("приёмка", "paidAcceptance"),
+            ("штрафы", "penalty"),
+            ("удержания", "deduction"),
+            ("доплаты", "additionalPayment"),
+        ):
+            totals[f"все:{name}"] += _num(row, key)
+
     result: dict[str, Any] = {key: round(value, 2) for key, value in totals.items()}
+    # Что реально дойдёт до баланса кабинета: за товар минус расходы площадки.
+    result["все:кВыводу"] = round(
+        result.get("все:forPay", 0.0)
+        - sum(
+            result.get(f"все:{name}", 0.0)
+            for name in ("логистика", "хранение", "приёмка", "штрафы", "удержания")
+        )
+        + result.get("все:доплаты", 0.0),
+        2,
+    )
     result["типы строк"] = dict(kinds.most_common(12))
     return result
 
@@ -134,14 +157,18 @@ async def months(connection_id: str, back: int = 14, today: date | None = None) 
         for_pay = totals.get("выкупы:forPay", 0.0)
         if not bought:
             continue
+        turnover = totals.get("выкупы:retailPriceWithDisc×кол", 0.0)
+        payable = totals.get("все:кВыводу", 0.0)
         result[start.strftime("%Y-%m")] = {
-            "выкупы": round(bought),
-            "оборот": round(totals.get("выкупы:retailPriceWithDisc×кол", 0.0)),
+            "оборот": round(turnover),
             "кПеречислению": round(for_pay),
-            "доля": round(for_pay / bought * 100, 1),
-            "комиссия": round(totals.get("выкупы:комиссия", 0.0)),
-            "эквайринг": round(totals.get("выкупы:эквайринг", 0.0)),
-            "строк": totals.get("выкупы:строк", 0),
+            "логистика": round(totals.get("все:логистика", 0.0)),
+            "хранение": round(totals.get("все:хранение", 0.0)),
+            "приёмка": round(totals.get("все:приёмка", 0.0)),
+            "штрафы": round(totals.get("все:штрафы", 0.0)),
+            "удержания": round(totals.get("все:удержания", 0.0)),
+            "кВыводу": round(payable),
+            "доляОтОборота": round(payable / turnover * 100, 1) if turnover else 0.0,
         }
     return result
 
