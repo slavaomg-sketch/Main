@@ -634,25 +634,36 @@
     dom['status-text'].textContent = text;
   }
 
-  /* Площадки хранят статистику ограниченный срок. Если выбранный период
-     начинается раньше, чем есть данные, об этом надо сказать заметно. */
+  /* Пояснения под шапкой: чего в периоде не хватает и откуда взяты цифры.
+     Это не сбой — тревогу в строке состояния такие заметки не поднимают. */
   function renderCoverageNote(data) {
+    var lines = [];
+
     var short = data.marketplaces.filter(function (report) {
       return report.connected && report.dataFrom && report.dataFrom > data.period.from;
     });
+    if (short.length) {
+      var parts = short.map(function (report) {
+        return report.title + ' — с ' + Fmt.dayLong(report.dataFrom);
+      });
+      lines.push('<strong>Период показан не полностью.</strong> ' +
+        'Данные есть не за весь выбранный отрезок: ' + parts.join(', ') + '.');
+    }
 
-    if (!short.length) {
+    data.marketplaces.forEach(function (report) {
+      (report.notes || []).forEach(function (note) {
+        if (lines.indexOf(note) === -1) lines.push(note);
+      });
+    });
+
+    if (!lines.length) {
       dom['coverage-note'].hidden = true;
       return;
     }
 
-    var parts = short.map(function (report) {
-      return report.title + ' — с ' + Fmt.dayLong(report.dataFrom);
-    });
-
-    dom['coverage-note'].innerHTML = '<span><strong>Период показан не полностью.</strong> ' +
-      'Данные есть не за весь выбранный отрезок: ' + parts.join(', ') +
-      '. Площадка не хранит статистику глубже, поэтому цифры за более ранние дни отсутствуют.</span>';
+    dom['coverage-note'].innerHTML = '<span class="notice-strip__lines">' +
+      lines.map(function (line) { return '<span>' + line + '</span>'; }).join('') +
+      '</span>';
     dom['coverage-note'].hidden = false;
   }
 

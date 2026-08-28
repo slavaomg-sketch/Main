@@ -106,13 +106,35 @@ FINANCE_FIELDS = (
     "saleDt",
     "docTypeName",
     "quantity",
+    # Цены и выручка
+    "retailPrice",
+    "retailPriceWithDisc",
     "retailAmount",
+    "spp",
+    # Что удерживает площадка
     "forPay",
+    "ppvzSalesCommission",
+    "ppvzReward",
+    "acquiringFee",
+    "kvw",
+    "penalty",
+    "deduction",
+    "paidStorage",
+    "paidAcceptance",
+    "rebillLogisticCost",
+    "deliveryAmount",
+    "returnAmount",
+    # Товар
     "nmId",
     "vendorCode",
     "subjectName",
     "brandName",
 )
+
+# Меняется вместе с набором полей выше. Если в базе лежат строки, скачанные
+# со старым набором, новых колонок в них просто нет — такую выгрузку нужно
+# повторить целиком, иначе за старые месяцы данных не будет.
+FINANCE_FIELDS_VERSION = 2
 
 # Ответ статистики: (дата начала выборки, когда получен, строки)
 _responses: dict[tuple[str, str], tuple[date, float, list[dict[str, Any]]]] = {}
@@ -607,7 +629,7 @@ class WildberriesConnector(HttpConnector):
         report.funnel = Funnel(orders=report.orders, buyouts=report.buyouts)
 
         border = edge or period.date_to
-        report.warnings.append(
+        report.notes.append(
             f"до {border.strftime('%d.%m.%Y')} цифры взяты из финансового отчёта "
             f"Wildberries: выручка и «К перечислению» точные, заказы посчитаны "
             f"по выкупам — статистику заказов площадка глубже не хранит"

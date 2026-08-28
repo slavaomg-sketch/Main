@@ -46,6 +46,9 @@ def merge_reports(
     merged.warnings = list(
         dict.fromkeys(warning for report in reports for warning in report.warnings)
     )
+    merged.notes = list(
+        dict.fromkeys(note for report in reports for note in report.notes)
+    )
     # Глубина данных площадки — по худшему из магазинов.
     depths = [report.data_from for report in reports if report.data_from]
     merged.data_from = max(depths) if depths else None

@@ -360,3 +360,19 @@ def test_payout_share_survives_zero_revenue():
     report = store_report("Магазин 1", 0, 0, "A")
     totals = build_totals([merge_reports("wildberries", "WB", [report], period())])
     assert totals["payoutShare"] == 0.0
+
+
+def test_notes_are_merged_and_kept_apart_from_warnings():
+    """Пояснение «откуда взяты цифры» — не сбой: панель не должна из-за него
+    писать «часть данных не пришла»."""
+    first = store_report("ВБ Вячеслав", 1000, 10, "A")
+    first.notes = ["до 01.03.2026 цифры взяты из финансового отчёта"]
+    second = store_report("ВБ Наталья", 500, 5, "B")
+    second.notes = ["до 01.03.2026 цифры взяты из финансового отчёта"]
+    second.warnings = ["остатки не получены — HTTP 404"]
+
+    merged = merge_reports("wildberries", "Wildberries", [first, second], period())
+
+    assert merged.notes == ["до 01.03.2026 цифры взяты из финансового отчёта"]
+    assert merged.warnings == ["остатки не получены — HTTP 404"]
+    assert merged.to_dict()["notes"] == merged.notes

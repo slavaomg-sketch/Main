@@ -470,7 +470,9 @@ async def test_period_deeper_than_available_data_is_flagged(store, monkeypatch):
     report = await warehouse.report_for(store, deep, settings)
 
     assert report.data_from == today - timedelta(days=30)
-    assert any("не хранит статистику глубже" in warning for warning in report.warnings)
+    assert any("не хранит статистику глубже" in note for note in report.notes)
+    # Это пояснение, а не сбой: тревогу «часть данных не пришла» оно не поднимает.
+    assert report.warnings == []
 
 
 async def test_period_within_available_data_is_not_flagged(store, monkeypatch):
@@ -482,7 +484,7 @@ async def test_period_within_available_data_is_not_flagged(store, monkeypatch):
 
     report = await warehouse.report_for(store, period(7), settings)
 
-    assert not any("глубже" in warning for warning in report.warnings)
+    assert not any("глубже" in note for note in report.notes)
 
 
 # --- отчёт реализации: глубина за пределами статистики --------------------------
@@ -570,7 +572,8 @@ async def test_deep_period_says_where_the_numbers_came_from(store, monkeypatch):
 
     report = await warehouse.report_for(store, period(14), settings)
 
-    assert any("финансового отчёта" in warning for warning in report.warnings)
+    assert any("финансового отчёта" in note for note in report.notes)
+    assert report.warnings == []
 
 
 async def test_finance_is_downloaded_page_by_page(store, monkeypatch):
@@ -691,3 +694,37 @@ async def test_finance_days_also_split_buyouts_and_returns(store, monkeypatch):
     assert report.gross_revenue == 800
     assert report.returns_amount == 200
     assert report.revenue == 600
+
+
+async def test_wider_column_set_forces_a_full_finance_download(store, monkeypatch):
+    """Новые колонки отчёта в уже скачанных строках взяться неоткуда —
+    такую выгрузку надо повторить целиком, иначе за старые месяцы их не будет."""
+    from dashboard.connectors import wildberries
+
+    today = date.today()
+    deep = today - timedelta(days=8)
+    asked: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            import json as _json
+
+            asked.append(_json.loads(request.content)["dateFrom"])
+            return httpx.Response(200, json=[finance(deep, 1)])
+        if "sales" in request.url.path or "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    await warehouse.sync_store(store, settings)
+    wildberries.reset_cache()
+
+    # Обычная выгрузка забирает только свежее...
+    await warehouse.sync_store(store, settings)
+    assert asked[1] != asked[0]
+
+    # ...а расширение набора колонок снова поднимает всю историю.
+    wildberries.reset_cache()
+    monkeypatch.setattr(wildberries, "FINANCE_FIELDS_VERSION", 99)
+    await warehouse.sync_store(store, settings)
+    assert asked[2] == asked[0]

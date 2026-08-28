@@ -477,6 +477,9 @@ html[data-theme="auto"] .icon-moon { display: none; }
   color: var(--text-secondary);
 }
 
+/* Заметок может быть несколько — ставим их друг под другом, а не в строку. */
+.notice-strip__lines { display: flex; flex-direction: column; gap: 4px; }
+
 .notice-strip::before {
   content: "!";
   flex-shrink: 0;

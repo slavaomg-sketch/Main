@@ -416,13 +416,21 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
         source for source in STORED[store.marketplace] if source in SLOW_SOURCES
     )
     if slow_sources and isinstance(connector, WildberriesConnector):
+        # Набор колонок отчёта расширили — значит, в старых строках их нет,
+        # и историю надо перекачать целиком, а не только свежие дни.
+        version_key = f"finance_fields:{store.id}"
+        stored_version = await db.get_preference(version_key, "0")
+        outdated = stored_version != str(wildberries.FINANCE_FIELDS_VERSION)
+
         finance_from = max(
-            await _window(store.id, slow_sources, horizon),
+            horizon if outdated else await _window(store.id, slow_sources, horizon),
             wildberries.FINANCE_SINCE,
         )
         if finance_from <= today:
             raw = await connector.collect_finance(finance_from, today)
             await _save(store.id, slow_sources, raw, finance_from, today, result)
+            if outdated and not result.errors.get("finance"):
+                await db.set_preference(version_key, str(wildberries.FINANCE_FIELDS_VERSION))
 
     await prune(store.id, horizon)
     result.earliest, result.latest = await stored_range(store.id, STORED[store.marketplace])
@@ -541,7 +549,7 @@ async def report_for(
     if earliest:
         report.data_from = earliest
         if period.date_from < earliest:
-            report.warnings.append(
+            report.notes.append(
                 f"данные есть только с {earliest.strftime('%d.%m.%Y')} — "
                 f"площадка не хранит статистику глубже"
             )
