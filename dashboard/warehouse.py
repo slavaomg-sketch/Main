@@ -43,7 +43,8 @@ STORED: dict[str, tuple[str, ...]] = {
     "wildberries": ("sales", "orders", "stocks"),
 }
 
-# Сколько дней истории перекачиваем при первой выгрузке.
+# Насколько дней назад заходим при обычной выгрузке: Wildberries правит
+# статусы задним числом, и без перекрытия эти изменения прошли бы мимо.
 OVERLAP_DAYS = 3
 
 # «Снимок» — источник, который не накапливается, а заменяется целиком.
@@ -60,6 +61,8 @@ class SyncResult:
     stored: dict[str, int] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
     finished_at: datetime = field(default_factory=datetime.utcnow)
+    full: bool = False                      # первая выгрузка: качаем всю историю
+    date_from: date | None = None
 
     @property
     def ok(self) -> bool:
@@ -73,6 +76,8 @@ class SyncResult:
             "stored": self.stored,
             "errors": self.errors,
             "ok": self.ok,
+            "full": self.full,
+            "dateFrom": self.date_from.isoformat() if self.date_from else "",
             "finishedAt": self.finished_at.replace(microsecond=0).isoformat() + "Z",
         }
 
@@ -174,6 +179,41 @@ async def forget(connection_id: str) -> None:
 # --- чтение --------------------------------------------------------------------
 
 
+async def last_stored_day(connection_id: str, sources: tuple[str, ...]) -> date | None:
+    """Самый свежий день, который уже лежит в базе по этому магазину."""
+    history = [source for source in sources if source not in SNAPSHOT_SOURCES]
+    if not history:
+        return None
+
+    placeholders = ",".join("?" for _ in history)
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            f"SELECT MAX(day) AS last_day FROM marketplace_rows"
+            f" WHERE connection_id = ? AND source IN ({placeholders})",
+            [connection_id, *history],
+        )
+        row = await cursor.fetchone()
+
+    if not row or not row["last_day"]:
+        return None
+    try:
+        return date.fromisoformat(row["last_day"])
+    except ValueError:
+        return None
+
+
+async def prune(connection_id: str, before: date) -> int:
+    """Убрать строки старше срока хранения, чтобы база не росла бесконечно."""
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            "DELETE FROM marketplace_rows"
+            " WHERE connection_id = ? AND source NOT IN ('stocks') AND day < ?",
+            (connection_id, before.isoformat()),
+        )
+        await connection.commit()
+        return cursor.rowcount or 0
+
+
 async def read_rows(
     connection_id: str, source: str, period: Period | None = None
 ) -> list[dict[str, Any]]:
@@ -263,7 +303,15 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
 
     connector = REAL_CONNECTORS[store.marketplace](store.credentials(config))
     today = date.today()
-    date_from = today - timedelta(days=max(config.history_days, 1) - 1)
+    horizon = today - timedelta(days=max(config.history_days, 1) - 1)
+
+    # Первая выгрузка качает всю историю, последующие — только то, что
+    # изменилось за последние дни. Иначе каждые четверть часа пришлось бы
+    # перекачивать год продаж.
+    known = await last_stored_day(store.id, STORED[store.marketplace])
+    date_from = max(known - timedelta(days=OVERLAP_DAYS), horizon) if known else horizon
+    result.full = known is None
+    result.date_from = date_from
 
     if isinstance(connector, WildberriesConnector):
         raw = await connector.collect_raw(date_from)
@@ -281,6 +329,7 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
         result.stored[source] = stored
         await mark_sync(store.id, source)
 
+    await prune(store.id, horizon)
     return result
 
 

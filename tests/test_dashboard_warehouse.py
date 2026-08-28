@@ -234,3 +234,73 @@ async def test_sync_all_skips_stores_without_keys(dashboard_db, monkeypatch):
 
     results = await warehouse.sync_all(settings)
     assert results == []
+
+
+# --- дозагрузка вместо полной перекачки -----------------------------------------
+
+
+async def test_first_sync_downloads_the_whole_history(store, monkeypatch):
+    asked: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.params.get("dateFrom", ""))
+        return httpx.Response(200, json=[] if "supplier" in request.url.path else {"items": []})
+
+    mock_wb(monkeypatch, handler)
+    result = await warehouse.sync_store(store, settings)
+
+    assert [value for value in asked if value]
+    assert result.full is True
+    horizon = date.today() - timedelta(days=settings.history_days - 1)
+    assert result.date_from == horizon
+
+
+async def test_next_sync_only_asks_for_recent_changes(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(sales=[sale(today, "a")], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    from dashboard.connectors import wildberries
+
+    wildberries.reset_cache()          # иначе ответ переиспользуется из памяти
+
+    asked: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.params.get("dateFrom", ""))
+        return httpx.Response(200, json=[] if "supplier" in request.url.path else {"items": []})
+
+    mock_wb(monkeypatch, handler)
+    result = await warehouse.sync_store(store, settings)
+
+    assert result.full is False
+    assert result.date_from == today - timedelta(days=warehouse.OVERLAP_DAYS)
+
+    # У остатков параметра dateFrom нет — смотрим только запросы статистики.
+    windows = [value for value in asked if value]
+    assert windows
+    assert all(str(today - timedelta(days=warehouse.OVERLAP_DAYS)) in value for value in windows)
+
+
+async def test_old_rows_are_pruned_beyond_the_retention_window(store):
+    today = date.today()
+    horizon = today - timedelta(days=settings.history_days - 1)
+    await warehouse.store_rows(store.id, "sales", [
+        sale(today, "fresh"),
+        sale(horizon - timedelta(days=5), "ancient"),
+    ], today)
+
+    removed = await warehouse.prune(store.id, horizon)
+
+    assert removed == 1
+    assert {row["srid"] for row in await warehouse.read_rows(store.id, "sales")} == {"fresh"}
+
+
+async def test_pruning_never_touches_stock_snapshot(store):
+    today = date.today()
+    await warehouse.store_rows(
+        store.id, "stocks", [{"nmId": 1, "warehouseId": 2, "quantity": 5}],
+        today - timedelta(days=900),
+    )
+    await warehouse.prune(store.id, today)
+    assert len(await warehouse.read_rows(store.id, "stocks")) == 1

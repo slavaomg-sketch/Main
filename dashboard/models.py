@@ -50,6 +50,12 @@ class Period:
     @classmethod
     def from_preset(cls, preset: str, today: date | None = None) -> "Period":
         today = today or date.today()
+
+        # Квартал, полугодие и год — календарные: считаются от начала периода,
+        # как их считает бухгалтерия, а не «последние N дней».
+        quarter_start = today.replace(month=(today.month - 1) // 3 * 3 + 1, day=1)
+        half_start = today.replace(month=1 if today.month <= 6 else 7, day=1)
+
         presets: dict[str, tuple[date, date]] = {
             "today": (today, today),
             "yesterday": (today - timedelta(days=1), today - timedelta(days=1)),
@@ -58,6 +64,8 @@ class Period:
             "30d": (today - timedelta(days=29), today),
             "90d": (today - timedelta(days=89), today),
             "month": (today.replace(day=1), today),
+            "quarter": (quarter_start, today),
+            "half": (half_start, today),
             "year": (today.replace(month=1, day=1), today),
         }
         if preset not in presets:

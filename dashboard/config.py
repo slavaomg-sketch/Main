@@ -127,7 +127,7 @@ def load_settings() -> Settings:
         session_secret=_env("DASHBOARD_SECRET", "change-me-in-production"),
         cache_ttl=_env_int("DASHBOARD_CACHE_TTL", 300),
         request_timeout=_env_int("DASHBOARD_HTTP_TIMEOUT", 60),
-        history_days=_env_int("DASHBOARD_HISTORY_DAYS", 120),
+        history_days=_env_int("DASHBOARD_HISTORY_DAYS", 400),
         sync_minutes=_env_int("DASHBOARD_SYNC_MINUTES", 15),
         force_demo=_env_bool("DASHBOARD_DEMO", False),
         default_currency=_env("DASHBOARD_CURRENCY", "RUB"),

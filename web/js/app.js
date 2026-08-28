@@ -12,8 +12,10 @@
     { key: 'yesterday', label: 'Вчера' },
     { key: '7d', label: '7 дней' },
     { key: '30d', label: '30 дней' },
-    { key: '90d', label: '90 дней' },
     { key: 'month', label: 'Месяц' },
+    { key: 'quarter', label: 'Квартал' },
+    { key: 'half', label: 'Полгода' },
+    { key: 'year', label: 'Год' },
     { key: 'custom', label: 'Свой' }
   ];
 

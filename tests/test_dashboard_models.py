@@ -104,3 +104,47 @@ def test_product_rounds_values_in_json():
     payload = product.to_dict()
     assert payload["revenue"] == 1234.57
     assert payload["rating"] == 4.7
+
+
+# --- календарные периоды --------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "today, expected_from",
+    [
+        (date(2025, 8, 28), date(2025, 7, 1)),    # третий квартал
+        (date(2025, 1, 5), date(2025, 1, 1)),     # первый квартал, начало года
+        (date(2025, 4, 1), date(2025, 4, 1)),     # первый день квартала
+        (date(2025, 12, 31), date(2025, 10, 1)),  # четвёртый квартал
+    ],
+)
+def test_quarter_starts_at_the_calendar_quarter(today, expected_from):
+    period = Period.from_preset("quarter", today=today)
+    assert period.date_from == expected_from
+    assert period.date_to == today
+
+
+@pytest.mark.parametrize(
+    "today, expected_from",
+    [
+        (date(2025, 8, 28), date(2025, 7, 1)),
+        (date(2025, 6, 30), date(2025, 1, 1)),
+        (date(2025, 7, 1), date(2025, 7, 1)),
+    ],
+)
+def test_half_year_starts_in_january_or_july(today, expected_from):
+    assert Period.from_preset("half", today=today).date_from == expected_from
+
+
+def test_year_starts_on_the_first_of_january():
+    period = Period.from_preset("year", today=date(2025, 8, 28))
+    assert period.date_from == date(2025, 1, 1)
+    assert period.days == 240
+
+
+@pytest.mark.parametrize("preset", ["quarter", "half", "year"])
+def test_long_periods_compare_with_equal_stretch_before(preset):
+    period = Period.from_preset(preset, today=date(2025, 8, 28))
+    previous = period.previous()
+    assert previous.days == period.days
+    assert previous.date_to < period.date_from
