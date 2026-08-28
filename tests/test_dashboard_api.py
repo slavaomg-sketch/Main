@@ -424,6 +424,10 @@ def _two_wb_stores(client, monkeypatch):
     today = date.today().isoformat()
     prices = {"token-slava": 1000.0, "token-natasha": 300.0}
 
+    # Продажу ставим на начало суток. Период «сегодня» обрывается на текущем
+    # моменте, поэтому продажа, помеченная десятью утра, ночью оказалась бы
+    # в будущем — и тест падал бы только на ночных выкладках.
+
     def handler(request: httpx.Request) -> httpx.Response:
         price = prices[request.headers["Authorization"]]
         if "sales-reports/list" in request.url.path:
@@ -432,7 +436,7 @@ def _two_wb_stores(client, monkeypatch):
             return httpx.Response(204)
         if "sales" in request.url.path:
             return httpx.Response(200, json=[{
-                "date": f"{today}T10:00:00", "srid": f"s{price}", "saleID": f"S{price}",
+                "date": f"{today}T00:00:00", "srid": f"s{price}", "saleID": f"S{price}",
                 "finishedPrice": price, "forPay": price, "supplierArticle": "ART",
                 "nmId": 1, "subject": "Кружка",
             }])
