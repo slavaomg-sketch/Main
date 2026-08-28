@@ -7,7 +7,8 @@
 
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
-   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock'
+   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
+   'welcome', 'welcome-canvas', 'btn-play'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -236,8 +237,24 @@
   // отладочный вход: SP.game.start(индекс) — удобно смотреть уровни без прохождения
   SP.game = { start: startLevel, get engine() { return engine; } };
 
-  // старт
+  // старт: сперва приветствие, потом список уровней
   startLevel(0);
   showMenu();
   global.requestAnimationFrame(frame);
+
+  var hello = new SP.Welcome(el['welcome'], el['welcome-canvas']);
+  hello.start();
+  var greeted = false;
+  function dismissWelcome() {
+    if (greeted) return;
+    greeted = true;
+    el['welcome'].classList.add('leaving');
+    global.setTimeout(function () {
+      el['welcome'].classList.add('hidden');
+      hello.stop();
+    }, 450);
+  }
+  el['btn-play'].addEventListener('click', dismissWelcome);
+  el['welcome'].addEventListener('pointerdown', dismissWelcome);
+  global.addEventListener('keydown', function (e) { if (!greeted) { dismissWelcome(); e.preventDefault(); } }, true);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
