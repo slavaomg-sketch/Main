@@ -98,11 +98,7 @@
     fitValue(value, options.format(options.value || 0));
     Fmt.countUp(value, options.value, options.format);
 
-    if (options.spark && options.spark.length > 1) {
-      var sparkHost = Fmt.el('div');
-      body.appendChild(sparkHost);
-      Charts.sparkline(sparkHost, options.spark, options.color || 'var(--accent)');
-    }
+    drawSpark(body, options);
   }
 
   /* Показатель из двух величин: штуки и деньги рядом, один бейдж динамики.
@@ -137,15 +133,32 @@
     Fmt.countUp(main, options.value, options.format);
     Fmt.countUp(second, options.secondValue, options.secondFormat);
 
-    if (options.spark && options.spark.length > 1) {
-      var sparkHost = Fmt.el('div');
-      body.appendChild(sparkHost);
-      Charts.sparkline(sparkHost, options.spark, options.color || 'var(--accent)');
+    drawSpark(body, options);
+  }
+
+  /* Линия под цифрой есть у каждого показателя: ряд берётся по ключу
+     самого показателя, а при наведении видно дату и значение дня. */
+  function drawSpark(body, options) {
+    var series = options.spark;
+    if (!series && options.sparkKey && current) {
+      series = seriesValues(current, options.sparkKey);
     }
+    if (!series || series.length < 2) return;
+
+    var host = Fmt.el('div');
+    body.appendChild(host);
+    Charts.sparkline(host, series, options.color || 'var(--accent)', {
+      days: current ? seriesDays(current) : null,
+      format: options.sparkFormat || options.secondFormat || options.format
+    });
   }
 
   function seriesValues(data, key) {
     return (data.totals.series || []).map(function (point) { return point[key] || 0; });
+  }
+
+  function seriesDays(data) {
+    return (data.totals.series || []).map(function (point) { return point.day; });
   }
 
   function seriesLabels(data) {
@@ -181,7 +194,8 @@
         footer: Fmt.number(totals.buyouts) + ' ' +
                 Fmt.plural(totals.buyouts, ['выкуп', 'выкупа', 'выкупов']) +
                 ' · по вашим ценам, до вычета возвратов',
-        color: 'var(--accent)'
+        color: 'var(--accent)',
+        sparkKey: 'grossRevenue'
       });
     },
 
@@ -195,7 +209,8 @@
           ? 'скидка площадки — ' + Fmt.fullMoney(totals.platformDiscount) +
             ' (' + Fmt.percent(totals.platformDiscountShare) + '), за её счёт'
           : 'после скидки площадки',
-        color: 'var(--text-secondary)'
+        color: 'var(--text-secondary)',
+        sparkKey: 'buyerPaid'
       });
     },
 
@@ -208,7 +223,8 @@
         footer: totals.grossRevenue
           ? Fmt.percent(totals.returnsShare) + ' от выкупов'
           : 'оформлено за период',
-        color: 'var(--negative)'
+        color: 'var(--negative)',
+        sparkKey: 'returnsAmount'
       });
     },
 
@@ -243,7 +259,8 @@
         footer: Fmt.number(totals.reportsCount) + ' ' +
                 Fmt.plural(totals.reportsCount, ['отчёт', 'отчёта', 'отчётов']) +
                 ' · столько уйдёт на расчётный счёт',
-        color: 'var(--positive)'
+        color: 'var(--positive)',
+        sparkKey: 'bankPayment'
       });
     },
 
@@ -325,7 +342,7 @@
         footer: totals.revenue
           ? Fmt.percent(totals.payoutShare) + ' от выручки · до логистики, хранения и штрафов'
           : 'до логистики, хранения и штрафов',
-        spark: (ctx.data.totals.series || []).map(function (point) { return point.revenue; }),
+        sparkKey: 'payout',
         color: 'var(--positive)'
       });
     },
@@ -343,7 +360,7 @@
                 (totals.cancellations
                   ? ' · отменено ' + Fmt.number(totals.cancellations)
                   : ''),
-        spark: seriesValues(ctx.data, 'orders'),
+        sparkKey: 'ordersAmount',
         color: 'var(--ozon)'
       });
     },
@@ -358,7 +375,8 @@
         delta: reverseDelta(ctx.data.deltas.cancellations),
         footer: totals.ordersAmount
           ? Fmt.percent(totals.cancelledShare) + ' от суммы заказов'
-          : 'за период'
+          : 'за период',
+        sparkKey: 'cancelledAmount'
       });
     },
 
@@ -372,7 +390,8 @@
         delta: reverseDelta(ctx.data.deltas.returns),
         footer: totals.grossRevenue
           ? Fmt.percent(totals.returnsShare) + ' от выкупов'
-          : 'за период'
+          : 'за период',
+        sparkKey: 'returnsAmount'
       });
     },
 
@@ -396,7 +415,9 @@
         perDay: false,          // доля, а не поток
         format: function (value) { return Fmt.percent(value); },
         delta: ctx.data.deltas.buyoutRate,
-        footer: Fmt.number(ctx.data.totals.buyouts) + ' выкуплено'
+        footer: Fmt.number(ctx.data.totals.buyouts) + ' выкуплено',
+        sparkKey: 'buyouts',
+        sparkFormat: function (value) { return Fmt.number(value) + ' выкуплено'; }
       });
     },
 
@@ -417,7 +438,9 @@
         format: function (value) { return Fmt.percent(value); },
         delta: reverseDelta(ctx.data.deltas.returnRate),
         footer: Fmt.number(ctx.data.totals.returns) + ' ' +
-                Fmt.plural(ctx.data.totals.returns, ['возврат', 'возврата', 'возвратов'])
+                Fmt.plural(ctx.data.totals.returns, ['возврат', 'возврата', 'возвратов']),
+        sparkKey: 'returns',
+        sparkFormat: function (value) { return Fmt.number(value) + ' шт'; }
       });
     },
 

@@ -93,12 +93,8 @@ def merge_reports(
     for report in reports:
         for point in report.series:
             bucket = days.get(point.day)
-            if bucket is None:
-                continue
-            bucket.revenue += point.revenue
-            bucket.orders += point.orders
-            bucket.units += point.units
-            bucket.returns += point.returns
+            if bucket is not None:
+                bucket.add(point)
     merged.series = [days[day] for day in period.each_day()]
 
     products: dict[str, Product] = {}
@@ -180,14 +176,16 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     ratings = [report.rating for report in reports if report.rating]
     reviews_count = int(_sum(reports, "reviews_count"))
 
-    series: dict[str, dict[str, float]] = {}
+    # Общий дневной ряд: под каждым показателем панели должен быть свой
+    # график, поэтому складываются все поля точки, а не три избранных.
+    series: dict[date, DayPoint] = {}
     for report in reports:
         for point in report.series:
-            key = point.day.isoformat()
-            bucket = series.setdefault(key, {"day": key, "revenue": 0.0, "orders": 0, "units": 0})
-            bucket["revenue"] += point.revenue
-            bucket["orders"] += point.orders
-            bucket["units"] += point.units
+            bucket = series.get(point.day)
+            if bucket is None:
+                bucket = DayPoint(day=point.day)
+                series[point.day] = bucket
+            bucket.add(point)
 
     return {
         "revenue": round(revenue, 2),
@@ -253,7 +251,7 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         ) and any(report.balance_current for report in reports),
         "rating": round(sum(ratings) / len(ratings), 2) if ratings else 0.0,
         "reviewsCount": reviews_count,
-        "series": [series[key] for key in sorted(series)],
+        "series": [series[key].to_dict() for key in sorted(series)],
         "share": [
             {
                 "marketplace": report.marketplace,

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from calendar import monthrange
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 
 def _round(value: float, digits: int = 2) -> float:
@@ -148,21 +148,56 @@ class Period:
 
 @dataclass
 class DayPoint:
-    """Одна точка на графике динамики."""
+    """Одна точка на графике динамики.
+
+    Каждый показатель панели живёт здесь по дням — иначе под цифрой нечего
+    рисовать. Поля повторяют показатели отчёта один в один.
+    """
 
     day: date
     revenue: float = 0.0
+    gross_revenue: float = 0.0
+    returns_amount: float = 0.0
+    buyer_paid: float = 0.0
+    payout: float = 0.0
     orders: int = 0
+    orders_placed: int = 0
+    orders_amount: float = 0.0
+    cancellations: int = 0
+    cancelled_amount: float = 0.0
     units: int = 0
     returns: int = 0
+    buyouts: int = 0
+    bank_payment: float = 0.0
+
+    # Поля, которые складываются при слиянии магазинов и площадок.
+    SUMMED: ClassVar[tuple[str, ...]] = (
+        "revenue", "gross_revenue", "returns_amount", "buyer_paid", "payout",
+        "orders", "orders_placed", "orders_amount", "cancellations",
+        "cancelled_amount", "units", "returns", "buyouts", "bank_payment",
+    )
+
+    def add(self, other: "DayPoint") -> None:
+        for attr in self.SUMMED:
+            setattr(self, attr, getattr(self, attr) + getattr(other, attr))
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "day": self.day.isoformat(),
             "revenue": _round(self.revenue),
+            "grossRevenue": _round(self.gross_revenue),
+            "returnsAmount": _round(self.returns_amount),
+            "buyerPaid": _round(self.buyer_paid),
+            "payout": _round(self.payout),
             "orders": int(self.orders),
+            "ordersPlaced": int(self.orders_placed),
+            "ordersAmount": _round(self.orders_amount),
+            "cancellations": int(self.cancellations),
+            "cancelledAmount": _round(self.cancelled_amount),
             "units": int(self.units),
             "returns": int(self.returns),
+            "buyouts": int(self.buyouts),
+            "bankPayment": _round(self.bank_payment),
         }
 
 

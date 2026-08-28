@@ -419,10 +419,14 @@
 
   /* --- Мини-график в карточке показателя ----------------------------------- */
 
-  function sparkline(container, values, color) {
+  /* Искровая линия под показателем. `options.days` и `options.format`
+     делают её читаемой: при наведении видно дату и значение этого дня,
+     иначе линия — просто украшение. */
+  function sparkline(container, values, color, options) {
     if (!values || values.length < 2) return;
     // Ровная нулевая линия ничего не сообщает — лучше не рисовать вовсе.
-    if (!values.some(function (value) { return value > 0; })) return;
+    if (!values.some(function (value) { return value !== 0; })) return;
+    var settings = options || {};
     responsive(container, function (host, width) {
       var height = 44;
       var max = Math.max.apply(null, values);
@@ -447,6 +451,48 @@
         fill: 'url(#' + gradientId + ')'
       }));
       root.appendChild(Fmt.svg('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round' }));
+
+      // Курсор ведёт по линии: точка на ближайшем дне и подпись рядом.
+      var marker = Fmt.svg('circle', {
+        class: 'spark__marker', r: 3.5, cx: 0, cy: 0,
+        fill: color, stroke: 'var(--surface-solid)', 'stroke-width': 2
+      });
+      marker.style.opacity = '0';
+      var rule = Fmt.svg('line', {
+        class: 'spark__rule', x1: 0, y1: 0, x2: 0, y2: height,
+        stroke: color, 'stroke-width': 1, 'stroke-dasharray': '2 3'
+      });
+      rule.style.opacity = '0';
+      root.appendChild(rule);
+      root.appendChild(marker);
+
+      root.addEventListener('mousemove', function (event) {
+        var box = root.getBoundingClientRect();
+        var ratio = box.width ? (event.clientX - box.left) / box.width : 0;
+        var index = Math.max(0, Math.min(values.length - 1, Math.round(ratio * (values.length - 1))));
+        var point = points[index];
+
+        marker.setAttribute('cx', point.x);
+        marker.setAttribute('cy', point.y);
+        marker.style.opacity = '1';
+        rule.setAttribute('x1', point.x);
+        rule.setAttribute('x2', point.x);
+        rule.style.opacity = '0.5';
+
+        var day = settings.days && settings.days[index];
+        var text = settings.format ? settings.format(values[index]) : Fmt.fullMoney(values[index]);
+        showTooltip(
+          (day ? '<b>' + Fmt.dayLong(day) + '</b><br>' : '') + text,
+          event.clientX,
+          box.top - 8
+        );
+      });
+      root.addEventListener('mouseleave', function () {
+        marker.style.opacity = '0';
+        rule.style.opacity = '0';
+        hideTooltip();
+      });
+
       host.appendChild(root);
     });
   }

@@ -54,7 +54,7 @@ from ..models import (
     StockAlert,
 )
 from .base import HttpConnector, Probe, RateLimited, Throttle
-from .dates import parse_moment
+from .dates import parse_day, parse_moment
 
 # Ставки, по которым считается юнит-экономика, если API их не отдал.
 FALLBACK_COMMISSION = 0.17
@@ -582,6 +582,13 @@ class WildberriesConnector(HttpConnector):
             point = by_day.setdefault(day, DayPoint(day=day))
             point.revenue += sign * amount
             point.units += sign
+            point.payout += sign * for_pay
+            if is_return:
+                point.returns_amount += amount
+            else:
+                point.gross_revenue += amount
+                point.buyer_paid += self._buyer_price(row)
+                point.buyouts += 1
             report.revenue += sign * amount
             # Валовые выкупы и сумма возвратов хранятся порознь: в личном
             # кабинете Wildberries показывают именно выкупы, без вычета
@@ -644,6 +651,9 @@ class WildberriesConnector(HttpConnector):
         self, report: MarketplaceReport, rows: list[dict[str, Any]], period: Period
     ) -> None:
         orders_by_day: dict[date, int] = defaultdict(int)
+        money_by_day: dict[date, dict[str, float]] = defaultdict(
+            lambda: {"placed": 0.0, "amount": 0.0, "cancelled": 0.0, "cancelledAmount": 0.0}
+        )
         for row in rows:
             moment = parse_moment(row.get("date") or row.get("lastChangeDate"))
             if not moment or not period.covers(moment):
@@ -656,6 +666,8 @@ class WildberriesConnector(HttpConnector):
             amount = self.to_float(row.get("totalPrice")) or self._price(row)
             report.orders_placed += 1
             report.orders_amount += amount
+            money_by_day[day]["placed"] += 1
+            money_by_day[day]["amount"] += amount
             parent = self._parent(
                 self._sku(row), str(row.get("subject") or row.get("brand") or "")
             )
@@ -665,12 +677,20 @@ class WildberriesConnector(HttpConnector):
             if row.get("isCancel"):
                 report.cancellations += 1
                 report.cancelled_amount += amount
+                money_by_day[day]["cancelled"] += 1
+                money_by_day[day]["cancelledAmount"] += amount
                 continue
             orders_by_day[day] += 1
             report.orders += 1
 
         for point in report.series:
             point.orders = orders_by_day.get(point.day, 0)
+            day_money = money_by_day.get(point.day)
+            if day_money:
+                point.orders_placed = int(day_money["placed"])
+                point.orders_amount = day_money["amount"]
+                point.cancellations = int(day_money["cancelled"])
+                point.cancelled_amount = day_money["cancelledAmount"]
 
         report.funnel = Funnel(orders=report.orders, buyouts=report.buyouts)
 
@@ -678,7 +698,7 @@ class WildberriesConnector(HttpConnector):
 
     def _apply_reports(
         self, report: MarketplaceReport, rows: list[dict[str, Any]]
-    ) -> None:
+    ) -> None:  # noqa: D401
         """Сложить итоги ежедневных отчётов за период.
 
         Это та же таблица, что в кабинете продавца: на каждый день по два
@@ -686,9 +706,14 @@ class WildberriesConnector(HttpConnector):
         уже посчитал, в том числе «Итого к оплате» — сумму, которая уйдёт
         на расчётный счёт.
         """
+        by_day: dict[date, float] = defaultdict(float)
         for row in rows:
             report.reports_count += 1
-            report.bank_payment += self.to_float(row.get("bankPaymentSum"))
+            paid = self.to_float(row.get("bankPaymentSum"))
+            report.bank_payment += paid
+            day = parse_day(row.get("dateFrom"))
+            if day:
+                by_day[day] += paid
             report.report_sale += self.to_float(row.get("retailAmountSum"))
             report.report_for_pay += self.to_float(row.get("forPaySum"))
             report.delivery_cost += self.to_float(row.get("deliveryServiceSum"))
@@ -696,6 +721,9 @@ class WildberriesConnector(HttpConnector):
             report.acceptance_cost += self.to_float(row.get("paidAcceptanceSum"))
             report.penalty_sum += self.to_float(row.get("penaltySum"))
             report.deduction_sum += self.to_float(row.get("deductionSum"))
+
+        for point in report.series:
+            point.bank_payment = by_day.get(point.day, 0.0)
 
     # --- отчёт реализации: глубина за пределами статистики --------------------
 
@@ -757,8 +785,16 @@ class WildberriesConnector(HttpConnector):
             point.revenue += sign * amount
             point.units += sign * quantity
             point.orders += quantity if sign > 0 else 0
+            point.orders_placed += quantity if sign > 0 else 0
+            point.orders_amount += amount if sign > 0 else 0
+            point.payout += sign * for_pay
             if sign < 0:
                 point.returns += quantity
+                point.returns_amount += amount
+            else:
+                point.gross_revenue += amount
+                point.buyer_paid += buyer or amount
+                point.buyouts += quantity
 
             report.revenue += sign * amount
             if sign < 0:
@@ -800,10 +836,7 @@ class WildberriesConnector(HttpConnector):
         for point in report.series:
             filled = by_day.get(point.day)
             if filled:
-                point.revenue += filled.revenue
-                point.units += filled.units
-                point.orders += filled.orders
-                point.returns += filled.returns
+                point.add(filled)
 
         merged = {product.sku: product for product in report.products}
         for sku, product in by_sku.items():
