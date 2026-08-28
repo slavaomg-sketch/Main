@@ -66,6 +66,10 @@ function replay(level, movesStr, opts) {
 
 /* ---------- Автопилот: доказывает проходимость, находя реальную последовательность ходов ---------- */
 
+/* Клетки, в которые нельзя загонять камень при поиске эталонного решения:
+   так автопилот не наступает на ловушку, ради которой уровень и сделан. */
+var NO_PUSH = null;
+
 function walkableForPath(e, x, y, fromDir) {
   var t = e.get(x, y);
   if (t === T.EMPTY || t === T.BASE || t === T.INFOTRON) return true;
@@ -74,7 +78,9 @@ function walkableForPath(e, x, y, fromDir) {
   if (t === T.ZONK || t === T.ORANGE) {
     if (DIRS[fromDir][1] !== 0) return false;             // валун толкается только вбок
     if (e.falling[e.idx(x, y)]) return false;
-    return e.get(x + DIRS[fromDir][0], y) === T.EMPTY;
+    var dx = x + DIRS[fromDir][0];
+    if (NO_PUSH && NO_PUSH.indexOf(y * e.w + dx) >= 0) return false;
+    return e.get(dx, y) === T.EMPTY;
   }
   return false;
 }
@@ -122,6 +128,24 @@ function planStep(e, targets, allowPorts) {
   return null;
 }
 
+/**
+ * Клетки, которые стоит расчистить, когда путь к цели не находится:
+ * грунт с той стороны зонка, куда его надо будет толкнуть. Выев такую клетку,
+ * Мёрфи делает камень подвижным — и обычное планирование снова находит дорогу.
+ */
+function unblockTargets(e) {
+  var res = [];
+  for (var i = 0; i < e.tiles.length; i++) {
+    if (e.tiles[i] !== T.ZONK && e.tiles[i] !== T.ORANGE) continue;
+    var x = i % e.w, y = (i - x) / e.w;
+    [1, 3].forEach(function (d) {
+      var bx = x + DIRS[d][0];
+      if (e.get(bx, y) === T.BASE) res.push(y * e.w + bx);
+    });
+  }
+  return res;
+}
+
 /** Безопасен ли ход: проигрываем его и ещё несколько тиков ожидания на копии. */
 function isSafe(e, action, lookahead) {
   var c = e.clone();
@@ -141,6 +165,7 @@ function autopilot(level, opts) {
   var limit = opts.limit || 1200;
   var lookahead = opts.lookahead === undefined ? 3 : opts.lookahead;
   var e = new Engine(level);
+  NO_PUSH = (opts.noPushInto || []).map(function (p) { return p[1] * e.w + p[0]; });
   var actions = [];
   var stuck = 0;
 
@@ -156,6 +181,10 @@ function autopilot(level, opts) {
     }
     // Порт — дорога в один конец: сначала пробуем добраться без него.
     var path = planStep(e, targets, false) || planStep(e, targets, true);
+    if (!path) {                       // цель недостижима — попробуем освободить место за камнем
+      var unblock = unblockTargets(e);
+      if (unblock.length) path = planStep(e, unblock, false) || planStep(e, unblock, true);
+    }
     var order = [];
     if (path && path.length) order.push({ dir: path[0], snap: false });
     order.push({ dir: -1, snap: false });

@@ -75,9 +75,18 @@ levels.forEach(function (lv, n) {
   out.push('    }' + (n < levels.length - 1 ? ',' : ''));
 });
 out.push('  ];');
+var chapterDefs = plan.chapters.map(function (c) {
+  return { n: c.n, title: c.title, planned: c.levels.length };
+});
+// уровни за пределами плана (например, вариант главы от внешней модели) получают свою главу
+levels.forEach(function (l) {
+  if (l.chapter > chapterDefs.length && !chapterDefs.some(function (c) { return c.n === l.chapter; })) {
+    chapterDefs.push({ n: l.chapter, title: 'Проба · вариант ChatGPT', planned: 10 });
+  }
+});
 out.push('  var CHAPTERS = [');
-out.push(plan.chapters.map(function (c) {
-  return '    { n: ' + c.n + ', title: ' + JSON.stringify(c.title) + ', planned: ' + c.levels.length + ' }';
+out.push(chapterDefs.map(function (c) {
+  return '    { n: ' + c.n + ', title: ' + JSON.stringify(c.title) + ', planned: ' + c.planned + ' }';
 }).join(',\n'));
 out.push('  ];');
 out.push('  var api = { LEVELS: LEVELS, CHAPTERS: CHAPTERS };');
