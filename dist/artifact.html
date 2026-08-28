@@ -344,8 +344,52 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   #welcome, .welcome-card .hi, .welcome-card .mom, .welcome-card .say,
-  .welcome-card .tiny, .play { animation-duration: .01ms; animation-iteration-count: 1; }
+  .welcome-card .tiny, .play, #skin-welcome { animation-duration: .01ms; animation-iteration-count: 1; }
 }
+
+/* ---------- выбор героя ---------- */
+.skins { margin: 0 0 18px; }
+.skins-cap {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #a99cbe;
+}
+.skins-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.skin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 118px;
+  padding: 10px 8px 9px;
+  font: inherit;
+  color: #cfc4de;
+  background: rgba(255, 255, 255, .04);
+  border: 2px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.skin:hover { background: rgba(255, 255, 255, .08); }
+.skin:active { transform: translateY(1px); }
+.skin canvas { display: block; image-rendering: auto; }
+.skin .skin-name { font-weight: 700; font-size: 14px; color: #f0e8fb; }
+.skin .skin-note { font-size: 11.5px; line-height: 1.25; color: #a99cbe; }
+.skin.on {
+  border-color: #ffb02e;
+  background: rgba(255, 176, 46, .12);
+  box-shadow: 0 6px 22px rgba(255, 150, 40, .25);
+}
+.skin.on .skin-name { color: #ffd479; }
+#skin-welcome { opacity: 0; animation: rise .6s .75s ease both; }
 </style>
 <div id="app">
   <header id="hud">
@@ -369,6 +413,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       <h1 class="mom">мама!</h1>
       <p class="say">Это «Инфотрон» — шахта, где надо собирать светящиеся шарики
       и не попадаться под камни. Камень перед падением качается: это он предупреждает.</p>
+      <div class="skins" id="skin-welcome" aria-label="Выбор героя">
+        <span class="skins-cap">За кого играем?</span>
+        <div class="skins-row"></div>
+      </div>
       <button id="btn-play" class="play">Начать игру</button>
       <p class="tiny">Стрелки на клавиатуре — идти. На телефоне просто веди пальцем по полю.</p>
     </div>
@@ -400,6 +448,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         <h1>ИНФОТРОН</h1>
         <p class="sub">Прогрызай грунт, собирай инфотроны, не попадайся под зонк.</p>
         <div id="level-grid"></div>
+        <div class="skins" id="skin-menu" aria-label="Выбор героя">
+          <span class="skins-cap">Герой</span>
+          <div class="skins-row"></div>
+        </div>
         <p class="menu-tools"><button id="btn-unlock" class="chip">Открыть все уровни</button></p>
         <p class="legend desktop-only">
           <b>Стрелки</b> или <b>WASD</b> — идти &nbsp;·&nbsp;
@@ -2136,6 +2188,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.restore();
   }
 
+  /* ---------- герои: два облика на выбор ---------- */
+
+  // Мёрфи: зелёный шарик в скафандре — облик в духе Supaplex
   function drawMurphy(g, s, facing) {
     var r = s * 0.42;
     g.fillStyle = 'rgba(0,0,0,0.3)';
@@ -2152,6 +2207,99 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.beginPath();
     g.arc(s / 2 + dx * 0.5, s / 2 + s * 0.1 + dy * 0.5, s * 0.16, 0.25 * Math.PI, 0.75 * Math.PI);
     g.stroke();
+  }
+
+  // Копатель: мальчишка в каске — облик в духе Boulder Dash
+  function drawDigger(g, s, facing) {
+    var cx = s / 2;
+    var dx = [0, 0.05, 0, -0.05][facing] * s;
+    var dy = [-0.045, 0, 0.045, 0][facing] * s;
+    var ink = 'rgba(8,12,24,0.85)';
+
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.beginPath(); g.ellipse(cx, s * 0.94, s * 0.32, s * 0.055, 0, 0, 6.2832); g.fill();
+
+    // башмаки
+    g.fillStyle = '#1b1410';
+    rr(g, cx - s * 0.3, s * 0.82, s * 0.24, s * 0.11, s * 0.045); g.fill();
+    rr(g, cx + s * 0.06, s * 0.82, s * 0.24, s * 0.11, s * 0.045); g.fill();
+
+    // руки
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(2, s * 0.115);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(cx - s * 0.26, s * 0.56); g.lineTo(cx - s * 0.4, s * 0.72);
+    g.moveTo(cx + s * 0.26, s * 0.56); g.lineTo(cx + s * 0.4, s * 0.72);
+    g.stroke();
+    g.strokeStyle = '#f0bd8c';
+    g.lineWidth = Math.max(1, s * 0.075);
+    g.beginPath();
+    g.moveTo(cx - s * 0.26, s * 0.56); g.lineTo(cx - s * 0.4, s * 0.72);
+    g.moveTo(cx + s * 0.26, s * 0.56); g.lineTo(cx + s * 0.4, s * 0.72);
+    g.stroke();
+
+    // комбинезон
+    var body = g.createLinearGradient(0, s * 0.42, 0, s * 0.88);
+    body.addColorStop(0, '#6f9dfb');
+    body.addColorStop(1, '#22409a');
+    g.fillStyle = body;
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1.5, s * 0.06);
+    rr(g, cx - s * 0.3, s * 0.42, s * 0.6, s * 0.46, s * 0.14);
+    g.fill(); g.stroke();
+
+    // лямки
+    g.strokeStyle = '#ffd36b';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.beginPath();
+    g.moveTo(cx - s * 0.14, s * 0.44); g.lineTo(cx - s * 0.12, s * 0.66);
+    g.moveTo(cx + s * 0.14, s * 0.44); g.lineTo(cx + s * 0.12, s * 0.66);
+    g.stroke();
+
+    // голова
+    var head = g.createRadialGradient(cx - s * 0.07 + dx, s * 0.28 + dy, s * 0.03, cx + dx, s * 0.31 + dy, s * 0.27);
+    head.addColorStop(0, '#ffeed3');
+    head.addColorStop(1, '#d8935a');
+    g.fillStyle = head;
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1.5, s * 0.055);
+    g.beginPath(); g.arc(cx + dx, s * 0.33 + dy, s * 0.25, 0, 6.2832);
+    g.fill(); g.stroke();
+
+    // каска с фонарём
+    g.fillStyle = '#ef4b3c';
+    g.beginPath();
+    g.arc(cx + dx, s * 0.31 + dy, s * 0.27, Math.PI * 1.0, Math.PI * 2.0);
+    g.closePath(); g.fill();
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1, s * 0.045);
+    g.stroke();
+    g.fillStyle = '#b32f24';
+    rr(g, cx - s * 0.32 + dx, s * 0.28 + dy, s * 0.64, s * 0.065, s * 0.03);
+    g.fill();
+    g.fillStyle = '#fff0a0';
+    g.beginPath(); g.arc(cx + dx, s * 0.155 + dy, s * 0.06, 0, 6.2832); g.fill();
+    g.strokeStyle = ink; g.lineWidth = Math.max(1, s * 0.03); g.stroke();
+
+    // глаза — смотрят туда же, куда идём
+    var ex = [0, 0.035, 0, -0.035][facing] * s;
+    var ey = [-0.025, 0, 0.03, 0][facing] * s;
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(cx - s * 0.095 + dx, s * 0.385 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx + s * 0.095 + dx, s * 0.385 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.fillStyle = '#141b2c';
+    g.beginPath(); g.arc(cx - s * 0.095 + dx + ex, s * 0.385 + dy + ey, s * 0.04, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx + s * 0.095 + dx + ex, s * 0.385 + dy + ey, s * 0.04, 0, 6.2832); g.fill();
+  }
+
+  var SKINS = [
+    { id: 'murphy', name: 'Мёрфи', note: 'зелёный шарик в скафандре', draw: drawMurphy },
+    { id: 'digger', name: 'Копатель', note: 'мальчишка в каске', draw: drawDigger }
+  ];
+  function skinById(id) {
+    for (var i = 0; i < SKINS.length; i++) if (SKINS[i].id === id) return SKINS[i];
+    return SKINS[0];
   }
 
   function drawSnik(g, s) {
@@ -2206,8 +2354,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   }
 
   /** Готовит статические спрайты под текущий размер клетки. */
-  function build(size) {
-    var pack = { size: size, tile: {}, murphy: [], port: [], exitOpen: null };
+  function build(size, skinId) {
+    var skin = skinById(skinId);
+    var pack = { size: size, skin: skin.id, tile: {}, murphy: [], port: [], exitOpen: null };
     function make(fn) {
       var c = cv(size);
       fn(c.getContext('2d'), size);
@@ -2224,7 +2373,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
       (function (dd) {
-        pack.murphy[dd] = make(function (g, s) { drawMurphy(g, s, dd); });
+        pack.murphy[dd] = make(function (g, s) { skin.draw(g, s, dd); });
         pack.port[dd] = make(function (g, s) { drawPort(g, s, dd); });
       })(d);
     }
@@ -2232,7 +2381,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   }
 
   global.SP = Object.assign(global.SP, {
-    Sprites: { build: build, drawElectron: drawElectron, drawBlast: drawBlast }
+    Sprites: {
+      build: build, drawElectron: drawElectron, drawBlast: drawBlast,
+      skins: SKINS, skin: skinById,
+      drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
+    }
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
@@ -2258,7 +2411,15 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.tile = 32;
     this.camX = 0;
     this.camY = 0;
+    this.skin = 'murphy';
   }
+
+  /** Смена облика героя: спрайты пересобираются под новый скин. */
+  Renderer.prototype.setSkin = function (id) {
+    if (this.skin === id) return;
+    this.skin = id;
+    this.pack = null;
+  };
 
   Renderer.prototype.resize = function (engine) {
     var host = this.canvas.parentNode;
@@ -2279,7 +2440,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
     var fit = Math.floor(Math.min(w / engine.w, h / engine.h));
     var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
-    if (!this.pack || this.pack.size !== tile) this.pack = SP.Sprites.build(tile);
+    if (!this.pack || this.pack.size !== tile || this.pack.skin !== this.skin) {
+      this.pack = SP.Sprites.build(tile, this.skin);
+    }
     this.tile = tile;
   };
 
@@ -2293,6 +2456,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   };
 
   Renderer.prototype.draw = function (engine, alpha, timeMs) {
+    if (!this.pack || this.pack.skin !== this.skin) this.pack = SP.Sprites.build(this.tile, this.skin);
     var g = this.ctx, s = this.tile, pack = this.pack;
     g.fillStyle = '#070910';
     g.fillRect(0, 0, this.viewW, this.viewH);
@@ -2389,6 +2553,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.sparks = [];
     this.raf = 0;
     this.t0 = 0;
+    this.skin = 'murphy';
   }
 
   Welcome.prototype.resize = function () {
@@ -2404,7 +2569,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   Welcome.prototype.seed = function () {
     var size = Math.max(26, Math.min(52, Math.round(this.w / 22)));
-    this.pack = SP.Sprites.build(size);
+    this.pack = SP.Sprites.build(size, this.skin);
     this.size = size;
     this.parts = [];
     var n = Math.max(14, Math.min(30, Math.round(this.w / 44)));
@@ -2498,6 +2663,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.restore();
 
     this.raf = global.requestAnimationFrame(function (n) { self.frame(n); });
+  };
+
+  /** Смена облика героя на заставке — тем же выбором, что и в игре. */
+  Welcome.prototype.setSkin = function (id) {
+    this.skin = id;
+    if (this.w) this.pack = SP.Sprites.build(this.size, id);
   };
 
   Welcome.prototype.start = function () {
@@ -2637,13 +2808,73 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
-   'welcome', 'welcome-canvas', 'btn-play'
+   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
   input.bindJoystick(document.getElementById('stage'));
+
+  var hello = null;
+
+  /* ---------- облик героя ---------- */
+  var SKIN_KEY = 'infotron.skin';
+  var skinId = 'murphy';
+  try { skinId = SP.Sprites.skin(global.localStorage.getItem(SKIN_KEY)).id; } catch (e) { /* приватный режим */ }
+  renderer.setSkin(skinId);
+
+  function drawSkinPreview(canvas, id) {
+    var box = 56, dpr = Math.min(global.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(box * dpr);
+    canvas.height = Math.round(box * dpr);
+    canvas.style.width = box + 'px';
+    canvas.style.height = box + 'px';
+    var g = canvas.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, box, box);
+    SP.Sprites.drawHero(g, box, 2, id);
+  }
+
+  function renderSkinPickers() {
+    ['skin-welcome', 'skin-menu'].forEach(function (key) {
+      var host = el[key];
+      if (!host) return;
+      var row = host.querySelector('.skins-row');
+      row.innerHTML = '';
+      SP.Sprites.skins.forEach(function (sk) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'skin' + (sk.id === skinId ? ' on' : '');
+        b.setAttribute('aria-pressed', sk.id === skinId ? 'true' : 'false');
+        var c = document.createElement('canvas');
+        b.appendChild(c);
+        var cap = document.createElement('span');
+        cap.className = 'skin-name';
+        cap.textContent = sk.name;
+        b.appendChild(cap);
+        var note = document.createElement('span');
+        note.className = 'skin-note';
+        note.textContent = sk.note;
+        b.appendChild(note);
+        // на заставке любой тык по фону её закрывает — выбор героя не должен её ронять
+        b.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
+        b.addEventListener('click', function (ev) { ev.stopPropagation(); setSkin(sk.id); });
+        row.appendChild(b);
+        drawSkinPreview(c, sk.id);
+      });
+    });
+  }
+
+  function heroName() { return SP.Sprites.skin(skinId).name; }
+
+  function setSkin(id) {
+    skinId = SP.Sprites.skin(id).id;
+    try { global.localStorage.setItem(SKIN_KEY, skinId); } catch (e) { /* приватный режим */ }
+    renderer.setSkin(skinId);
+    if (hello) hello.setSkin(skinId);
+    renderSkinPickers();
+  }
 
   var engine = null;
   var levelIndex = 0;
@@ -2776,7 +3007,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     overlay(isLast ? 'Игра пройдена!' : 'Уровень пройден',
       'Ходов: <b>' + engine.moves + '</b> · время: <b>' + (engine.ticks * TICK_MS / 1000).toFixed(1) + ' с</b>' +
       (best && best.moves < engine.moves ? '<br>Лучший результат: ' + best.moves + ' ходов' : '') +
-      (isLast ? '<br><br>Все двенадцать уровней позади. Мёрфи благодарит.' : ''),
+      (isLast ? '<br><br>Все уровни позади. ' + heroName() + ' благодарит.' : ''),
       isLast
         ? [{ label: 'К списку уровней', primary: true, action: showMenu }]
         : [{ label: 'Следующий уровень →', primary: true, action: function () { startLevel(levelIndex + 1); } },
@@ -2786,7 +3017,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   function onDead() {
     state = 'dead';
-    overlay('Мёрфи погиб', 'Зонк, монстр или взрыв — но результат один.',
+    overlay(heroName() + ' погиб', 'Зонк, монстр или взрыв — но результат один.',
       [{ label: 'Заново (R)', primary: true, action: function () { startLevel(levelIndex); } },
        { label: 'К списку', action: showMenu }]);
   }
@@ -2871,8 +3102,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   showMenu();
   global.requestAnimationFrame(frame);
 
-  var hello = new SP.Welcome(el['welcome'], el['welcome-canvas']);
+  hello = new SP.Welcome(el['welcome'], el['welcome-canvas']);
+  hello.skin = skinId;
   hello.start();
+  renderSkinPickers();
   var greeted = false;
   function dismissWelcome() {
     if (greeted) return;

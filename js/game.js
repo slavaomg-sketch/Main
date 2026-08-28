@@ -8,13 +8,73 @@
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
-   'welcome', 'welcome-canvas', 'btn-play'
+   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
   input.bindJoystick(document.getElementById('stage'));
+
+  var hello = null;
+
+  /* ---------- облик героя ---------- */
+  var SKIN_KEY = 'infotron.skin';
+  var skinId = 'murphy';
+  try { skinId = SP.Sprites.skin(global.localStorage.getItem(SKIN_KEY)).id; } catch (e) { /* приватный режим */ }
+  renderer.setSkin(skinId);
+
+  function drawSkinPreview(canvas, id) {
+    var box = 56, dpr = Math.min(global.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(box * dpr);
+    canvas.height = Math.round(box * dpr);
+    canvas.style.width = box + 'px';
+    canvas.style.height = box + 'px';
+    var g = canvas.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, box, box);
+    SP.Sprites.drawHero(g, box, 2, id);
+  }
+
+  function renderSkinPickers() {
+    ['skin-welcome', 'skin-menu'].forEach(function (key) {
+      var host = el[key];
+      if (!host) return;
+      var row = host.querySelector('.skins-row');
+      row.innerHTML = '';
+      SP.Sprites.skins.forEach(function (sk) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'skin' + (sk.id === skinId ? ' on' : '');
+        b.setAttribute('aria-pressed', sk.id === skinId ? 'true' : 'false');
+        var c = document.createElement('canvas');
+        b.appendChild(c);
+        var cap = document.createElement('span');
+        cap.className = 'skin-name';
+        cap.textContent = sk.name;
+        b.appendChild(cap);
+        var note = document.createElement('span');
+        note.className = 'skin-note';
+        note.textContent = sk.note;
+        b.appendChild(note);
+        // на заставке любой тык по фону её закрывает — выбор героя не должен её ронять
+        b.addEventListener('pointerdown', function (ev) { ev.stopPropagation(); });
+        b.addEventListener('click', function (ev) { ev.stopPropagation(); setSkin(sk.id); });
+        row.appendChild(b);
+        drawSkinPreview(c, sk.id);
+      });
+    });
+  }
+
+  function heroName() { return SP.Sprites.skin(skinId).name; }
+
+  function setSkin(id) {
+    skinId = SP.Sprites.skin(id).id;
+    try { global.localStorage.setItem(SKIN_KEY, skinId); } catch (e) { /* приватный режим */ }
+    renderer.setSkin(skinId);
+    if (hello) hello.setSkin(skinId);
+    renderSkinPickers();
+  }
 
   var engine = null;
   var levelIndex = 0;
@@ -147,7 +207,7 @@
     overlay(isLast ? 'Игра пройдена!' : 'Уровень пройден',
       'Ходов: <b>' + engine.moves + '</b> · время: <b>' + (engine.ticks * TICK_MS / 1000).toFixed(1) + ' с</b>' +
       (best && best.moves < engine.moves ? '<br>Лучший результат: ' + best.moves + ' ходов' : '') +
-      (isLast ? '<br><br>Все двенадцать уровней позади. Мёрфи благодарит.' : ''),
+      (isLast ? '<br><br>Все уровни позади. ' + heroName() + ' благодарит.' : ''),
       isLast
         ? [{ label: 'К списку уровней', primary: true, action: showMenu }]
         : [{ label: 'Следующий уровень →', primary: true, action: function () { startLevel(levelIndex + 1); } },
@@ -157,7 +217,7 @@
 
   function onDead() {
     state = 'dead';
-    overlay('Мёрфи погиб', 'Зонк, монстр или взрыв — но результат один.',
+    overlay(heroName() + ' погиб', 'Зонк, монстр или взрыв — но результат один.',
       [{ label: 'Заново (R)', primary: true, action: function () { startLevel(levelIndex); } },
        { label: 'К списку', action: showMenu }]);
   }
@@ -242,8 +302,10 @@
   showMenu();
   global.requestAnimationFrame(frame);
 
-  var hello = new SP.Welcome(el['welcome'], el['welcome-canvas']);
+  hello = new SP.Welcome(el['welcome'], el['welcome-canvas']);
+  hello.skin = skinId;
   hello.start();
+  renderSkinPickers();
   var greeted = false;
   function dismissWelcome() {
     if (greeted) return;

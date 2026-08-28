@@ -19,7 +19,15 @@
     this.tile = 32;
     this.camX = 0;
     this.camY = 0;
+    this.skin = 'murphy';
   }
+
+  /** Смена облика героя: спрайты пересобираются под новый скин. */
+  Renderer.prototype.setSkin = function (id) {
+    if (this.skin === id) return;
+    this.skin = id;
+    this.pack = null;
+  };
 
   Renderer.prototype.resize = function (engine) {
     var host = this.canvas.parentNode;
@@ -40,7 +48,9 @@
 
     var fit = Math.floor(Math.min(w / engine.w, h / engine.h));
     var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
-    if (!this.pack || this.pack.size !== tile) this.pack = SP.Sprites.build(tile);
+    if (!this.pack || this.pack.size !== tile || this.pack.skin !== this.skin) {
+      this.pack = SP.Sprites.build(tile, this.skin);
+    }
     this.tile = tile;
   };
 
@@ -54,6 +64,7 @@
   };
 
   Renderer.prototype.draw = function (engine, alpha, timeMs) {
+    if (!this.pack || this.pack.skin !== this.skin) this.pack = SP.Sprites.build(this.tile, this.skin);
     var g = this.ctx, s = this.tile, pack = this.pack;
     g.fillStyle = '#070910';
     g.fillRect(0, 0, this.viewW, this.viewH);

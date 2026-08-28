@@ -176,6 +176,9 @@
     g.restore();
   }
 
+  /* ---------- герои: два облика на выбор ---------- */
+
+  // Мёрфи: зелёный шарик в скафандре — облик в духе Supaplex
   function drawMurphy(g, s, facing) {
     var r = s * 0.42;
     g.fillStyle = 'rgba(0,0,0,0.3)';
@@ -192,6 +195,99 @@
     g.beginPath();
     g.arc(s / 2 + dx * 0.5, s / 2 + s * 0.1 + dy * 0.5, s * 0.16, 0.25 * Math.PI, 0.75 * Math.PI);
     g.stroke();
+  }
+
+  // Копатель: мальчишка в каске — облик в духе Boulder Dash
+  function drawDigger(g, s, facing) {
+    var cx = s / 2;
+    var dx = [0, 0.05, 0, -0.05][facing] * s;
+    var dy = [-0.045, 0, 0.045, 0][facing] * s;
+    var ink = 'rgba(8,12,24,0.85)';
+
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.beginPath(); g.ellipse(cx, s * 0.94, s * 0.32, s * 0.055, 0, 0, 6.2832); g.fill();
+
+    // башмаки
+    g.fillStyle = '#1b1410';
+    rr(g, cx - s * 0.3, s * 0.82, s * 0.24, s * 0.11, s * 0.045); g.fill();
+    rr(g, cx + s * 0.06, s * 0.82, s * 0.24, s * 0.11, s * 0.045); g.fill();
+
+    // руки
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(2, s * 0.115);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(cx - s * 0.26, s * 0.56); g.lineTo(cx - s * 0.4, s * 0.72);
+    g.moveTo(cx + s * 0.26, s * 0.56); g.lineTo(cx + s * 0.4, s * 0.72);
+    g.stroke();
+    g.strokeStyle = '#f0bd8c';
+    g.lineWidth = Math.max(1, s * 0.075);
+    g.beginPath();
+    g.moveTo(cx - s * 0.26, s * 0.56); g.lineTo(cx - s * 0.4, s * 0.72);
+    g.moveTo(cx + s * 0.26, s * 0.56); g.lineTo(cx + s * 0.4, s * 0.72);
+    g.stroke();
+
+    // комбинезон
+    var body = g.createLinearGradient(0, s * 0.42, 0, s * 0.88);
+    body.addColorStop(0, '#6f9dfb');
+    body.addColorStop(1, '#22409a');
+    g.fillStyle = body;
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1.5, s * 0.06);
+    rr(g, cx - s * 0.3, s * 0.42, s * 0.6, s * 0.46, s * 0.14);
+    g.fill(); g.stroke();
+
+    // лямки
+    g.strokeStyle = '#ffd36b';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.beginPath();
+    g.moveTo(cx - s * 0.14, s * 0.44); g.lineTo(cx - s * 0.12, s * 0.66);
+    g.moveTo(cx + s * 0.14, s * 0.44); g.lineTo(cx + s * 0.12, s * 0.66);
+    g.stroke();
+
+    // голова
+    var head = g.createRadialGradient(cx - s * 0.07 + dx, s * 0.28 + dy, s * 0.03, cx + dx, s * 0.31 + dy, s * 0.27);
+    head.addColorStop(0, '#ffeed3');
+    head.addColorStop(1, '#d8935a');
+    g.fillStyle = head;
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1.5, s * 0.055);
+    g.beginPath(); g.arc(cx + dx, s * 0.33 + dy, s * 0.25, 0, 6.2832);
+    g.fill(); g.stroke();
+
+    // каска с фонарём
+    g.fillStyle = '#ef4b3c';
+    g.beginPath();
+    g.arc(cx + dx, s * 0.31 + dy, s * 0.27, Math.PI * 1.0, Math.PI * 2.0);
+    g.closePath(); g.fill();
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(1, s * 0.045);
+    g.stroke();
+    g.fillStyle = '#b32f24';
+    rr(g, cx - s * 0.32 + dx, s * 0.28 + dy, s * 0.64, s * 0.065, s * 0.03);
+    g.fill();
+    g.fillStyle = '#fff0a0';
+    g.beginPath(); g.arc(cx + dx, s * 0.155 + dy, s * 0.06, 0, 6.2832); g.fill();
+    g.strokeStyle = ink; g.lineWidth = Math.max(1, s * 0.03); g.stroke();
+
+    // глаза — смотрят туда же, куда идём
+    var ex = [0, 0.035, 0, -0.035][facing] * s;
+    var ey = [-0.025, 0, 0.03, 0][facing] * s;
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(cx - s * 0.095 + dx, s * 0.385 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx + s * 0.095 + dx, s * 0.385 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.fillStyle = '#141b2c';
+    g.beginPath(); g.arc(cx - s * 0.095 + dx + ex, s * 0.385 + dy + ey, s * 0.04, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx + s * 0.095 + dx + ex, s * 0.385 + dy + ey, s * 0.04, 0, 6.2832); g.fill();
+  }
+
+  var SKINS = [
+    { id: 'murphy', name: 'Мёрфи', note: 'зелёный шарик в скафандре', draw: drawMurphy },
+    { id: 'digger', name: 'Копатель', note: 'мальчишка в каске', draw: drawDigger }
+  ];
+  function skinById(id) {
+    for (var i = 0; i < SKINS.length; i++) if (SKINS[i].id === id) return SKINS[i];
+    return SKINS[0];
   }
 
   function drawSnik(g, s) {
@@ -246,8 +342,9 @@
   }
 
   /** Готовит статические спрайты под текущий размер клетки. */
-  function build(size) {
-    var pack = { size: size, tile: {}, murphy: [], port: [], exitOpen: null };
+  function build(size, skinId) {
+    var skin = skinById(skinId);
+    var pack = { size: size, skin: skin.id, tile: {}, murphy: [], port: [], exitOpen: null };
     function make(fn) {
       var c = cv(size);
       fn(c.getContext('2d'), size);
@@ -264,7 +361,7 @@
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
       (function (dd) {
-        pack.murphy[dd] = make(function (g, s) { drawMurphy(g, s, dd); });
+        pack.murphy[dd] = make(function (g, s) { skin.draw(g, s, dd); });
         pack.port[dd] = make(function (g, s) { drawPort(g, s, dd); });
       })(d);
     }
@@ -272,6 +369,10 @@
   }
 
   global.SP = Object.assign(global.SP, {
-    Sprites: { build: build, drawElectron: drawElectron, drawBlast: drawBlast }
+    Sprites: {
+      build: build, drawElectron: drawElectron, drawBlast: drawBlast,
+      skins: SKINS, skin: skinById,
+      drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
+    }
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

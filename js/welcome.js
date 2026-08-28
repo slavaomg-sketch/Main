@@ -14,6 +14,7 @@
     this.sparks = [];
     this.raf = 0;
     this.t0 = 0;
+    this.skin = 'murphy';
   }
 
   Welcome.prototype.resize = function () {
@@ -29,7 +30,7 @@
 
   Welcome.prototype.seed = function () {
     var size = Math.max(26, Math.min(52, Math.round(this.w / 22)));
-    this.pack = SP.Sprites.build(size);
+    this.pack = SP.Sprites.build(size, this.skin);
     this.size = size;
     this.parts = [];
     var n = Math.max(14, Math.min(30, Math.round(this.w / 44)));
@@ -123,6 +124,12 @@
     g.restore();
 
     this.raf = global.requestAnimationFrame(function (n) { self.frame(n); });
+  };
+
+  /** Смена облика героя на заставке — тем же выбором, что и в игре. */
+  Welcome.prototype.setSkin = function (id) {
+    this.skin = id;
+    if (this.w) this.pack = SP.Sprites.build(this.size, id);
   };
 
   Welcome.prototype.start = function () {

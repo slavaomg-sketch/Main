@@ -342,5 +342,49 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   #welcome, .welcome-card .hi, .welcome-card .mom, .welcome-card .say,
-  .welcome-card .tiny, .play { animation-duration: .01ms; animation-iteration-count: 1; }
+  .welcome-card .tiny, .play, #skin-welcome { animation-duration: .01ms; animation-iteration-count: 1; }
 }
+
+/* ---------- выбор героя ---------- */
+.skins { margin: 0 0 18px; }
+.skins-cap {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #a99cbe;
+}
+.skins-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.skin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 118px;
+  padding: 10px 8px 9px;
+  font: inherit;
+  color: #cfc4de;
+  background: rgba(255, 255, 255, .04);
+  border: 2px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.skin:hover { background: rgba(255, 255, 255, .08); }
+.skin:active { transform: translateY(1px); }
+.skin canvas { display: block; image-rendering: auto; }
+.skin .skin-name { font-weight: 700; font-size: 14px; color: #f0e8fb; }
+.skin .skin-note { font-size: 11.5px; line-height: 1.25; color: #a99cbe; }
+.skin.on {
+  border-color: #ffb02e;
+  background: rgba(255, 176, 46, .12);
+  box-shadow: 0 6px 22px rgba(255, 150, 40, .25);
+}
+.skin.on .skin-name { color: #ffd479; }
+#skin-welcome { opacity: 0; animation: rise .6s .75s ease both; }
