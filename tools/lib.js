@@ -69,8 +69,12 @@ function replay(level, movesStr, opts) {
 /* Клетки, в которые нельзя загонять камень при поиске эталонного решения:
    так автопилот не наступает на ловушку, ради которой уровень и сделан. */
 var NO_PUSH = null;
+/* Клетки, куда эталонному решению вообще нельзя соваться: приманка,
+   за которой сидит монстр, — её игрок должен опознать по карте, а не проверить собой. */
+var NO_GO = null;
 
 function walkableForPath(e, x, y, fromDir) {
+  if (NO_GO && NO_GO.indexOf(y * e.w + x) >= 0) return false;
   var t = e.get(x, y);
   if (t === T.EMPTY || t === T.BASE || t === T.INFOTRON) return true;
   if (t === T.EXIT) return e.exitOpen();
@@ -178,6 +182,7 @@ function autopilot(level, opts) {
   var lookahead = opts.lookahead === undefined ? 3 : opts.lookahead;
   var e = new Engine(level);
   NO_PUSH = (opts.noPushInto || []).map(function (p) { return p[1] * e.w + p[0]; });
+  NO_GO = (opts.avoid || []).map(function (p) { return p[1] * e.w + p[0]; });
   var actions = [];
   var stuck = 0;
 
