@@ -64,6 +64,12 @@
       return request('POST', '/api/connections/' + encodeURIComponent(id) + '/test');
     },
 
+    inbox: function () { return request('GET', '/api/inbox'); },
+    answerInbox: function (accountId, kind, id, text) {
+      return request('POST', '/api/inbox/answer',
+                     { accountId: accountId, kind: kind, id: id, text: text });
+    },
+
     blocks: function () { return request('GET', '/api/blocks'); },
     newBlock: function (type, size) {
       return request('POST', '/api/blocks/instance', { type: type, size: size });

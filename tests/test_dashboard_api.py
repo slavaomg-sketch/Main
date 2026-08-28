@@ -32,6 +32,7 @@ def test_index_and_static_assets_are_served(client):
     assert client.get("/").status_code == 200
     assert client.get("/assets/css/app.css").status_code == 200
     assert client.get("/assets/js/app.js").status_code == 200
+    assert client.get("/assets/js/inbox.js").status_code == 200
     assert client.get("/favicon.svg").status_code == 200
 
 

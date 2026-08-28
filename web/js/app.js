@@ -55,7 +55,8 @@
      'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
      'toasts', 'footer-note', 'brand-sub', 'topbar',
-     'btn-keys', 'keys', 'keys-body', 'coverage-note'].forEach(function (id) {
+     'btn-keys', 'keys', 'keys-body', 'coverage-note',
+     'btn-inbox', 'inbox', 'inbox-body', 'inbox-badge', 'btn-inbox-reload'].forEach(function (id) {
       dom[id] = $(id);
     });
   }
@@ -832,6 +833,10 @@
     dom['btn-new-tab'].addEventListener('click', createTab);
     dom['btn-theme'].addEventListener('click', cycleTheme);
     dom['btn-keys'].addEventListener('click', openKeys);
+    dom['btn-inbox'].addEventListener('click', openInbox);
+    dom['btn-inbox-reload'].addEventListener('click', function () {
+      global.Inbox.reload();
+    });
 
     dom['btn-refresh'].addEventListener('click', function () {
       if (state.syncing) return;
@@ -872,7 +877,7 @@
       if (event.key === 'Escape') {
         // Сначала закрываем открытую панель и только потом выходим из настройки,
         // иначе один Escape отменял бы сразу и то и другое.
-        var openPanel = ['library', 'range', 'keys'].filter(function (id) { return !dom[id].hidden; })[0];
+        var openPanel = ['library', 'range', 'keys', 'inbox'].filter(function (id) { return !dom[id].hidden; })[0];
         if (openPanel) {
           closeSheet(openPanel);
         } else if (state.editing) {
@@ -913,6 +918,23 @@
     global.addEventListener('resize', function () {
       document.documentElement.style.setProperty('--topbar-height', dom.topbar.offsetHeight + 'px');
     });
+  }
+
+  /* Значок на кнопке «Входящие»: сколько обращений ждёт ответа. */
+  function showInboxCount(total, urgent) {
+    var badge = dom['inbox-badge'];
+    badge.hidden = !total;
+    badge.textContent = total > 99 ? '99+' : String(total);
+    badge.style.background = urgent ? 'var(--negative)' : 'var(--accent)';
+    dom['btn-inbox'].title = total
+      ? 'Входящие: ' + total + ' ' + Fmt.plural(total, ['обращение', 'обращения', 'обращений']) +
+        ' ждёт ответа'
+      : 'Входящие: всё закрыто';
+  }
+
+  function openInbox() {
+    openSheet('inbox');
+    global.Inbox.mount(dom['inbox-body'], { onCounts: showInboxCount });
   }
 
   function openKeys() {
@@ -980,8 +1002,12 @@
       toast(error.message);
     });
 
+    // Значок «Входящих» должен быть виден сразу, не открывая экран.
+    global.Inbox.prefetch(showInboxCount);
+
     // Ссылка вида /#keys открывает страницу ключей сразу.
     if (global.location.hash === '#keys') openKeys();
+    if (global.location.hash === '#inbox') openInbox();
 
     if (state.refreshTimer) clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(function () {
