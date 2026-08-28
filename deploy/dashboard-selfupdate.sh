@@ -29,6 +29,10 @@ LOG="$QUEUE/last-update.log"
 mkdir -p "$QUEUE" "$BACKUP"
 : > "$LOG"
 
+# systemd запускает службы с рабочим каталогом «/». Без перехода в каталог
+# исходников pytest начал бы собирать тесты по всей файловой системе.
+cd "$SRC"
+
 say() {
     printf '%s %s\n' "$(date '+%H:%M:%S')" "$1" | tee -a "$LOG"
 }
@@ -58,8 +62,11 @@ say "ставлю зависимости в окружении исходник�
 sudo -u "$SRC_USER" "$SRC/.venv/bin/pip" install -q -r "$SRC/requirements.txt"
 
 say "прогоняю тесты"
+# Каталог тестов и корень проекта задаём явно — на случай, если скрипт
+# когда-нибудь запустят из другого места.
 if ! sudo -u "$SRC_USER" env DASHBOARD_DB_PATH=/tmp/dashboard-selfupdate.db \
-        "$SRC/.venv/bin/python" -m pytest -q >>"$LOG" 2>&1; then
+        "$SRC/.venv/bin/python" -m pytest -q \
+        --rootdir "$SRC" -c "$SRC/pytest.ini" "$SRC/tests" >>"$LOG" 2>&1; then
     say "ТЕСТЫ НЕ ПРОШЛИ — выкладка отменена, панель работает на прежней версии"
     rm -f /tmp/dashboard-selfupdate.db
     exit 1

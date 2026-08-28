@@ -9,6 +9,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+WorkingDirectory=__SRC__
 ExecStart=/usr/local/sbin/marketplace-dashboard-update
 Environment=SRC=__SRC__
 Environment=APP=__APP__
