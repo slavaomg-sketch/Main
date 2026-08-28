@@ -294,7 +294,9 @@ async def collect(
     config = config or settings
     connections = connections or []
 
-    plan: list[tuple[str, str, Any]] = []  # (код площадки, название магазина, коннектор)
+    from . import warehouse  # локальный импорт: хранилище знает про коннекторы
+
+    plan: list[tuple[str, str, Any]] = []  # (код площадки, название магазина, что запустить)
     for code in codes:
         stores = [
             connection
@@ -303,14 +305,29 @@ async def collect(
         ]
         if stores and not config.force_demo:
             for store in stores:
-                plan.append((code, store.title, build_connector(code, config, store.credentials(config))))
+                if code in warehouse.STORED:
+                    # Данные уже выгружены на сервер — считаем отчёт из базы.
+                    plan.append((code, store.title, warehouse.report_for(store, period, config)))
+                else:
+                    connector = build_connector(code, config, store.credentials(config))
+                    plan.append((code, store.title, connector.safe_fetch(period)))
         else:
-            plan.append((code, config.marketplaces[code].title, build_connector(code, config)))
+            connector = build_connector(code, config)
+            plan.append((code, config.marketplaces[code].title, connector.safe_fetch(period)))
 
-    fetched = await asyncio.gather(*(connector.safe_fetch(period) for _, _, connector in plan))
+    fetched = await asyncio.gather(*(task for _, _, task in plan), return_exceptions=True)
 
     by_code: dict[str, list[MarketplaceReport]] = {code: [] for code in codes}
     for (code, title, _), report in zip(plan, fetched):
+        if isinstance(report, BaseException):
+            log.warning("Отчёт %s не собрался: %s", title, report)
+            report = MarketplaceReport(
+                marketplace=code,
+                title=config.marketplaces[code].title,
+                connected=True,
+                demo=False,
+                error="не удалось собрать отчёт",
+            )
         by_code[code].append(_tag_account(report, title))
 
     return [

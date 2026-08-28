@@ -145,7 +145,39 @@ class WildberriesConnector(HttpConnector):
 
     # --- сборка отчёта -------------------------------------------------------
 
-    async def fetch(self, period: Period) -> MarketplaceReport:
+    async def collect_raw(self, date_from: date) -> dict[str, Any]:
+        """Скачать сырые строки с площадки за период от указанной даты.
+
+        Отделено от разбора намеренно: строки складываются в хранилище на
+        сервере, а отчёт за любой период считается уже из них, без обращения
+        к Wildberries.
+        """
+        sales, sales_error = await self._try(self.statistics(SALES_PATH, date_from))
+        orders, orders_error = await self._try(self.statistics(ORDERS_PATH, date_from))
+        stock_rows, stocks_error = await self._try(
+            self.stocks(),
+            denied_hint="в токене Wildberries нужна категория «Аналитика»",
+        )
+
+        return {
+            "sales": sales,
+            "orders": orders,
+            "stocks": stock_rows,
+            "errors": {
+                "sales": sales_error,
+                "orders": orders_error,
+                "stocks": stocks_error,
+            },
+        }
+
+    def build(
+        self,
+        rows: dict[str, Any],
+        period: Period,
+        errors: dict[str, str] | None = None,
+    ) -> MarketplaceReport:
+        """Собрать отчёт за период из уже полученных строк."""
+        errors = errors if errors is not None else rows.get("errors", {}) or {}
         report = MarketplaceReport(
             marketplace=self.code,
             title=self.title,
@@ -153,30 +185,29 @@ class WildberriesConnector(HttpConnector):
             demo=False,
         )
 
-        sales, sales_error = await self._try(self.statistics(SALES_PATH, period.date_from))
-        orders, orders_error = await self._try(self.statistics(ORDERS_PATH, period.date_from))
-        stock_rows, stocks_error = await self._try(
-            self.stocks(),
-            denied_hint="в токене Wildberries нужна категория «Аналитика»",
-        )
-
         # Продажи и заказы — основа отчёта. Если не пришло ни то, ни другое,
         # показывать нечего: это ошибка площадки, а не частичный сбой.
-        if sales_error and orders_error:
-            return self.empty_report(error=f"{self.title}: {sales_error}")
+        if errors.get("sales") and errors.get("orders"):
+            return self.empty_report(error=f"{self.title}: {errors['sales']}")
 
-        self._apply_sales(report, sales, period)
-        self._apply_orders(report, orders, period)
-        self._apply_stocks(report, stock_rows, period)
+        self._articles = {}
+        self._apply_sales(report, rows.get("sales") or [], period)
+        self._apply_orders(report, rows.get("orders") or [], period)
+        self._apply_stocks(report, rows.get("stocks") or [], period)
 
-        if sales_error:
-            report.warnings.append(f"продажи не получены — {sales_error}")
-        if orders_error:
-            report.warnings.append(f"заказы не получены — {orders_error}")
-        if stocks_error:
-            report.warnings.append(f"остатки не получены — {stocks_error}")
+        for source, human in (
+            ("sales", "продажи"),
+            ("orders", "заказы"),
+            ("stocks", "остатки"),
+        ):
+            if errors.get(source):
+                report.warnings.append(f"{human} не получены — {errors[source]}")
 
         return report
+
+    async def fetch(self, period: Period) -> MarketplaceReport:
+        rows = await self.collect_raw(period.date_from)
+        return self.build(rows, period)
 
     async def _try(self, coro, denied_hint: str = "") -> tuple[list[dict[str, Any]], str]:
         """Выполнить запрос, вернув либо строки, либо причину неудачи."""

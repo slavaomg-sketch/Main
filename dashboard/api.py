@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 
 from . import connections as conn
 from . import db
+from . import warehouse
 from .aggregator import build_snapshot, cache, normalize_codes
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -174,6 +175,9 @@ async def edit_connection(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    if isinstance(payload.get("values"), dict):
+        # Ключи сменились — прежняя выгрузка относится к другому кабинету.
+        await warehouse.forget(connection_id)
     await cache.clear()  # следующий запрос должен пойти уже с новыми ключами
     return await _connections_payload()
 
@@ -184,6 +188,7 @@ async def remove_connection(connection_id: str) -> dict[str, Any]:
         await conn.delete(connection_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await warehouse.forget(connection_id)
     await cache.clear()
     return await _connections_payload()
 
@@ -234,6 +239,24 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
 async def clear_cache() -> dict[str, Any]:
     await cache.clear()
     return {"cleared": True}
+
+
+@guarded.get("/sync")
+async def sync_status() -> dict[str, Any]:
+    """Когда данные последний раз выгружались с площадок."""
+    return await warehouse.status(settings)
+
+
+@guarded.post("/sync")
+async def sync_now() -> dict[str, Any]:
+    """Скачать свежие данные с площадок прямо сейчас."""
+    results = await warehouse.sync_all(settings)
+    await cache.clear()
+    return {
+        "started": True,
+        "results": [result.to_dict() for result in results],
+        "status": await warehouse.status(settings),
+    }
 
 
 # --- блоки и раскладки -------------------------------------------------------

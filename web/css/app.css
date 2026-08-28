@@ -212,6 +212,10 @@ button, input, select { font: inherit; color: inherit; }
 
 .icon-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .icon-btn:hover { background: var(--surface-hover); transform: translateY(-1px); }
+.icon-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+.icon-btn.is-spinning svg { animation: spin 1.1s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 .icon-btn:active { transform: scale(0.93); }
 
 html[data-theme="dark"] .icon-sun, html[data-theme="light"] .icon-moon { display: none; }

@@ -5,8 +5,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import uvicorn
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import connections
 from . import db
+from . import warehouse
 from .api import guarded, router
 from .config import WEB_DIR, settings
 
@@ -44,7 +46,24 @@ async def lifespan(app: FastAPI):
         )
     else:
         log.info("Магазины не добавлены — панель покажет нули до ввода ключей")
-    yield
+
+    # Данные площадок выгружаются в фоне: страница читает их из базы и не ждёт
+    # ответа маркетплейса.
+    syncer = asyncio.create_task(warehouse.background_loop(settings)) if ready else None
+    if syncer:
+        log.info(
+            "Фоновая выгрузка запущена: раз в %d мин, история %d дн.",
+            settings.sync_minutes,
+            settings.history_days,
+        )
+
+    try:
+        yield
+    finally:
+        if syncer:
+            syncer.cancel()
+            with suppress(asyncio.CancelledError):
+                await syncer
 
 
 def create_app() -> FastAPI:

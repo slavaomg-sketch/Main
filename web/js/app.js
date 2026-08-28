@@ -35,7 +35,9 @@
     editing: false,
     loading: false,
     saveTimer: null,
-    refreshTimer: null
+    refreshTimer: null,
+    sync: null,
+    syncing: false
   };
 
   var dom = {};
@@ -586,6 +588,12 @@
     dom['status-text'].textContent = text;
   }
 
+  function loadSyncStatus() {
+    return Api.syncStatus().then(function (payload) {
+      state.sync = payload;
+    }).catch(function () { /* хранилище может быть ещё пустым */ });
+  }
+
   function loadData(force) {
     state.loading = true;
     renderBoard();
@@ -623,9 +631,11 @@
       }
 
       dom['brand-sub'].textContent = Fmt.periodLabel(data.period);
+      var syncedAt = state.sync && state.sync.syncedAt;
       dom['footer-note'].textContent = 'Период: ' + Fmt.periodLabel(data.period) +
         ' · подключено площадок: ' + live.length + ' из ' + data.marketplaces.length +
-        ' · обновлено ' + Fmt.timeLabel(data.generatedAt);
+        (syncedAt ? ' · выгрузка с площадок в ' + Fmt.timeLabel(syncedAt) : '') +
+        ' · страница обновлена ' + Fmt.timeLabel(data.generatedAt);
       return data;
     }).catch(function (error) {
       state.loading = false;
@@ -681,10 +691,25 @@
     dom['btn-keys'].addEventListener('click', openKeys);
 
     dom['btn-refresh'].addEventListener('click', function () {
-      dom['btn-refresh'].style.transform = 'rotate(360deg)';
-      setTimeout(function () { dom['btn-refresh'].style.transform = ''; }, 500);
-      Api.clearCache().catch(function () {}).then(function () { return loadData(true); })
-        .then(function () { toast('Данные обновлены'); });
+      if (state.syncing) return;
+      state.syncing = true;
+      dom['btn-refresh'].disabled = true;
+      dom['btn-refresh'].classList.add('is-spinning');
+      toast('Скачиваю свежие данные с площадок — это займёт до минуты');
+
+      // Выгрузка идёт на сервере; страница потом читает уже готовое.
+      Api.sync().then(function (payload) {
+        state.sync = payload.status || state.sync;
+        return loadData(true);
+      }).then(function () {
+        toast('Данные обновлены');
+      }).catch(function (error) {
+        toast('Не удалось обновить: ' + error.message);
+      }).then(function () {
+        state.syncing = false;
+        dom['btn-refresh'].disabled = false;
+        dom['btn-refresh'].classList.remove('is-spinning');
+      });
     });
 
     dom['btn-reset'].addEventListener('click', function () {
@@ -784,6 +809,8 @@
         state.catalogByType[definition.type] = definition;
       });
       renderMarketplaceChips(results[1].marketplaces);
+      return loadSyncStatus();
+    }).then(function () {
       return loadLayouts();
     }).then(function () {
       return loadData();

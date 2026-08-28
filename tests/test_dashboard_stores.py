@@ -199,26 +199,30 @@ def test_totals_expose_accounts_with_shares():
 
 
 class StubConnector(MarketplaceConnector):
-    """Отдаёт выручку, зависящую от ключа, — видно, чей это магазин."""
+    """Отдаёт выручку, зависящую от ключа, — видно, чей это магазин.
 
-    code = "wildberries"
-    title = "Wildberries"
+    Взят Ozon, а не Wildberries: данные Wildberries панель читает из
+    выгрузки, а здесь проверяется опрос площадки напрямую.
+    """
+
+    code = "ozon"
+    title = "Ozon"
 
     async def fetch(self, period: Period) -> MarketplaceReport:
-        token = self.credentials.get("token")
+        token = self.credentials.get("api_key")
         report = MarketplaceReport(
-            marketplace="wildberries", title="Wildberries", connected=True, demo=False
+            marketplace="ozon", title="Ozon", connected=True, demo=False
         )
         report.revenue = 1000 if token.endswith("1") else 300
         report.orders = 10 if token.endswith("1") else 3
         report.series = [DayPoint(day=day, revenue=report.revenue / 2) for day in period.each_day()]
         report.products = [
             Product(sku="SKU-" + token[-1], name="Товар", revenue=report.revenue,
-                    units=report.orders, marketplace="wildberries")
+                    units=report.orders, marketplace="ozon")
         ]
         report.stock_alerts = [
             StockAlert(sku="SKU-" + token[-1], name="Товар", stock=3, days_left=1,
-                       marketplace="wildberries")
+                       marketplace="ozon")
         ]
         return report
 
@@ -226,8 +230,8 @@ class StubConnector(MarketplaceConnector):
 class BrokenConnector(MarketplaceConnector):
     """Магазин, до которого не достучаться."""
 
-    code = "ozon"
-    title = "Ozon"
+    code = "yandex"
+    title = "Яндекс Маркет"
 
     async def fetch(self, period: Period) -> MarketplaceReport:
         raise RuntimeError("ключ отклонён")
@@ -236,18 +240,18 @@ class BrokenConnector(MarketplaceConnector):
 @pytest.fixture
 async def stub(monkeypatch, dashboard_db):
     await db.init_db()
-    monkeypatch.setitem(REAL_CONNECTORS, "wildberries", StubConnector)
-    monkeypatch.setitem(REAL_CONNECTORS, "ozon", BrokenConnector)
+    monkeypatch.setitem(REAL_CONNECTORS, "ozon", StubConnector)
+    monkeypatch.setitem(REAL_CONNECTORS, "yandex", BrokenConnector)
     return dashboard_db
 
 
 async def test_collect_queries_every_store_and_sums_them(stub):
-    first = await conn.create("wildberries", "Магазин 1")
-    await conn.save_values(first.id, {"token": "token-1"})
-    second = await conn.create("wildberries", "Магазин 2")
-    await conn.save_values(second.id, {"token": "token-2"})
+    first = await conn.create("ozon", "Магазин 1")
+    await conn.save_values(first.id, {"client_id": "1", "api_key": "key-1"})
+    second = await conn.create("ozon", "Магазин 2")
+    await conn.save_values(second.id, {"client_id": "2", "api_key": "key-2"})
 
-    reports = await collect(period(), ("wildberries",), settings, await conn.load())
+    reports = await collect(period(), ("ozon",), settings, await conn.load())
 
     assert len(reports) == 1
     assert reports[0].revenue == 1300
@@ -256,13 +260,13 @@ async def test_collect_queries_every_store_and_sums_them(stub):
 
 
 async def test_disabled_store_is_not_queried(stub):
-    first = await conn.create("wildberries", "Магазин 1")
-    await conn.save_values(first.id, {"token": "token-1"})
-    second = await conn.create("wildberries", "Магазин 2")
-    await conn.save_values(second.id, {"token": "token-2"})
+    first = await conn.create("ozon", "Магазин 1")
+    await conn.save_values(first.id, {"client_id": "1", "api_key": "key-1"})
+    second = await conn.create("ozon", "Магазин 2")
+    await conn.save_values(second.id, {"client_id": "2", "api_key": "key-2"})
     await conn.update(second.id, enabled=False)
 
-    reports = await collect(period(), ("wildberries",), settings, await conn.load())
+    reports = await collect(period(), ("ozon",), settings, await conn.load())
     assert reports[0].revenue == 1000
     assert len(reports[0].accounts) == 1
 
@@ -275,29 +279,29 @@ async def test_marketplace_without_stores_shows_nothing(stub):
 
 
 async def test_products_and_alerts_carry_the_store_they_came_from(stub):
-    first = await conn.create("wildberries", "Магазин 1")
-    await conn.save_values(first.id, {"token": "token-1"})
-    second = await conn.create("wildberries", "Магазин 2")
-    await conn.save_values(second.id, {"token": "token-2"})
+    first = await conn.create("ozon", "Магазин 1")
+    await conn.save_values(first.id, {"client_id": "1", "api_key": "key-1"})
+    second = await conn.create("ozon", "Магазин 2")
+    await conn.save_values(second.id, {"client_id": "2", "api_key": "key-2"})
 
-    reports = await collect(period(), ("wildberries",), settings, await conn.load())
+    reports = await collect(period(), ("ozon",), settings, await conn.load())
 
     assert {product.account for product in reports[0].products} == {"Магазин 1", "Магазин 2"}
     assert {alert.account for alert in reports[0].stock_alerts} == {"Магазин 1", "Магазин 2"}
 
 
 async def test_broken_store_does_not_break_the_marketplace_report(stub):
-    good = await conn.create("wildberries", "Рабочий")
-    await conn.save_values(good.id, {"token": "token-1"})
-    broken = await conn.create("ozon", "Ozon с плохим ключом")
-    await conn.save_values(broken.id, {"client_id": "1", "api_key": "нерабочий"})
+    good = await conn.create("ozon", "Рабочий")
+    await conn.save_values(good.id, {"client_id": "1", "api_key": "key-1"})
+    broken = await conn.create("yandex", "Яндекс с плохим ключом")
+    await conn.save_values(broken.id, {"api_key": "нерабочий", "campaign_id": "7"})
 
-    reports = await collect(period(), ("wildberries", "ozon"), settings, await conn.load())
+    reports = await collect(period(), ("ozon", "yandex"), settings, await conn.load())
     by_code = {report.marketplace: report for report in reports}
 
-    assert by_code["wildberries"].revenue == 1000
-    assert by_code["ozon"].accounts[0].title == "Ozon с плохим ключом"
-    assert "ключ отклонён" in by_code["ozon"].error
+    assert by_code["ozon"].revenue == 1000
+    assert by_code["yandex"].accounts[0].title == "Яндекс с плохим ключом"
+    assert "ключ отклонён" in by_code["yandex"].error
 
 
 # --- частичные сбои при нескольких магазинах ------------------------------------

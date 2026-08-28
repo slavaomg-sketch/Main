@@ -64,6 +64,8 @@ class Settings:
     session_secret: str
     cache_ttl: int
     request_timeout: int
+    history_days: int
+    sync_minutes: int
     force_demo: bool
     default_currency: str
     marketplaces: dict[str, MarketplaceCredentials]
@@ -124,7 +126,9 @@ def load_settings() -> Settings:
         password=_env("DASHBOARD_PASSWORD"),
         session_secret=_env("DASHBOARD_SECRET", "change-me-in-production"),
         cache_ttl=_env_int("DASHBOARD_CACHE_TTL", 300),
-        request_timeout=_env_int("DASHBOARD_HTTP_TIMEOUT", 30),
+        request_timeout=_env_int("DASHBOARD_HTTP_TIMEOUT", 60),
+        history_days=_env_int("DASHBOARD_HISTORY_DAYS", 120),
+        sync_minutes=_env_int("DASHBOARD_SYNC_MINUTES", 15),
         force_demo=_env_bool("DASHBOARD_DEMO", False),
         default_currency=_env("DASHBOARD_CURRENCY", "RUB"),
         marketplaces=_marketplaces(),

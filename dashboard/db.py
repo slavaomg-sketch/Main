@@ -49,6 +49,30 @@ CREATE TABLE IF NOT EXISTS credentials (
     updated_at    TEXT NOT NULL,
     PRIMARY KEY (connection_id, field)
 );
+
+-- Выгрузка площадок: сырые строки, как их отдал маркетплейс.
+-- Отчёт за любой период считается уже отсюда, без обращения к площадке.
+CREATE TABLE IF NOT EXISTS marketplace_rows (
+    connection_id TEXT NOT NULL,
+    source        TEXT NOT NULL,
+    row_id        TEXT NOT NULL,
+    day           TEXT NOT NULL,
+    payload       TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    PRIMARY KEY (connection_id, source, row_id)
+);
+
+CREATE INDEX IF NOT EXISTS marketplace_rows_by_day
+    ON marketplace_rows (connection_id, source, day);
+
+-- Когда какой источник выгружался в последний раз и чем это кончилось.
+CREATE TABLE IF NOT EXISTS sync_state (
+    connection_id TEXT NOT NULL,
+    source        TEXT NOT NULL,
+    synced_at     TEXT NOT NULL,
+    error         TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (connection_id, source)
+);
 """
 
 DEFAULT_LAYOUT_NAME = "Основной"

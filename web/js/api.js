@@ -47,6 +47,8 @@
     overview: function (params) { return request('GET', '/api/overview' + query(params)); },
     marketplaces: function () { return request('GET', '/api/marketplaces'); },
     clearCache: function () { return request('POST', '/api/cache/clear'); },
+    syncStatus: function () { return request('GET', '/api/sync'); },
+    sync: function () { return request('POST', '/api/sync'); },
 
     connections: function () { return request('GET', '/api/connections'); },
     addConnection: function (marketplace, title) {

@@ -1,0 +1,236 @@
+"""Выгрузка данных площадок на сервер: хранение, чтение, обновление."""
+
+from datetime import date, timedelta
+
+import httpx
+import pytest
+
+from dashboard import connections as conn
+from dashboard import db, warehouse
+from dashboard.config import settings
+from dashboard.connectors.wildberries import WildberriesConnector
+from dashboard.models import Period
+
+
+def period(days: int = 3) -> Period:
+    end = date.today()
+    return Period(date_from=end - timedelta(days=days - 1), date_to=end)
+
+
+def sale(day: date, srid: str, price: float = 1000.0) -> dict:
+    return {
+        "date": f"{day.isoformat()}T10:00:00", "srid": srid, "saleID": "S" + srid,
+        "finishedPrice": price, "forPay": price * 0.85, "supplierArticle": "ART-1",
+        "nmId": 777, "subject": "Кружка", "regionName": "Москва",
+    }
+
+
+def order(day: date, srid: str) -> dict:
+    return {"date": f"{day.isoformat()}T09:00:00", "srid": srid, "isCancel": False,
+            "supplierArticle": "ART-1", "nmId": 777}
+
+
+@pytest.fixture
+async def store(dashboard_db):
+    await db.init_db()
+    created = await conn.create("wildberries", "ВБ Основной")
+    await conn.save_values(created.id, {"token": "token-value"})
+    return await conn.get(created.id)
+
+
+def mock_wb(monkeypatch, handler):
+    def client(self, base_url=None):
+        return httpx.AsyncClient(
+            base_url=base_url or self.base_url,
+            headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(WildberriesConnector, "client", client)
+
+
+def wb_handler(sales, orders, stocks=None):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=sales)
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=orders)
+        return httpx.Response(200, json={"items": stocks or []})
+
+    return handler
+
+
+# --- ключи строк ---------------------------------------------------------------
+
+
+def test_row_key_prefers_marketplace_identifier():
+    assert warehouse.row_key("sales", {"srid": "abc"}, 0) == "abc"
+    assert warehouse.row_key("orders", {"odid": 55}, 0) == "55"
+
+
+def test_row_key_falls_back_to_fields_when_no_identifier():
+    row = {"date": "2025-03-01T10:00:00", "nmId": 1, "supplierArticle": "A", "totalPrice": 5}
+    first = warehouse.row_key("sales", row, 0)
+    assert first == warehouse.row_key("sales", row, 0)
+    assert first != warehouse.row_key("sales", row, 1)
+
+
+def test_stock_row_key_is_product_plus_warehouse():
+    key = warehouse.row_key("stocks", {"nmId": 7, "warehouseId": 3}, 0)
+    assert key == "7:3"
+
+
+# --- хранение и чтение ----------------------------------------------------------
+
+
+async def test_rows_are_stored_and_read_back_for_the_period(store):
+    today = date.today()
+    rows = [sale(today, "a"), sale(today - timedelta(days=1), "b"),
+            sale(today - timedelta(days=30), "old")]
+    await warehouse.store_rows(store.id, "sales", rows, today)
+
+    inside = await warehouse.read_rows(store.id, "sales", period(3))
+    assert {row["srid"] for row in inside} == {"a", "b"}
+
+    everything = await warehouse.read_rows(store.id, "sales")
+    assert len(everything) == 3
+
+
+async def test_repeated_sync_does_not_duplicate_rows(store):
+    today = date.today()
+    await warehouse.store_rows(store.id, "sales", [sale(today, "a")], today)
+    await warehouse.store_rows(store.id, "sales", [sale(today, "a", price=1500)], today)
+
+    rows = await warehouse.read_rows(store.id, "sales")
+    assert len(rows) == 1
+    assert rows[0]["finishedPrice"] == 1500      # строка обновилась, а не задвоилась
+
+
+async def test_stocks_are_replaced_not_accumulated(store):
+    today = date.today()
+    await warehouse.store_rows(store.id, "stocks", [{"nmId": 1, "warehouseId": 2, "quantity": 5}], today)
+    await warehouse.store_rows(store.id, "stocks", [{"nmId": 9, "warehouseId": 2, "quantity": 1}], today)
+
+    rows = await warehouse.read_rows(store.id, "stocks")
+    assert [row["nmId"] for row in rows] == [9]
+
+
+async def test_stocks_are_not_filtered_by_period(store):
+    await warehouse.store_rows(
+        store.id, "stocks", [{"nmId": 1, "warehouseId": 2, "quantity": 5}],
+        date.today() - timedelta(days=60),
+    )
+    assert len(await warehouse.read_rows(store.id, "stocks", period(3))) == 1
+
+
+# --- выгрузка -------------------------------------------------------------------
+
+
+async def test_sync_downloads_and_stores_everything(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a"), sale(today, "b")],
+        orders=[order(today, "o1")],
+        stocks=[{"nmId": 777, "warehouseId": 1, "quantity": 4, "warehouseName": "Коледино"}],
+    ))
+
+    result = await warehouse.sync_store(store, settings)
+
+    assert result.ok
+    assert result.stored == {"sales": 2, "orders": 1, "stocks": 1}
+    assert len(await warehouse.read_rows(store.id, "sales")) == 2
+
+
+async def test_report_is_built_from_storage_without_touching_the_marketplace(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a"), sale(today, "b")],
+        orders=[order(today, "o1"), order(today, "o2")],
+        stocks=[{"nmId": 777, "warehouseId": 1, "quantity": 4}],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    # Площадка «отключается»: дальше отчёт обязан считаться из базы.
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("отчёт не должен ходить в маркетплейс")
+
+    mock_wb(monkeypatch, refuse)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.revenue == 2000
+    assert report.orders == 2
+    assert report.stock_units == 4
+    assert report.connected is True
+    assert report.error == ""
+
+
+async def test_any_period_is_served_from_one_download(store, monkeypatch):
+    today = date.today()
+    rows = [sale(today - timedelta(days=offset), f"s{offset}") for offset in range(10)]
+    mock_wb(monkeypatch, wb_handler(sales=rows, orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("площадку больше не трогаем")
+
+    mock_wb(monkeypatch, refuse)
+
+    week = await warehouse.report_for(store, period(7), settings)
+    three = await warehouse.report_for(store, period(3), settings)
+
+    assert week.revenue == 7000
+    assert three.revenue == 3000
+
+
+async def test_failed_source_is_remembered_and_shown_as_warning(store, monkeypatch):
+    today = date.today()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "stocks-report" in request.url.path:
+            return httpx.Response(403, json={"detail": "no scope"})
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[sale(today, "a")])
+        return httpx.Response(200, json=[order(today, "o1")])
+
+    mock_wb(monkeypatch, handler)
+    result = await warehouse.sync_store(store, settings)
+
+    assert "stocks" in result.errors
+    assert result.stored["sales"] == 1
+
+    report = await warehouse.report_for(store, period(3), settings)
+    assert report.revenue == 1000
+    assert any("остатки" in warning for warning in report.warnings)
+
+
+async def test_sync_status_reports_what_was_downloaded(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(sales=[sale(today, "a")], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    status = await warehouse.status(settings)
+
+    assert status["syncedAt"]
+    assert status["stores"][0]["title"] == "ВБ Основной"
+    assert status["stores"][0]["sources"]["sales"]["rows"] == 1
+
+
+async def test_forget_removes_everything_about_the_store(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(sales=[sale(today, "a")], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    await warehouse.forget(store.id)
+
+    assert await warehouse.read_rows(store.id, "sales") == []
+    assert await warehouse.status(settings) == {"stores": [], "syncedAt": "", "running": False}
+
+
+async def test_sync_all_skips_stores_without_keys(dashboard_db, monkeypatch):
+    await db.init_db()
+    empty = await conn.create("wildberries", "Без ключей")
+    assert empty.id
+
+    results = await warehouse.sync_all(settings)
+    assert results == []
