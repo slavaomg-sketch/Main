@@ -398,6 +398,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 }
 .skin.on .skin-name { color: #ffd479; }
 #skin-welcome { opacity: 0; animation: rise .6s .75s ease both; }
+
+/* Седьмая глава: заряд в руках и горящий запал видно прямо в шапке. */
+.hud-charge { filter: drop-shadow(0 0 6px rgba(255,90,60,0.8)); }
+.hud-fuse { color: #ff8a5c; }
+.hud-fuse b { color: #ffd0b0; }
 </style>
 </head>
 <body>
@@ -409,6 +414,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     </div>
     <div class="hud-right">
       <span class="stat" title="Собрано инфотронов"><b id="hud-info">0</b><i>/</i><span id="hud-need">0</span> ⬤</span>
+      <span class="stat hud-charge" id="hud-carry" title="Красный заряд в руках" hidden>🧨</span>
+      <span class="stat hud-fuse" id="hud-fuse" title="Запал горит" hidden>⏱ <b id="hud-fuse-n">0</b></span>
       <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
       <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
       <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
@@ -505,7 +512,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     PORT_L: 14,
     EXPLOSION: 15,
     EXPLOSION_INFO: 16,
-    BUG: 17          // жук: с места не сходит, но раз в цикл вспыхивает и бьёт соседа
+    BUG: 17,         // жук: с места не сходит, но раз в цикл вспыхивает и бьёт соседа
+    YELLOW: 18,      // жёлтый диск: толкается в любую сторону и не падает
+    RED: 19,         // красный диск: Мёрфи носит его с собой и кладёт куда нужно
+    TERMINAL: 20     // терминал: нажатие поджигает все жёлтые и красные диски
   };
 
   var NAMES = {};
@@ -531,7 +541,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     // Жук. Цифра — сдвиг фазы в тиках: так в коридоре набирается бегущая волна.
     'B': Tiles.BUG,
     '1': Tiles.BUG, '2': Tiles.BUG, '3': Tiles.BUG, '4': Tiles.BUG,
-    '5': Tiles.BUG, '6': Tiles.BUG, '7': Tiles.BUG, '8': Tiles.BUG, '9': Tiles.BUG
+    '5': Tiles.BUG, '6': Tiles.BUG, '7': Tiles.BUG, '8': Tiles.BUG, '9': Tiles.BUG,
+    'Y': Tiles.YELLOW,
+    'R': Tiles.RED,
+    'T': Tiles.TERMINAL
   };
 
   // Сдвиг фазы жука по символу карты ('B' — нулевая фаза).
@@ -2337,6 +2350,37 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       ]
     },
     {
+      id: 61,
+      chapter: 7,
+      name: "Жёлтый диск",
+      hint: "Жёлтый диск не падает и толкается в любую сторону — хоть вбок, хоть вниз. Сам по себе он смирный, но терминал в торце полки поджигает разом все такие заряды. Значит, сперва опусти диск в ту нишу, под которой лежат чипы, и только потом дави кнопку.",
+      needed: 32,
+      map: [
+        "##################################################",
+        "#................................................#",
+        "#.M.*...#..*.#....#....#....#...*#....#....#.....#",
+        "#........O.....O...OO*..OO.O.......OO.....O.O.O*.#",
+        "#..#....#....#*...#....#....#....#....#....#.....#",
+        "#.O....O..OO*.OOO....O..........*.O....OOOO..OO*.#",
+        "#..#....#....#....#....#....#....#....#....#.....#",
+        "##### ############################################",
+        "#....                                         ####",
+        "#....               Y                         T###",
+        "############## ########### #######################",
+        "####################=========================#####",
+        "####################.........................#####",
+        "####################.*#..*.#.*..#*...*...*#..#####",
+        "####################.........................#####",
+        "####################.*#..*.#.*..#*...*...*#..#####",
+        "####################.........................#####",
+        "####################.*#..*.#.*..#*...*...*#..#####",
+        "####################.*..*..*..*..*..*..*..*.E#####",
+        "##################################################",
+        "##################################################",
+        "##################################################"
+      ]
+    },
+    {
       id: 90,
       chapter: 9,
       name: "Комбинат",
@@ -2496,6 +2540,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   // покоя длиннее вспышки втрое — этого хватает, чтобы пройти мимо.
   var BUG_PERIOD = 12;
   var BUG_HOT = 4;
+  // Терминал не рвёт заряды мгновенно: после нажатия горит запал, и это время —
+  // весь запас хода на то, чтобы уйти из-под воронок.
+  var FUSE_TICKS = 14;
 
   // С чего предмет может скатиться вбок. Стена сюда входит: камень, лежащий
   // на ровной твёрдой поверхности, съезжает с её края, если сбоку и наискось пусто.
@@ -2504,6 +2551,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   }
   function isFaller(t) {
     return t === T.ZONK || t === T.INFOTRON || t === T.ORANGE;
+  }
+  /** Заряды, которые слушают терминал: сами не падают, ждут сигнала. */
+  function isCharge(t) {
+    return t === T.YELLOW || t === T.RED;
   }
   function isMonster(t) {
     return t === T.SNIKSNAK || t === T.ELECTRON;
@@ -2535,7 +2586,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0 };
+    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0 };
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -2562,6 +2613,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.deathTimer = 0;
     this.ticks = 0;
     this.moves = 0;
+    this.fuse = 0;             // 0 — терминал не нажат; иначе тики до подрыва
     return this;
   };
 
@@ -2600,7 +2652,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     e.fx = this.fx.slice();
     e.fy = this.fy.slice();
     e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
-                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging };
+                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
+                 carry: this.murphy.carry };
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -2608,6 +2661,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     e.deathTimer = this.deathTimer;
     e.ticks = this.ticks;
     e.moves = this.moves;
+    e.fuse = this.fuse;
     return e;
   };
 
@@ -2617,7 +2671,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status;
+    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + this.murphy.carry;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -2650,7 +2704,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         // инфотронный взрыв перекрывает обычный: иначе цепочка «диск → электрон»
         // съедала бы собственную добычу
         if (isBlast(t) && !(blast === T.EXPLOSION_INFO && t === T.EXPLOSION)) continue;
-        if (t === T.ORANGE) chain.push([x, y, 'normal']);
+        if (t === T.ORANGE || isCharge(t)) chain.push([x, y, 'normal']);
         if (t === T.ELECTRON) chain.push([x, y, 'info']);
         if (t === T.MURPHY) this.killMurphy(true);
         this.tiles[i] = blast;
@@ -2708,6 +2762,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (input.snap) {
       if (t === T.BASE) { this.set(nx, ny, T.EMPTY); m.digging = 1; }
       else if (t === T.INFOTRON) { this.set(nx, ny, T.EMPTY); this.collected++; m.digging = 1; }
+      else if (t === T.EMPTY && m.carry) { this.set(nx, ny, T.RED); m.carry = 0; }  // выложили заряд
+      else if (t === T.TERMINAL) this.pressTerminal();
       return;
     }
 
@@ -2724,6 +2780,18 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       return;
     }
     if (isMonster(t)) { this.killMurphy(); return; }
+    // Красный заряд Мёрфи забирает с собой — но только один за раз.
+    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepMurphyTo(nx, ny); this.moves++; return; }
+    // Жёлтый двигается в любую сторону: он не круглый и никуда не скатывается.
+    if (t === T.YELLOW) {
+      if (this.get(nx + dx, ny + dy) !== T.EMPTY) return;
+      this.moveObj(nx, ny, nx + dx, ny + dy);
+      m.pushing = 1;
+      this.stepMurphyTo(nx, ny);
+      this.moves++;
+      return;
+    }
+    if (t === T.TERMINAL) { this.pressTerminal(); return; }
     if ((t === T.ZONK || t === T.ORANGE) && dy === 0) {
       var bi = this.idx(nx, ny);
       if (this.falling[bi]) return;                    // падающий зонк не толкнуть
@@ -2844,6 +2912,24 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     }
   };
 
+  /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
+  Engine.prototype.pressTerminal = function () {
+    if (this.fuse === 0) this.fuse = FUSE_TICKS;
+  };
+
+  /** Запал догорел — рвёт все заряды разом, где бы они ни лежали. */
+  Engine.prototype.updateFuse = function () {
+    if (this.fuse === 0) return;
+    this.fuse--;
+    if (this.fuse > 0) return;
+    var spots = [];
+    for (var i = 0; i < this.tiles.length; i++) if (isCharge(this.tiles[i])) spots.push(i);
+    for (var k = 0; k < spots.length; k++) {
+      if (!isCharge(this.tiles[spots[k]])) continue;    // соседний заряд мог уже сдетонировать по цепочке
+      this.explodeAt(spots[k] % this.w, Math.floor(spots[k] / this.w), 'normal');
+    }
+  };
+
   /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
   Engine.prototype.updateBugs = function () {
     var m = this.murphy;
@@ -2868,6 +2954,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
     this.updateExplosions();
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    this.updateFuse();
     this.updateGravity();
     this.updateMonsters();
     if (this.status === 'playing') this.updateBugs();
@@ -2889,7 +2976,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     return out.join('\n');
   };
 
-  var api = { Engine: Engine, isRounded: isRounded, isFaller: isFaller, isMonster: isMonster, isBlast: isBlast };
+  var api = { Engine: Engine, isRounded: isRounded, isFaller: isFaller, isCharge: isCharge,
+              isMonster: isMonster, isBlast: isBlast };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else global.SP = Object.assign(global.SP || {}, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -3012,6 +3100,79 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.lineWidth = Math.max(1, s * 0.07);
     g.beginPath(); g.moveTo(s / 2 - r * 0.75, s / 2 - r * 0.25); g.lineTo(s / 2 + r * 0.75, s / 2 - r * 0.25); g.stroke();
     g.beginPath(); g.moveTo(s / 2 - r * 0.75, s / 2 + r * 0.3); g.lineTo(s / 2 + r * 0.75, s / 2 + r * 0.3); g.stroke();
+  }
+
+  // Жёлтый диск: не шар, а брикет — сразу видно, что он не покатится.
+  function drawYellow(g, s, hot) {
+    var b = s * 0.13, w = s - 2 * b;
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    rr(g, b + s * 0.03, b + s * 0.06, w, w, s * 0.14); g.fill();
+    var grad = g.createLinearGradient(b, b, b + w, b + w);
+    grad.addColorStop(0, hot ? '#fffdf0' : '#ffe89a');
+    grad.addColorStop(0.5, hot ? '#ffe14a' : '#f0b429');
+    grad.addColorStop(1, '#a06a06');
+    rr(g, b, b, w, w, s * 0.14);
+    g.fillStyle = grad; g.fill();
+    g.strokeStyle = 'rgba(70,40,0,0.8)';
+    g.lineWidth = Math.max(1, s * 0.05); g.stroke();
+    // косые предупредительные полосы
+    g.save();
+    rr(g, b, b, w, w, s * 0.14); g.clip();
+    g.strokeStyle = 'rgba(50,30,0,0.5)';
+    g.lineWidth = Math.max(1, s * 0.09);
+    for (var k = -1; k < 3; k++) {
+      g.beginPath(); g.moveTo(b + k * s * 0.3, b + w); g.lineTo(b + k * s * 0.3 + w, b); g.stroke();
+    }
+    g.restore();
+  }
+
+  // Красный диск: заряд, который Мёрфи носит в руках.
+  function drawRed(g, s, hot) {
+    var r = s * 0.38;
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.beginPath(); g.ellipse(s / 2, s * 0.88, r * 0.8, r * 0.16, 0, 0, 6.2832); g.fill();
+    sphere(g, s, s / 2, s * 0.54, r, hot ? '#fff2f0' : '#ffc9c0', hot ? '#ff5a3c' : '#d92b1c', '#5c0d06');
+    g.strokeStyle = 'rgba(255,255,255,0.5)';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.beginPath(); g.arc(s / 2, s * 0.54, r * 0.62, 3.5, 4.9); g.stroke();
+    // фитилёк
+    g.strokeStyle = '#7a6a55';
+    g.lineWidth = Math.max(1, s * 0.06);
+    g.lineCap = 'round';
+    g.beginPath(); g.moveTo(s / 2, s * 0.54 - r); g.quadraticCurveTo(s * 0.66, s * 0.2, s * 0.74, s * 0.14); g.stroke();
+    if (hot) {
+      g.fillStyle = '#fff0a0';
+      g.beginPath(); g.arc(s * 0.74, s * 0.14, s * 0.07, 0, 6.2832); g.fill();
+    }
+  }
+
+  // Терминал: пульт с экраном и кнопкой. Пока запал горит — экран мигает.
+  function drawTerminal(g, s, live, timeMs) {
+    g.fillStyle = '#0a0d16';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.1;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.09);
+    g.fillStyle = '#2a3145'; g.fill();
+    g.strokeStyle = '#5d6a8a';
+    g.lineWidth = Math.max(1, s * 0.05); g.stroke();
+    var blink = live ? 0.45 + 0.55 * Math.abs(Math.sin(timeMs / 90)) : 1;
+    // экран
+    rr(g, s * 0.2, s * 0.2, s * 0.6, s * 0.34, s * 0.05);
+    g.fillStyle = live ? 'rgba(255,90,60,' + blink + ')' : '#123a2c'; g.fill();
+    g.strokeStyle = live ? '#ffd0c0' : '#2f7f5f';
+    g.lineWidth = Math.max(1, s * 0.035); g.stroke();
+    g.strokeStyle = live ? '#fff' : '#57e0a5';
+    g.lineWidth = Math.max(1, s * 0.045);
+    g.lineCap = 'round';
+    for (var k = 0; k < 2; k++) {
+      var yy = s * 0.29 + k * s * 0.13;
+      g.beginPath(); g.moveTo(s * 0.27, yy); g.lineTo(s * (k ? 0.6 : 0.73), yy); g.stroke();
+    }
+    // кнопка
+    g.fillStyle = live ? '#ff6a48' : '#c0392b';
+    g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.12, 0, 6.2832); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.6)';
+    g.lineWidth = Math.max(1, s * 0.03); g.stroke();
   }
 
   function drawExit(g, s, open) {
@@ -3298,6 +3459,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     pack.tile[T.INFOTRON] = make(drawInfotron);
     pack.tile[T.ORANGE] = make(drawOrange);
     pack.tile[T.SNIKSNAK] = make(drawSnik);
+    pack.tile[T.YELLOW] = make(function (g, s) { drawYellow(g, s, false); });
+    pack.tile[T.RED] = make(function (g, s) { drawRed(g, s, false); });
     pack.tile[T.EXIT] = make(function (g, s) { drawExit(g, s, false); });
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
@@ -3312,6 +3475,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   global.SP = Object.assign(global.SP, {
     Sprites: {
       build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
+      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }
@@ -3429,6 +3593,20 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.TERMINAL) {
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawTerminal(g, s, engine.fuse > 0, timeMs);
+          g.restore();
+          continue;
+        }
+        if (t === T.YELLOW || t === T.RED) {
+          // пока горит запал, заряды мигают — иначе не понять, что счёт пошёл
+          g.save(); g.translate(px, py);
+          if (t === T.YELLOW) SP.Sprites.drawYellow(g, s, engine.fuse > 0 && Math.sin(timeMs / 90) > 0);
+          else SP.Sprites.drawRed(g, s, engine.fuse > 0 && Math.sin(timeMs / 90) > 0);
+          g.restore();
+          continue;
+        }
         if (t === T.BUG) {
           g.save(); g.translate(px, py);
           SP.Sprites.drawBug(g, s, engine.bugHot(i), timeMs);
@@ -3743,7 +3921,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
-   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu'
+   'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -3926,6 +4104,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     el['hud-need'].textContent = engine.needed;
     el['hud-moves'].textContent = engine.moves;
     el['hud-time'].textContent = (engine.ticks * TICK_MS / 1000).toFixed(1);
+    // заряды седьмой главы: что в руках и сколько тиков до подрыва
+    el['hud-carry'].hidden = !engine.murphy.carry;
+    el['hud-fuse'].hidden = !engine.fuse;
+    if (engine.fuse) el['hud-fuse-n'].textContent = engine.fuse;
   }
 
   function onWin() {
