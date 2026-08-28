@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from . import connections, db
+from . import connections, db, reconcile
 from .config import Settings, settings
 from .connectors import REAL_CONNECTORS
 from .connectors import wildberries
@@ -500,6 +500,9 @@ async def sync_all(config: Settings | None = None) -> list[SyncResult]:
                         errors={"sync": f"{type(exc).__name__}"},
                     )
                 )
+        for store in stores:
+            await reconcile.log_check(store.id, store.title)
+
         for result in results:
             log.info(
                 "Выгружено %s: %s; в базе %s%s",

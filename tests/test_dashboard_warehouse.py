@@ -728,3 +728,26 @@ async def test_wider_column_set_forces_a_full_finance_download(store, monkeypatc
     monkeypatch.setattr(wildberries, "FINANCE_FIELDS_VERSION", 99)
     await warehouse.sync_store(store, settings)
     assert asked[2] == asked[0]
+
+
+async def test_source_check_lines_up_both_wildberries_sources(store, monkeypatch):
+    """Дни, покрытые обоими источниками, должны сходиться — сверка
+    показывает итоги рядом, чтобы расхождение было видно сразу."""
+    from dashboard import reconcile
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    row = sale(yesterday, "a", price=1000.0)
+    row["priceWithDisc"] = 1000.0
+    mock_wb(monkeypatch, wb_handler(
+        sales=[row], orders=[],
+        finance_rows=[finance(yesterday, 1, price=1000.0)],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    check = await reconcile.check_day(store.id, yesterday)
+
+    assert check["статистика"]["выкупы:priceWithDisc"] == 1000
+    assert check["финотчёт"]["выкупы:retailAmount"] == 1000
+    assert check["финотчёт"]["типы строк"] == {"Продажа": 1}
