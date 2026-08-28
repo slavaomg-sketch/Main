@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
+from . import inbox
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -258,6 +259,41 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
             "rows": sum(probe.get("rows") or 0 for probe in probes),
         },
     }
+
+
+# --- входящие: обращения покупателей --------------------------------------------
+
+
+@guarded.get("/inbox")
+async def read_inbox() -> dict[str, Any]:
+    """Всё, что ждёт ответа: отзывы, вопросы, заявки — по всем магазинам."""
+    return await inbox.collect(settings)
+
+
+@guarded.post("/inbox/answer")
+async def answer_inbox(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    """Отправить ответ покупателю. Действие публичное и необратимое —
+    поэтому вызывается только по явному нажатию в панели."""
+    account = str(payload.get("accountId") or "").strip()
+    kind = str(payload.get("kind") or "").strip()
+    item_id = str(payload.get("id") or "").strip()
+    text = str(payload.get("text") or "").strip()
+
+    if not (account and kind and item_id and text):
+        raise HTTPException(status_code=400, detail="Не хватает данных для ответа")
+    if kind not in {chapter for chapter, _ in inbox.CHAPTERS}:
+        raise HTTPException(status_code=400, detail="Неизвестный раздел входящих")
+
+    try:
+        await inbox.reply(account, kind, item_id, text, settings)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Магазин не найден") from exc
+    except Exception as exc:  # noqa: BLE001 — площадка могла отказать
+        raise HTTPException(
+            status_code=502, detail=f"Площадка не приняла ответ: {type(exc).__name__}"
+        ) from exc
+
+    return {"ok": True}
 
 
 @guarded.post("/cache/clear")
