@@ -1,0 +1,19 @@
+# Мост между панелью маркетплейсов и Codex CLI.
+#
+# Служба пользователя, а не системы: Codex авторизован под обычным
+# пользователем, и мост обязан работать от него же. Права root не нужны.
+# Автозапуск после перезагрузки обеспечивает `loginctl enable-linger`.
+
+[Unit]
+Description=Мост между панелью маркетплейсов и Codex CLI
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/wb-agent
+ExecStart=/usr/bin/python3 %h/wb-agent/codex-worker.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

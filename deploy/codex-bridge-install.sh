@@ -12,7 +12,7 @@
 #   1) создаёт почтовый ящик ~/wb-agent (очередь, ответы, рабочий каталог);
 #   2) открывает доступ к нему пользователю панели;
 #   3) кладёт сам мост в ~/wb-agent/codex-worker.py;
-#   4) прописывает автозапуск после перезагрузки и проверку раз в минуту;
+#   4) заводит службу пользователя, чтобы мост поднимался сам;
 #   5) запускает мост прямо сейчас.
 
 set -euo pipefail
@@ -21,7 +21,9 @@ AGENT_DIR="${WB_AGENT_DIR:-$HOME/wb-agent}"
 APP_USER="${APP_USER:-mpdashboard}"
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codex-worker.py"
 WORKER="$AGENT_DIR/codex-worker.py"
-KEEPER="$AGENT_DIR/keep-alive.sh"
+UNIT_SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codex-bridge.service"
+UNIT_DIR="$HOME/.config/systemd/user"
+SERVICE="codex-bridge"
 
 say() { printf '  %s\n' "$1"; }
 
@@ -48,35 +50,35 @@ fi
 install -m 0755 "$SOURCE" "$WORKER"
 say "мост установлен: $WORKER"
 
-# Сторож: если моста нет в списке процессов — поднять. Дёшево и надёжнее,
-# чем systemd-служба, для которой понадобился бы root.
-cat > "$KEEPER" <<KEEPEOF
-#!/usr/bin/env bash
-# Поднимает мост к Codex, если тот не работает. Вызывается из cron.
-pgrep -f "codex-worker.py" >/dev/null 2>&1 && exit 0
-cd "$AGENT_DIR"
-nohup python3 "$WORKER" >>"$AGENT_DIR/worker.out" 2>&1 &
-KEEPEOF
-chmod 0755 "$KEEPER"
+# Служба пользователя: сама поднимется после перезагрузки и после сбоя.
+# Работает от того же пользователя, что и Codex, — иначе он не найдёт свою
+# авторизацию. Системная служба тут не подошла бы: она требует root.
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
-# Задания cron ставим без дублей: старые строки про мост убираем.
-current="$(crontab -l 2>/dev/null | grep -v 'wb-agent/keep-alive.sh' || true)"
-{
-    [ -n "$current" ] && printf '%s\n' "$current"
-    printf '@reboot %s\n' "$KEEPER"
-    printf '* * * * * %s\n' "$KEEPER"
-} | crontab -
-say "автозапуск прописан (после перезагрузки и проверка раз в минуту)"
+mkdir -p "$UNIT_DIR"
+install -m 0644 "$UNIT_SOURCE" "$UNIT_DIR/$SERVICE.service"
 
-"$KEEPER"
+systemctl --user daemon-reload
+systemctl --user enable "$SERVICE" >/dev/null 2>&1 || true
+systemctl --user restart "$SERVICE"
+say "служба $SERVICE запущена"
+
+# Без «задержки» служб пользователя мост умрёт при выходе из сервера.
+if [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" != "yes" ]; then
+    echo
+    echo "ВНИМАНИЕ: мост остановится, когда вы выйдете из сервера."
+    echo "Выполните один раз:  sudo loginctl enable-linger $USER"
+fi
+
 sleep 2
-if pgrep -f "codex-worker.py" >/dev/null 2>&1; then
-    say "мост запущен"
+if systemctl --user is-active --quiet "$SERVICE"; then
+    say "мост работает"
 else
-    echo "Мост не поднялся. Смотрите $AGENT_DIR/worker.out" >&2
+    echo "Мост не поднялся. Журнал:  journalctl --user -u $SERVICE -n 30" >&2
     exit 1
 fi
 
 echo
 echo "Готово. Панель кладёт задания в $AGENT_DIR/queue,"
 echo "мост отвечает в $AGENT_DIR/answers, журнал — $AGENT_DIR/worker.log"
+echo "Состояние службы:  systemctl --user status $SERVICE"
