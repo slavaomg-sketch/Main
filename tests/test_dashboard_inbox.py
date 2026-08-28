@@ -169,3 +169,30 @@ async def test_unknown_chapter_is_refused(monkeypatch):
     mock_inbox(monkeypatch, handler_for())
     with pytest.raises(ValueError):
         await WildberriesInbox({"token": "t"}).answer("почта", "1", "текст")
+
+
+# --- черновики помощника --------------------------------------------------------
+
+
+async def test_collect_remembers_items_for_the_agent(store, monkeypatch):
+    """Черновик пишется по тексту, который панель получила от площадки сама,
+    а не по тому, что прислал браузер."""
+    mock_inbox(monkeypatch, handler_for(feedbacks=[FEEDBACK], questions=[QUESTION]))
+    await inbox.collect(settings)
+
+    found = inbox.find(store.id, "feedback", "f1")
+    assert found is not None
+    assert "перестал работать" in found.text
+    assert inbox.find(store.id, "feedback", "нет такого") is None
+    # Ключ учитывает главу: у отзыва и вопроса номера могут совпасть.
+    assert inbox.find(store.id, "question", "f1") is None
+
+
+async def test_empty_collect_forgets_previous_items(store, monkeypatch):
+    mock_inbox(monkeypatch, handler_for(feedbacks=[FEEDBACK]))
+    await inbox.collect(settings)
+    assert inbox.find(store.id, "feedback", "f1") is not None
+
+    await conn.update(store.id, enabled=False)
+    await inbox.collect(settings)
+    assert inbox.find(store.id, "feedback", "f1") is None

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import inbox
+from . import agent, inbox
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -267,7 +267,35 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
 @guarded.get("/inbox")
 async def read_inbox() -> dict[str, Any]:
     """Всё, что ждёт ответа: отзывы, вопросы, заявки — по всем магазинам."""
-    return await inbox.collect(settings)
+    payload = await inbox.collect(settings)
+    # Панель показывает кнопку черновика, только если помощник на связи.
+    payload["agent"] = agent.available(settings)
+    return payload
+
+
+@guarded.post("/inbox/draft")
+async def draft_inbox(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    """Черновик ответа от помощника. Никуда не отправляется — только в поле."""
+    account = str(payload.get("accountId") or "").strip()
+    kind = str(payload.get("kind") or "").strip()
+    item_id = str(payload.get("id") or "").strip()
+
+    if not (account and kind and item_id):
+        raise HTTPException(status_code=400, detail="Не хватает данных для черновика")
+
+    item = inbox.find(account, kind, item_id)
+    if item is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Обращение не найдено — обновите входящие и попробуйте снова",
+        )
+
+    try:
+        written = await agent.draft(item.to_dict(), item.account_title, settings)
+    except agent.AgentUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return written.to_dict()
 
 
 @guarded.post("/inbox/answer")

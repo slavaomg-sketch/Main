@@ -19,7 +19,9 @@
     drafts: {},          // набранные, но не отправленные ответы
     sending: {},         // обращения, по которым ответ уже улетел
     confirming: {},      // нажали «Отправить» — ждём подтверждения
-    answered: {}         // на что уже ответили в этом сеансе
+    answered: {},        // на что уже ответили в этом сеансе
+    drafting: {},        // помощник сейчас пишет черновик
+    hints: {}            // предупреждения помощника «тут нужен человек»
   };
 
   var host = null;
@@ -137,6 +139,31 @@
       });
   }
 
+  /* --- черновик от помощника ------------------------------------------------ */
+
+  function askDraft(item) {
+    var id = key(item);
+    state.drafting[id] = true;
+    delete state.hints[id];
+    render();
+
+    Api.draftInbox(item.accountId, item.kind, item.id)
+      .then(function (written) {
+        delete state.drafting[id];
+        state.drafts[id] = written.answer || '';
+        if (written.needsHuman) {
+          state.hints[id] = written.why ||
+            'Помощник не уверен в ответе — проверьте его сами.';
+        }
+        render();
+      })
+      .catch(function (error) {
+        delete state.drafting[id];
+        render();
+        toast(error.message);
+      });
+  }
+
   /* --- карточка обращения --------------------------------------------------- */
 
   function answeredCard(item, text) {
@@ -185,6 +212,13 @@
     var id = key(item);
     var box = Fmt.el('div', 'inbox-card__reply');
 
+    if (state.hints[id]) {
+      var hint = Fmt.el('div', 'inbox-card__hint');
+      hint.appendChild(Fmt.el('strong', null, 'Проверьте сами. '));
+      hint.appendChild(Fmt.el('span', null, state.hints[id]));
+      box.appendChild(hint);
+    }
+
     var area = document.createElement('textarea');
     area.className = 'inbox-card__input';
     area.rows = 3;
@@ -205,6 +239,17 @@
     box.appendChild(area);
 
     var foot = Fmt.el('div', 'inbox-card__foot');
+
+    if (state.data && state.data.agent) {
+      var ask = Fmt.el('button', 'btn btn--ghost');
+      ask.type = 'button';
+      ask.appendChild(Fmt.el('span', null,
+        state.drafting[id] ? 'Помощник пишет…' : 'Черновик от помощника'));
+      ask.disabled = !!state.drafting[id] || !!state.sending[id];
+      ask.addEventListener('click', function () { askDraft(item); });
+      foot.appendChild(ask);
+    }
+
     foot.appendChild(Fmt.el('span', 'inbox-card__note',
       'Ответ увидят все покупатели, отозвать его нельзя'));
 

@@ -33,6 +33,23 @@ CHAPTERS: tuple[tuple[str, str], ...] = (
 
 CHAPTER_TITLES = dict(CHAPTERS)
 
+# Последняя выдача `collect`, разложенная по ключу обращения. Нужна, чтобы
+# черновик писался по тексту, который панель получила от площадки сама,
+# а не по тому, что прислал браузер.
+_seen: dict[tuple[str, str, str], InboxItem] = {}
+
+
+def remember(items: list[InboxItem]) -> None:
+    """Запомнить обращения текущей выдачи."""
+    _seen.clear()
+    for item in items:
+        _seen[(item.account_id, item.kind, str(item.id))] = item
+
+
+def find(account_id: str, kind: str, item_id: str) -> InboxItem | None:
+    """Найти обращение среди тех, что панель показывала последними."""
+    return _seen.get((account_id, kind, str(item_id)))
+
 
 def _connector(store: connections.Connection, config: Settings) -> WildberriesInbox:
     return WildberriesInbox(store.credentials(config))
@@ -76,6 +93,7 @@ async def collect(config: Settings | None = None) -> dict[str, Any]:
     ]
 
     if not stores:
+        _seen.clear()
         return {"chapters": [], "total": 0, "urgent": 0, "stores": []}
 
     gathered = await asyncio.gather(
@@ -91,6 +109,8 @@ async def collect(config: Settings | None = None) -> dict[str, Any]:
         found, store_errors = outcome
         items.extend(found)
         errors.update({f"{store.id}:{key}": value for key, value in store_errors.items()})
+
+    remember(items)
 
     chapters = []
     for kind, title in CHAPTERS:

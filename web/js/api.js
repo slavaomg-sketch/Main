@@ -65,6 +65,10 @@
     },
 
     inbox: function () { return request('GET', '/api/inbox'); },
+    draftInbox: function (accountId, kind, id) {
+      return request('POST', '/api/inbox/draft',
+                     { accountId: accountId, kind: kind, id: id });
+    },
     answerInbox: function (accountId, kind, id, text) {
       return request('POST', '/api/inbox/answer',
                      { accountId: accountId, kind: kind, id: id, text: text });

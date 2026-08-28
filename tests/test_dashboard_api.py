@@ -503,3 +503,60 @@ def test_store_filter_does_not_blank_out_other_marketplaces(client, monkeypatch)
     assert [store.id for store in kept] == ["wb2", "oz1"]
     # Без выбора остаются все.
     assert len(conn.narrow(stores, ())) == 3
+
+
+# --- черновики помощника --------------------------------------------------------
+
+
+def test_draft_needs_a_known_item(client):
+    """Черновик пишется только по обращению, которое панель уже показывала."""
+    answer = client.post("/api/inbox/draft", json={
+        "accountId": "нет", "kind": "feedback", "id": "f1",
+    })
+    assert answer.status_code == 404
+    assert "обновите входящие" in answer.json()["detail"].lower()
+
+
+def test_draft_refuses_incomplete_request(client):
+    assert client.post("/api/inbox/draft", json={"kind": "feedback"}).status_code == 400
+
+
+def test_draft_reports_a_sleeping_bridge(client, monkeypatch, tmp_path):
+    """Мост к Codex не запущен — панель обязана сказать это словами,
+    а не молчать и не выдумывать ответ."""
+    from dashboard import agent, inbox
+    from dashboard.connectors.wb_inbox import InboxItem
+
+    inbox.remember([InboxItem(kind="feedback", id="f1", text="Всё плохо",
+                              account_id="wb1", account_title="ВБ Вячеслав")])
+
+    async def refuse(*args, **kwargs):
+        raise agent.AgentUnavailable("Помощник не ответил вовремя")
+
+    monkeypatch.setattr(agent, "draft", refuse)
+    answer = client.post("/api/inbox/draft", json={
+        "accountId": "wb1", "kind": "feedback", "id": "f1",
+    })
+
+    assert answer.status_code == 503
+    assert "не ответил вовремя" in answer.json()["detail"]
+
+
+def test_draft_returns_the_text_and_the_warning(client, monkeypatch):
+    from dashboard import agent, inbox
+    from dashboard.connectors.wb_inbox import InboxItem
+
+    inbox.remember([InboxItem(kind="claim", id="c1", text="Верните деньги",
+                              account_id="wb1", account_title="ВБ Вячеслав")])
+
+    async def write(item, title, config):
+        assert item["text"] == "Верните деньги"
+        assert title == "ВБ Вячеслав"
+        return agent.Draft(answer="Разберёмся.", needs_human=True, why="речь о деньгах")
+
+    monkeypatch.setattr(agent, "draft", write)
+    payload = client.post("/api/inbox/draft", json={
+        "accountId": "wb1", "kind": "claim", "id": "c1",
+    }).json()
+
+    assert payload == {"answer": "Разберёмся.", "needsHuman": True, "why": "речь о деньгах"}
