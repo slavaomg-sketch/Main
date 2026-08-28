@@ -47,9 +47,12 @@ function scatter(g, seed, opts) {
   for (var y = 2; y < h - 2; y++) {
     for (var x = 2; x < w - 2; x++) {
       if (g[y][x] !== '.' || inKeep(x, y)) continue;
-      if (g[y + 1] && g[y + 1][x] === ' ') continue;            // не вешаем над пустотой
+      var under = g[y + 1] && g[y + 1][x];
+      if (under === ' ') continue;                               // не вешаем над пустотой
       var r = rnd();
-      if (r < (opts.zonk === undefined ? 0.16 : opts.zonk) && y % 2 === 1) { g[y][x] = 'O'; zonks++; }
+      // камень кладём только на грунт: лежащий на стене съезжает с её края,
+      // стоит рядом копнуть, и заваливает залы непредсказуемо
+      if (r < (opts.zonk === undefined ? 0.16 : opts.zonk) && y % 2 === 1 && under === '.') { g[y][x] = 'O'; zonks++; }
       else if (r > 0.93) { g[y][x] = '*'; infos++; }
     }
   }
@@ -58,7 +61,20 @@ function scatter(g, seed, opts) {
 function pillars(g, x0, y0, x1, y1, step) {
   for (var x = x0; x <= x1; x += (step || 3)) for (var y = y0; y <= y1; y += 2) if (g[y] && g[y][x] === '.') g[y][x] = '#';
 }
+/**
+ * Расчищает пятачок вокруг клетки, засыпая его грунтом: грунт не катится и
+ * не даёт катиться другим, поэтому выход не запечатает раскатившимися камнями.
+ */
+function clearAround(g, cx, cy, rx, ry) {
+  for (var y = cy - (ry || 1); y <= cy + (ry || 1); y++) {
+    for (var x = cx - (rx || 2); x <= cx + (rx || 2); x++) {
+      if (!g[y] || g[y][x] === undefined) continue;
+      if (g[y][x] === 'O' || g[y][x] === '#') g[y][x] = '.';
+    }
+  }
+}
+
 function toMap(g) { return g.map(function (r) { return r.join(''); }); }
 function count(map, c) { return map.join('').split(c).length - 1; }
 
-module.exports = { field: field, stamp: stamp, rect: rect, rng: rng, scatter: scatter, pillars: pillars, toMap: toMap, count: count };
+module.exports = { field: field, stamp: stamp, rect: rect, rng: rng, scatter: scatter, pillars: pillars, clearAround: clearAround, toMap: toMap, count: count };
