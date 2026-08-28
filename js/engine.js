@@ -18,8 +18,10 @@
   // и убежать физически невозможно.
   var SHAKE_TICKS = 4;
 
+  // С чего предмет может скатиться вбок. Стена сюда входит: камень, лежащий
+  // на ровной твёрдой поверхности, съезжает с её края, если сбоку и наискось пусто.
   function isRounded(t) {
-    return t === T.ZONK || t === T.INFOTRON || t === T.CHIP || t === T.ORANGE;
+    return t === T.ZONK || t === T.INFOTRON || t === T.CHIP || t === T.ORANGE || t === T.WALL;
   }
   function isFaller(t) {
     return t === T.ZONK || t === T.INFOTRON || t === T.ORANGE;

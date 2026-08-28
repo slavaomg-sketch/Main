@@ -14,6 +14,8 @@ var path = require('path');
 var lib = require(path.join(__dirname, 'lib.js'));
 var LEVELS = require(path.join(__dirname, '..', 'js', 'levels.js')).LEVELS;
 
+var hintPath = path.join(__dirname, '..', 'levels', 'verify-hints.json');
+var hints = fs.existsSync(hintPath) ? JSON.parse(fs.readFileSync(hintPath, 'utf8')) : {};
 var solPath = path.join(__dirname, '..', 'levels', 'solutions.json');
 var solutions = fs.existsSync(solPath) ? JSON.parse(fs.readFileSync(solPath, 'utf8')) : {};
 
@@ -34,7 +36,8 @@ LEVELS.forEach(function (lv) {
     fails++;
     return;
   }
-  var a = lib.autopilot(lv, { limit: 2000 });
+  var hint = hints[String(lv.id)] || {};
+  var a = lib.autopilot(lv, { limit: 9000, noPushInto: hint.noPushInto });
   if (a.ok) {
     console.log('OK   ' + label + ' — автопилот прошёл за ' + a.steps + ' тиков');
     if (save) { solutions[String(lv.id)] = a.moves; }
