@@ -125,8 +125,12 @@ FINANCE_FIELDS = (
     "paidStorage",
     "paidAcceptance",
     "rebillLogisticCost",
+    # Главная строка расходов: «Услуги по доставке товара покупателю».
+    "deliveryService",
     "deliveryAmount",
     "returnAmount",
+    # Подсказывает, чем именно является строка: логистика, штраф, корректировка.
+    "bonusTypeName",
     # Товар
     "nmId",
     "vendorCode",
@@ -137,7 +141,7 @@ FINANCE_FIELDS = (
 # Меняется вместе с набором полей выше и с тем, как строки раскладываются
 # по дням. Если в базе лежит выгрузка, сделанная по старым правилам, её
 # нужно повторить целиком — иначе старые месяцы останутся как были.
-FINANCE_FIELDS_VERSION = 4
+FINANCE_FIELDS_VERSION = 5
 
 # Ответ статистики: (дата начала выборки, когда получен, строки)
 _responses: dict[tuple[str, str], tuple[date, float, list[dict[str, Any]]]] = {}

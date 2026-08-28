@@ -86,6 +86,7 @@ def finance_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
         # логистика, хранение, приёмка, штрафы. Считаем их по всем строкам.
         totals["все:forPay"] += _num(row, "forPay")
         for name, key in (
+            ("доставка", "deliveryService"),
             ("логистика", "rebillLogisticCost"),
             ("хранение", "paidStorage"),
             ("приёмка", "paidAcceptance"),
@@ -101,7 +102,9 @@ def finance_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
         result.get("все:forPay", 0.0)
         - sum(
             result.get(f"все:{name}", 0.0)
-            for name in ("логистика", "хранение", "приёмка", "штрафы", "удержания")
+            for name in (
+                "доставка", "логистика", "хранение", "приёмка", "штрафы", "удержания"
+            )
         )
         + result.get("все:доплаты", 0.0),
         2,
@@ -162,6 +165,7 @@ async def months(connection_id: str, back: int = 14, today: date | None = None) 
         result[start.strftime("%Y-%m")] = {
             "оборот": round(turnover),
             "кПеречислению": round(for_pay),
+            "доставка": round(totals.get("все:доставка", 0.0)),
             "логистика": round(totals.get("все:логистика", 0.0)),
             "хранение": round(totals.get("все:хранение", 0.0)),
             "приёмка": round(totals.get("все:приёмка", 0.0)),
