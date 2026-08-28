@@ -110,6 +110,42 @@ async def check_day(connection_id: str, day: date) -> dict[str, Any]:
     }
 
 
+async def months(connection_id: str, back: int = 14, today: date | None = None) -> dict[str, Any]:
+    """Помесячный разрез отчёта реализации: сколько выкуплено и сколько
+    из этого дошло до продавца.
+
+    Нужен, чтобы отличить настоящее изменение условий площадки от ошибки
+    разметки: настоящее меняется плавно, ошибка — обрывом.
+    """
+    from . import warehouse
+    from .models import shift_months
+
+    today = today or date.today()
+    result: dict[str, Any] = {}
+
+    for step in range(back):
+        start = shift_months(today.replace(day=1), step)
+        end = shift_months(today.replace(day=1), step - 1) - timedelta(days=1)
+        rows = await warehouse.read_rows(
+            connection_id, "finance", Period(date_from=start, date_to=end)
+        )
+        totals = finance_totals(rows)
+        bought = totals.get("выкупы:retailAmount", 0.0)
+        for_pay = totals.get("выкупы:forPay", 0.0)
+        if not bought:
+            continue
+        result[start.strftime("%Y-%m")] = {
+            "выкупы": round(bought),
+            "оборот": round(totals.get("выкупы:retailPriceWithDisc×кол", 0.0)),
+            "кПеречислению": round(for_pay),
+            "доля": round(for_pay / bought * 100, 1),
+            "комиссия": round(totals.get("выкупы:комиссия", 0.0)),
+            "эквайринг": round(totals.get("выкупы:эквайринг", 0.0)),
+            "строк": totals.get("выкупы:строк", 0),
+        }
+    return result
+
+
 async def log_check(connection_id: str, title: str, today: date | None = None) -> None:
     """Записать сверку в журнал. Ошибка здесь не должна ломать выгрузку."""
     today = today or date.today()
@@ -120,3 +156,8 @@ async def log_check(connection_id: str, title: str, today: date | None = None) -
             log.warning("Сверка источников %s не удалась: %s", title, exc)
             return
         log.info("Сверка источников %s: %s", title, report)
+
+    try:
+        log.info("Помесячно %s: %s", title, await months(connection_id, today=today))
+    except Exception as exc:  # noqa: BLE001 — сверка не важнее выгрузки
+        log.warning("Помесячная сверка %s не удалась: %s", title, exc)
