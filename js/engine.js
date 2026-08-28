@@ -404,6 +404,11 @@
     if (this.fuse === 0) return;
     this.fuse--;
     if (this.fuse > 0) return;
+    // Заряд в руках слушает тот же сигнал: с бомбой в кармане кнопку не жмут.
+    if (this.murphy.carry && this.murphy.alive) {
+      this.murphy.carry = 0;
+      this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+    }
     var spots = [];
     for (var i = 0; i < this.tiles.length; i++) if (isCharge(this.tiles[i])) spots.push(i);
     for (var k = 0; k < spots.length; k++) {
