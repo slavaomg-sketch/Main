@@ -1,0 +1,42 @@
+# Шаблон systemd-юнита веб-панели. Плейсхолдеры подставляет
+# deploy/dashboard-install.sh — вручную править и копировать не нужно.
+
+[Unit]
+Description=Marketplace dashboard (web)
+Documentation=https://github.com/slavaomg-sketch/Main
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+ExecStart=__APP_DIR__/.venv/bin/python -m dashboard.main
+
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=marketplace-dashboard
+
+# Панели нужен исходящий HTTPS к маркетплейсам и своя папка data.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=__APP_DIR__/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

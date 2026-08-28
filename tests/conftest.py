@@ -55,3 +55,16 @@ class FakeBot:
 @pytest.fixture
 def fake_bot() -> FakeBot:
     return FakeBot()
+
+
+@pytest.fixture
+def dashboard_db(tmp_path):
+    """Панель пишет раскладки во временную базу — настройки заморожены,
+    поэтому подменяем поле напрямую и возвращаем прежнее значение после теста."""
+    from dashboard.config import settings as dashboard_settings
+
+    path = tmp_path / "dashboard.db"
+    original = dashboard_settings.db_path
+    object.__setattr__(dashboard_settings, "db_path", path)
+    yield path
+    object.__setattr__(dashboard_settings, "db_path", original)

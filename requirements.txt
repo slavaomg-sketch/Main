@@ -1,5 +1,13 @@
+# Телеграм-бот напоминаний
 aiogram==3.31.0
-aiosqlite==0.20.0
 APScheduler==3.11.0
+
+# Веб-панель маркетплейсов
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+
+# Общее
+aiosqlite==0.20.0
 python-dotenv==1.0.1
 tzdata==2025.2

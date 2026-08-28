@@ -1,8 +1,27 @@
 services:
+  dashboard:
+    build: .
+    container_name: marketplace-dashboard
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DASHBOARD_DB_PATH: /app/data/dashboard.db
+      DASHBOARD_HOST: 0.0.0.0
+      DASHBOARD_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+
+  # Телеграм-бот напоминаний — независимая часть репозитория.
+  # Не нужен для панели: поднимайте только при необходимости
+  #   docker compose up -d bot
   bot:
     build: .
     container_name: reminder-bot
     restart: unless-stopped
+    profiles: ["bot"]
+    command: ["python", "-m", "bot.main"]
     env_file: .env
     environment:
       DB_PATH: /app/data/bot.db
