@@ -24,6 +24,7 @@ HELP = (
     "📋 <b>Мои напоминания</b> — список того, что вам приходит, и время получения.\n"
     "📚 <b>Каталог</b> — общие напоминания компании; можно подписаться на необязательные.\n"
     "➕ <b>Своё напоминание</b> — личный чек-лист с вашим временем.\n"
+    "💬 <b>Комментарий</b> — кнопка под напоминанием: пояснить, почему пункт не сделан.\n"
     "📊 <b>Моя статистика</b> — как вы отмечались последние 7 дней.\n"
     "⚙️ <b>Настройки</b> — часовой пояс (важно, чтобы напоминания приходили вовремя).\n\n"
     "Команды: /start, /menu, /my, /help"
@@ -47,32 +48,64 @@ def render_delivery(
     scheduled_time: str,
     finalized: bool = False,
     skipped: bool = False,
+    comment: str | None = None,
 ) -> str:
     """Текст напоминания, присланного сотруднику."""
-    head = "🚫" if skipped else ("✅" if finalized else "🔔")
+    done_count = sum(1 for item in items if item["is_done"])
+    complete = not items or done_count == len(items)
+
+    if skipped:
+        head = "🚫"
+    elif finalized:
+        head = "✅" if complete else "🟡"
+    else:
+        head = "🔔"
     lines = [f"{head} <b>{escape(title)}</b>", f"<i>Напоминание на {scheduled_time}</i>"]
 
     if description:
         lines += ["", escape(description)]
 
     if items:
-        done = sum(1 for item in items if item["is_done"])
-        lines += ["", f"<b>Чек-лист</b> — {done}/{len(items)} ({percent(done, len(items))}%)"]
+        lines += [
+            "",
+            f"<b>Чек-лист</b> — {done_count}/{len(items)} "
+            f"({percent(done_count, len(items))}%)",
+        ]
         for item in items:
             mark = "✅" if item["is_done"] else "◻️"
             text = escape(item["text"])
             lines.append(f"{mark} <s>{text}</s>" if item["is_done"] else f"{mark} {text}")
 
+    if comment:
+        lines += ["", f"💬 <i>{escape(comment)}</i>"]
+
     lines.append("")
     if skipped:
         lines.append("<i>Отмечено как невыполненное. Попадёт в вечерний отчёт.</i>")
-    elif finalized:
+    elif finalized and complete:
         lines.append("<i>Принято, спасибо! Записал в отчёт.</i>")
+    elif finalized:
+        lines.append(
+            f"<i>Записал {done_count} из {len(items)}. "
+            "Невыполненные пункты попадут в отчёт — можно пояснить причину кнопкой ниже.</i>"
+        )
     elif items:
         lines.append("<i>Отметьте выполненные пункты и нажмите «Готово».</i>")
     else:
         lines.append("<i>Нажмите «Выполнено», когда сделаете.</i>")
     return "\n".join(lines)
+
+
+COMMENT_PROMPT = (
+    "💬 <b>Комментарий к «{title}»</b>\n\n"
+    "Напишите ответным сообщением, что помешало или что стоит знать руководителю.\n"
+    "<i>Текст попадёт в вечерний отчёт. Чтобы стереть комментарий, отправьте «-».</i>"
+)
+
+SKIP_PROMPT = (
+    "🚫 Отметил «{title}» как невыполненное.\n\n"
+    "<b>Напишите причину</b> — она попадёт в отчёт и снимет лишние вопросы."
+)
 
 
 def render_nudge(title: str, scheduled_time: str) -> str:

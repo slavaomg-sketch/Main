@@ -89,6 +89,10 @@ async def build_daily_report(conn: aiosqlite.Connection, local_date: str) -> str
         lines.append(f"☑️ Пунктов чек-листов: <b>{items_done}/{items_total}</b>")
     lines.append(f"⏱ Среднее время реакции: <b>{format_minutes(_avg(reactions))}</b>")
 
+    commented = sum(1 for delivery in deliveries if delivery["comment"])
+    if commented:
+        lines.append(f"💬 С пояснением сотрудника: <b>{commented}</b>")
+
     for user_id, user_deliveries in by_user.items():
         name = escape(user_deliveries[0]["full_name"])
         username = user_deliveries[0]["username"]
@@ -122,6 +126,9 @@ async def build_daily_report(conn: aiosqlite.Connection, local_date: str) -> str
             if delivery["status"] in ("partial", "missed") and delivery["items_total"]:
                 for item in await repo.undone_items(conn, delivery["id"]):
                     lines.append(f"        ◻️ {escape(item['text'])}")
+
+            if delivery["comment"]:
+                lines.append(f"        💬 <i>{escape(delivery['comment'])}</i>")
 
     idle = [
         employee

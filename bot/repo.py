@@ -580,3 +580,17 @@ async def count_subscribers(conn: aiosqlite.Connection, reminder_id: int) -> int
     ) as cur:
         row = await cur.fetchone()
     return int(row["n"]) if row else 0
+
+
+async def set_delivery_comment(
+    conn: aiosqlite.Connection, delivery_id: int, comment: str | None
+) -> None:
+    """Сохраняет пояснение сотрудника. Пустая строка стирает комментарий."""
+    text = (comment or "").strip()[:500] or None
+    await conn.execute(
+        "UPDATE deliveries SET comment = ?, commented_at = ? WHERE id = ?",
+        (text, utc_iso() if text else None, delivery_id),
+    )
+    await conn.commit()
+    if text:
+        await touch_first_response(conn, delivery_id)

@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
     first_response_at TEXT,
     completed_at     TEXT,
     nudged_at        TEXT,
+    comment          TEXT,          -- пояснение сотрудника, попадает в отчёт
+    commented_at     TEXT,
     UNIQUE (subscription_id, local_date, scheduled_time),
     FOREIGN KEY (subscription_id) REFERENCES subscriptions (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (tg_id) ON DELETE CASCADE
@@ -109,6 +111,24 @@ CREATE INDEX IF NOT EXISTS idx_items_rem     ON checklist_items (reminder_id, po
 """
 
 
+# Столбцы, добавленные после первого релиза. Для новых баз они уже есть в SCHEMA,
+# для работающих — доставляются здесь, чтобы обновление не требовало ручных действий.
+MIGRATIONS: list[tuple[str, str, str]] = [
+    ("deliveries", "comment", "comment TEXT"),
+    ("deliveries", "commented_at", "commented_at TEXT"),
+]
+
+
+async def _apply_migrations(conn: aiosqlite.Connection) -> None:
+    for table, column, ddl in MIGRATIONS:
+        async with conn.execute(f"PRAGMA table_info({table})") as cur:
+            existing = {row["name"] for row in await cur.fetchall()}
+        if column not in existing:
+            await conn.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+            log.info("Миграция: в таблицу %s добавлен столбец %s", table, column)
+    await conn.commit()
+
+
 async def connect(db_path: str | Path) -> aiosqlite.Connection:
     """Открывает соединение, создаёт файл и схему при первом запуске."""
     path = Path(db_path)
@@ -119,5 +139,6 @@ async def connect(db_path: str | Path) -> aiosqlite.Connection:
     conn.row_factory = aiosqlite.Row
     await conn.executescript(SCHEMA)
     await conn.commit()
+    await _apply_migrations(conn)
     log.info("База данных готова: %s", path)
     return conn

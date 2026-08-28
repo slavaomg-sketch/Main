@@ -85,3 +85,29 @@ def test_chunk_splits_long_text_without_breaking_lines():
 
 def test_chunk_keeps_short_text_intact():
     assert reports.chunk("коротко") == ["коротко"]
+
+
+async def test_report_shows_employee_comments(conn):
+    await repo.upsert_user(conn, tg_id=100, full_name="Иван Петров", username=None, tz="UTC")
+
+    partial = await _deliver(conn, 100, "Обход зала", "13:00", ["Витрина", "Склад"])
+    items = await repo.list_delivery_items(conn, partial)
+    await repo.toggle_delivery_item(conn, items[0]["id"])
+    await repo.set_delivery_comment(conn, partial, "Склад был закрыт, ключи у Сергея")
+    await repo.finalize_delivery(conn, partial)
+
+    text = await reports.build_daily_report(conn, "2026-08-27")
+
+    assert "💬 С пояснением сотрудника: <b>1</b>" in text
+    assert "Склад был закрыт, ключи у Сергея" in text
+    assert "◻️ Склад" in text
+
+
+async def test_comment_is_escaped_in_report(conn):
+    """Сотрудник может написать что угодно — разметка не должна ломаться."""
+    await repo.upsert_user(conn, tg_id=100, full_name="Иван", username=None, tz="UTC")
+    delivery_id = await _deliver(conn, 100, "Обход", "09:00", ["Касса"])
+    await repo.set_delivery_comment(conn, delivery_id, "<b>сломать</b> & разметку")
+
+    text = await reports.build_daily_report(conn, "2026-08-27")
+    assert "&lt;b&gt;сломать&lt;/b&gt; &amp; разметку" in text

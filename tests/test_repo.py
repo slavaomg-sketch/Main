@@ -151,3 +151,92 @@ async def test_deleting_reminder_keeps_history(conn):
 
     assert await repo.list_subscriptions(conn, 100) == []
     assert len(await repo.deliveries_for_date(conn, "2026-08-27")) == 1, "история должна сохраниться"
+
+
+async def test_comment_is_saved_trimmed_and_erasable(conn):
+    await _employee(conn, 100)
+    reminder_id = await repo.create_reminder(
+        conn, "Обход", None, "personal", 100, "09:00", "1,2,3,4,5,6,7", False
+    )
+    sub_id = await repo.subscribe(conn, 100, reminder_id, "09:00")
+    delivery_id = await repo.create_delivery(
+        conn, sub_id, 100, reminder_id, "Обход", "2026-08-27", "09:00"
+    )
+    await repo.mark_delivery_sent(conn, delivery_id, 1)
+
+    await repo.set_delivery_comment(conn, delivery_id, "  Не завезли товар  ")
+    delivery = await repo.get_delivery(conn, delivery_id)
+    assert delivery["comment"] == "Не завезли товар"
+    assert delivery["commented_at"] is not None
+    # Комментарий — это тоже реакция сотрудника, время ответа должно засчитаться.
+    assert delivery["first_response_at"] is not None
+
+    await repo.set_delivery_comment(conn, delivery_id, None)
+    delivery = await repo.get_delivery(conn, delivery_id)
+    assert delivery["comment"] is None
+    assert delivery["commented_at"] is None
+
+
+async def test_long_comment_is_cut_to_limit(conn):
+    await _employee(conn, 100)
+    reminder_id = await repo.create_reminder(
+        conn, "Обход", None, "personal", 100, "09:00", "1,2,3,4,5,6,7", False
+    )
+    sub_id = await repo.subscribe(conn, 100, reminder_id, "09:00")
+    delivery_id = await repo.create_delivery(
+        conn, sub_id, 100, reminder_id, "Обход", "2026-08-27", "09:00"
+    )
+
+    await repo.set_delivery_comment(conn, delivery_id, "я" * 900)
+    assert len((await repo.get_delivery(conn, delivery_id))["comment"]) == 500
+
+
+async def test_migration_adds_comment_columns_to_old_database(tmp_path):
+    """База, созданная до появления комментариев, должна обновиться сама."""
+    import sqlite3
+
+    from bot import db
+
+    # Схема ровно та, что была в первом релизе, — без comment и commented_at.
+    path = tmp_path / "legacy.db"
+    legacy = sqlite3.connect(path)
+    legacy.executescript(
+        """
+        CREATE TABLE deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            reminder_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            scheduled_time TEXT NOT NULL,
+            sent_at TEXT,
+            chat_message_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'sent',
+            first_response_at TEXT,
+            completed_at TEXT,
+            nudged_at TEXT
+        );
+        INSERT INTO deliveries
+            (subscription_id, user_id, reminder_id, title, local_date, scheduled_time, status)
+        VALUES (1, 100, 1, 'Старое напоминание', '2026-08-01', '09:00', 'done');
+        """
+    )
+    legacy.commit()
+    legacy.close()
+
+    conn = await db.connect(path)
+
+    delivery = await repo.get_delivery(conn, 1)
+    assert delivery["title"] == "Старое напоминание", "старые записи должны уцелеть"
+    assert delivery["status"] == "done"
+    assert delivery["comment"] is None
+
+    await repo.set_delivery_comment(conn, 1, "теперь можно пояснять")
+    assert (await repo.get_delivery(conn, 1))["comment"] == "теперь можно пояснять"
+
+    # Повторное подключение не должно пытаться добавить столбцы ещё раз.
+    await conn.close()
+    again = await db.connect(path)
+    assert (await repo.get_delivery(again, 1))["comment"] == "теперь можно пояснять"
+    await again.close()

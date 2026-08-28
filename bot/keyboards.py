@@ -58,7 +58,10 @@ def back_to(target: str, text: str = "‹ Назад") -> InlineKeyboardMarkup:
 
 
 def delivery_keyboard(
-    delivery_id: int, items: Sequence[aiosqlite.Row], finalized: bool = False
+    delivery_id: int,
+    items: Sequence[aiosqlite.Row],
+    finalized: bool = False,
+    has_comment: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
@@ -66,6 +69,11 @@ def delivery_keyboard(
         done = sum(1 for item in items if item["is_done"])
         label = "✅ Отмечено" if not items or done == len(items) else f"🟡 Отмечено {done}/{len(items)}"
         builder.button(text=label, callback_data=DoneCb(action="noop", delivery_id=delivery_id))
+        # Пояснение можно дописать и после закрытия — руководителю важно «почему».
+        builder.button(
+            text="💬 " + ("Изменить комментарий" if has_comment else "Добавить комментарий"),
+            callback_data=DoneCb(action="comment", delivery_id=delivery_id),
+        )
         builder.adjust(1)
         return builder.as_markup()
 
@@ -77,12 +85,18 @@ def delivery_keyboard(
         )
     builder.adjust(1)
 
+    comment_button = InlineKeyboardButton(
+        text="💬 " + ("Комментарий ✓" if has_comment else "Комментарий"),
+        callback_data=DoneCb(action="comment", delivery_id=delivery_id).pack(),
+    )
+
     if items:
         builder.row(
             InlineKeyboardButton(
                 text="☑️ Отметить всё",
                 callback_data=DoneCb(action="all", delivery_id=delivery_id).pack(),
-            )
+            ),
+            comment_button,
         )
         builder.row(
             InlineKeyboardButton(
@@ -95,6 +109,7 @@ def delivery_keyboard(
             ),
         )
     else:
+        builder.row(comment_button)
         builder.row(
             InlineKeyboardButton(
                 text="✅ Выполнено",
@@ -105,6 +120,16 @@ def delivery_keyboard(
                 callback_data=DoneCb(action="skip", delivery_id=delivery_id).pack(),
             ),
         )
+    return builder.as_markup()
+
+
+def comment_prompt_keyboard(delivery_id: int) -> InlineKeyboardMarkup:
+    """Показывается, пока бот ждёт текст комментария."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="Пропустить", callback_data=DoneCb(action="comment_skip", delivery_id=delivery_id)
+    )
+    builder.adjust(1)
     return builder.as_markup()
 
 

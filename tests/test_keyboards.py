@@ -69,10 +69,32 @@ def test_delivery_keyboard_with_and_without_items():
 
 
 def test_delivery_keyboard_is_locked_after_finish():
+    """Отмечаться повторно нельзя, но пояснить причину можно и после закрытия."""
     items = [_row(id=1, text="Пункт", is_done=1)]
     markup = keyboards.delivery_keyboard(7, items, finalized=True)
     labels = [button.text for row in markup.inline_keyboard for button in row]
-    assert labels == ["✅ Отмечено"]
+
+    assert labels == ["✅ Отмечено", "💬 Добавить комментарий"]
+    assert "done:finish" not in "".join(_all_callback_data(markup))
+
+
+def test_comment_button_marks_existing_comment():
+    items = [_row(id=1, text="Пункт", is_done=0)]
+    labels = [
+        button.text
+        for row in keyboards.delivery_keyboard(7, items, has_comment=True).inline_keyboard
+        for button in row
+    ]
+    assert "💬 Комментарий ✓" in labels
+
+    finalized = [
+        button.text
+        for row in keyboards.delivery_keyboard(
+            7, items, finalized=True, has_comment=True
+        ).inline_keyboard
+        for button in row
+    ]
+    assert "💬 Изменить комментарий" in finalized
 
 
 def test_long_titles_do_not_break_callback_limits():

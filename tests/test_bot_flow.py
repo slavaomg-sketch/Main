@@ -371,3 +371,117 @@ async def test_admin_report_command(dp, bot, session, conn):
     await send(dp, bot, ADMIN_ID, "/report", name="Босс")
 
     assert "Отчёт за" in session.last_text()
+
+
+async def _prepare_delivery(conn, title="Обход", items=("Касса", "Журнал")):
+    reminder_id = await repo.create_reminder(
+        conn, title, None, "personal", EMPLOYEE_ID, "09:00", "1,2,3,4,5,6,7", False
+    )
+    await repo.set_checklist(conn, reminder_id, list(items))
+    sub_id = await repo.subscribe(conn, EMPLOYEE_ID, reminder_id, "09:00")
+    delivery_id = await repo.create_delivery(
+        conn, sub_id, EMPLOYEE_ID, reminder_id, title, "2026-08-27", "09:00"
+    )
+    await repo.mark_delivery_sent(conn, delivery_id, 555)
+    return delivery_id
+
+
+async def test_employee_adds_comment_to_reminder(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+
+    session.clear()
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    assert "Комментарий" in session.last_text()
+
+    await send(dp, bot, EMPLOYEE_ID, "Не завезли товар, перенёс на завтра")
+
+    delivery = await repo.get_delivery(conn, delivery_id)
+    assert delivery["comment"] == "Не завезли товар, перенёс на завтра"
+    assert "Записал" in session.last_text()
+
+
+async def test_comment_can_be_edited_and_erased(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    await send(dp, bot, EMPLOYEE_ID, "Первая версия")
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] == "Первая версия"
+
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    await send(dp, bot, EMPLOYEE_ID, "Уточнение: поставщик подвёл")
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] == "Уточнение: поставщик подвёл"
+
+    session.clear()
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    await send(dp, bot, EMPLOYEE_ID, "-")
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] is None
+    assert "удалён" in session.last_text()
+
+
+async def test_comment_can_be_added_after_reminder_is_closed(dp, bot, session, conn):
+    """Пояснить «почему не сделал» нужно уметь и после закрытия."""
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+    await click(dp, bot, EMPLOYEE_ID, f"done:finish:{delivery_id}")
+    assert (await repo.get_delivery(conn, delivery_id))["completed_at"] is not None
+
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    await send(dp, bot, EMPLOYEE_ID, "Журнал заполнил позже")
+
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] == "Журнал заполнил позже"
+
+
+async def test_skip_asks_for_reason_and_saves_it(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+
+    session.clear()
+    await click(dp, bot, EMPLOYEE_ID, f"done:skip:{delivery_id}")
+    assert "Напишите причину" in "".join(session.texts())
+
+    await send(dp, bot, EMPLOYEE_ID, "Был на другой точке")
+
+    delivery = await repo.get_delivery(conn, delivery_id)
+    assert delivery["status"] == "missed"
+    assert delivery["comment"] == "Был на другой точке"
+
+
+async def test_comment_can_be_declined(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+
+    await click(dp, bot, EMPLOYEE_ID, f"done:skip:{delivery_id}")
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment_skip:{delivery_id}")
+
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] is None
+
+    # Состояние сброшено: следующее сообщение снова обычная команда, а не комментарий.
+    session.clear()
+    await send(dp, bot, EMPLOYEE_ID, "/my")
+    assert "Мои напоминания" in session.last_text()
+
+
+async def test_comment_state_does_not_swallow_cancel(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    delivery_id = await _prepare_delivery(conn)
+
+    await click(dp, bot, EMPLOYEE_ID, f"done:comment:{delivery_id}")
+    session.clear()
+    await send(dp, bot, EMPLOYEE_ID, "/cancel")
+
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] is None
+    assert "не сохранён" in session.last_text()
+
+
+async def test_cannot_comment_on_someone_elses_reminder(dp, bot, session, conn):
+    await send(dp, bot, EMPLOYEE_ID, "/start")
+    await send(dp, bot, 200, "/start", name="Мария")
+    delivery_id = await _prepare_delivery(conn)
+
+    session.clear()
+    await click(dp, bot, 200, f"done:comment:{delivery_id}", name="Мария")
+
+    assert any("чужое" in alert for alert in session.alerts())
+    assert (await repo.get_delivery(conn, delivery_id))["comment"] is None
