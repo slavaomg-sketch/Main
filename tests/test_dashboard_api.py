@@ -483,3 +483,22 @@ def test_unknown_store_filter_falls_back_to_all(client, monkeypatch):
     _two_wb_stores(client, monkeypatch)
     payload = client.get("/api/overview?preset=today&stores=нет-такого").json()
     assert payload["totals"]["revenue"] == 1300
+
+
+def test_store_filter_does_not_blank_out_other_marketplaces(client, monkeypatch):
+    """Выбор кабинета — это выбор внутри площадки. Переключившись на один
+    магазин Wildberries, руководитель не должен терять из виду Ozon."""
+    from dashboard import connections as conn
+    from dashboard.connections import Connection
+
+    stores = [
+        Connection(id="wb1", marketplace="wildberries", title="ВБ Вячеслав"),
+        Connection(id="wb2", marketplace="wildberries", title="ВБ Наталья"),
+        Connection(id="oz1", marketplace="ozon", title="Ozon WAAC"),
+    ]
+
+    kept = conn.narrow(stores, ("wb2",))
+
+    assert [store.id for store in kept] == ["wb2", "oz1"]
+    # Без выбора остаются все.
+    assert len(conn.narrow(stores, ())) == 3

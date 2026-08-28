@@ -96,9 +96,11 @@ async def overview(
     codes = normalize_codes(marketplaces)
     all_stores = await conn.load(settings)
 
-    # Фильтр по магазинам: пусто — считаем все кабинеты вместе.
+    # Фильтр по магазинам сужает выбор внутри своей площадки и только там.
+    # Иначе выбор кабинета Wildberries молча обнулял бы Ozon: у него в
+    # отфильтрованном списке не осталось бы ни одного магазина.
     picked = normalize_stores(stores, all_stores)
-    selected = [store for store in all_stores if store.id in picked] if picked else all_stores
+    selected = conn.narrow(all_stores, picked)
 
     snapshot = await build_snapshot(
         period,

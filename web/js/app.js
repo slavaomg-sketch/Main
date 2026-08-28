@@ -164,6 +164,16 @@
 
   function renderMarketplaceChips(list) {
     Fmt.clear(dom.marketplaces);
+
+    // Скрытые площадки хранятся списком, а показанные вычисляются от него:
+    // площадка, у которой только что появились ключи, включается сама.
+    var hidden = readStorage('dashboard.hidden', '');
+    var hiddenSet = new Set(hidden ? hidden.split(',') : []);
+    var visible = list
+      .map(function (item) { return item.code; })
+      .filter(function (code) { return !hiddenSet.has(code); });
+    state.selected = visible.length === list.length ? null : new Set(visible);
+
     list.forEach(function (item) {
       var chip = Fmt.el('button', 'chip');
       chip.type = 'button';
@@ -191,7 +201,10 @@
           return;
         }
         state.selected = codes.size === list.length ? null : codes;
-        writeStorage('dashboard.marketplaces', state.selected ? Array.from(codes).join(',') : '');
+        var hidden = list
+          .map(function (item) { return item.code; })
+          .filter(function (code) { return !codes.has(code); });
+        writeStorage('dashboard.hidden', hidden.join(','));
         renderMarketplaceChips(list);
         loadData();
       });
@@ -928,8 +941,17 @@
     } else if (state.preset === 'custom') {
       state.preset = '30d';
     }
-    var codes = readStorage('dashboard.marketplaces', '');
-    state.selected = codes ? new Set(codes.split(',')) : null;
+    // Раньше хранился список показанных площадок — переносим его в новый вид.
+    var legacy = readStorage('dashboard.marketplaces', '');
+    if (legacy && !readStorage('dashboard.hidden', '')) {
+      var shown = new Set(legacy.split(','));
+      var all = ['wildberries', 'ozon', 'yandex', 'ali'];
+      writeStorage('dashboard.hidden', all.filter(function (code) {
+        return !shown.has(code);
+      }).join(','));
+      writeStorage('dashboard.marketplaces', '');
+    }
+    state.selected = null;
     state.store = readStorage('dashboard.store', '');
     state.skipToday = readStorage('dashboard.skipToday', '') === '1';
   }

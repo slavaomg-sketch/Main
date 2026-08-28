@@ -206,6 +206,27 @@ async def get(connection_id: str, config: Settings | None = None) -> Connection 
     return None
 
 
+def narrow(connections: list[Connection], picked: tuple[str, ...]) -> list[Connection]:
+    """Оставить выбранные магазины, не трогая другие площадки.
+
+    Выбор кабинета — это выбор внутри площадки. У площадки, чьих магазинов
+    в выборе нет, остаются все: иначе, переключившись на «ВБ Наталья»,
+    руководитель терял бы из виду весь Ozon.
+    """
+    if not picked:
+        return list(connections)
+
+    chosen = set(picked)
+    touched = {
+        connection.marketplace for connection in connections if connection.id in chosen
+    }
+    return [
+        connection
+        for connection in connections
+        if connection.marketplace not in touched or connection.id in chosen
+    ]
+
+
 def active(connections: list[Connection], codes: tuple[str, ...]) -> list[Connection]:
     """Подключения, у которых есть все обязательные ключи и которые не выключены."""
     return [
