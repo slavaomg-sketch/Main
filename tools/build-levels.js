@@ -70,6 +70,7 @@ levels.forEach(function (lv, n) {
   out.push('      name: ' + JSON.stringify(lv.name) + ',');
   out.push('      hint: ' + JSON.stringify(lv.hint) + ',');
   out.push('      needed: ' + lv.needed + ',');
+  if (lv.gravity) out.push('      gravity: true,');
   out.push('      map: [');
   out.push(lv.map.map(function (r) { return '        ' + JSON.stringify(r); }).join(',\n'));
   out.push('      ]');
