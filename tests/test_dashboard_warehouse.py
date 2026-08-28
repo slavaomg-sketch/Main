@@ -652,3 +652,42 @@ async def test_next_finance_sync_only_asks_for_recent_changes(store, monkeypatch
 
     # Второй заход начинается от последнего сохранённого дня с перекрытием.
     assert asked[1] == (deep - timedelta(days=warehouse.OVERLAP_DAYS)).isoformat()
+
+
+# --- сверка с личным кабинетом --------------------------------------------------
+
+
+async def test_revenue_is_buyouts_minus_returns_and_both_halves_are_visible(store, monkeypatch):
+    """В приложении Wildberries показывают валовые выкупы. Панель считает
+    выручку чистой, поэтому обе половины должны быть видны по отдельности."""
+    today = date.today()
+    bought = sale(today, "a", price=1000.0)
+    returned = sale(today, "b", price=250.0)
+    returned["saleID"] = "R-b"
+
+    mock_wb(monkeypatch, wb_handler(sales=[bought, returned], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.gross_revenue == 1000
+    assert report.returns_amount == 250
+    assert report.revenue == report.gross_revenue - report.returns_amount == 750
+
+
+async def test_finance_days_also_split_buyouts_and_returns(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[], orders=[],
+        finance_rows=[finance(deep, 1, price=800.0),
+                      finance(deep, 2, price=200.0, doc="Возврат")],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    assert report.gross_revenue == 800
+    assert report.returns_amount == 200
+    assert report.revenue == 600

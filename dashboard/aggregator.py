@@ -52,7 +52,8 @@ def merge_reports(
     merged.accounts = [report.to_account_summary() for report in reports]
 
     for attr in (
-        "revenue", "orders", "units", "returns", "cancellations", "buyouts",
+        "revenue", "gross_revenue", "returns_amount",
+        "orders", "units", "returns", "cancellations", "buyouts",
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
     ):
@@ -119,6 +120,8 @@ def merge_reports(
 def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     """Свод по всем площадкам плюс общий дневной ряд."""
     revenue = _sum(reports, "revenue")
+    gross_revenue = _sum(reports, "gross_revenue")
+    returns_amount = _sum(reports, "returns_amount")
     orders = int(_sum(reports, "orders"))
     units = int(_sum(reports, "units"))
     returns = int(_sum(reports, "returns"))
@@ -144,6 +147,11 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
 
     return {
         "revenue": round(revenue, 2),
+        # Выручка = выкупы − возвраты. Обе половины отдаются наружу, чтобы
+        # цифру можно было сверить с личным кабинетом площадки.
+        "grossRevenue": round(gross_revenue, 2),
+        "returnsAmount": round(returns_amount, 2),
+        "returnsShare": round(returns_amount / gross_revenue * 100, 1) if gross_revenue else 0.0,
         "orders": orders,
         "units": units,
         "returns": returns,
@@ -207,6 +215,8 @@ def build_deltas(
     was = build_totals(previous)
     keys = (
         "revenue",
+        "grossRevenue",
+        "returnsAmount",
         "orders",
         "units",
         "profit",

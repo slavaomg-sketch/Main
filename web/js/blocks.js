@@ -112,6 +112,32 @@
       });
     },
 
+    'kpi.grossRevenue': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metric(body, {
+        value: totals.grossRevenue,
+        format: Fmt.compactMoney,
+        delta: ctx.data.deltas.grossRevenue,
+        footer: Fmt.number(totals.buyouts) + ' ' +
+                Fmt.plural(totals.buyouts, ['выкуп', 'выкупа', 'выкупов']) +
+                ' · до вычета возвратов',
+        color: 'var(--accent)'
+      });
+    },
+
+    'kpi.returnsAmount': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metric(body, {
+        value: totals.returnsAmount,
+        format: Fmt.compactMoney,
+        delta: reverseDelta(ctx.data.deltas.returnsAmount),
+        footer: totals.grossRevenue
+          ? Fmt.percent(totals.returnsShare) + ' от выкупов'
+          : 'оформлено за период',
+        color: 'var(--negative)'
+      });
+    },
+
     'kpi.profit': function (body, ctx) {
       var noCost = !ctx.data.totals.costPrice;
       metric(body, {

@@ -21,6 +21,26 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "revenue",
     },
     {
+        "type": "kpi.grossRevenue",
+        "title": "Выкупы",
+        "group": "Показатели",
+        "description": "Сумма выкупов до вычета возвратов — та же цифра, "
+                       "что показывает приложение маркетплейса.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "revenue",
+    },
+    {
+        "type": "kpi.returnsAmount",
+        "title": "Возвраты, ₽",
+        "group": "Показатели",
+        "description": "Сумма возвратов, оформленных за период. "
+                       "Выкупы минус эта сумма и есть выручка.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "returns",
+    },
+    {
         "type": "kpi.profit",
         "title": "Прибыль",
         "group": "Показатели",
@@ -77,7 +97,7 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
     },
     {
         "type": "kpi.returnRate",
-        "title": "Возвраты",
+        "title": "Процент возвратов",
         "group": "Показатели",
         "description": "Доля возвратов от количества заказов.",
         "sizes": ["sm", "md"],
@@ -219,6 +239,8 @@ VALID_SIZES = {"sm", "md", "lg", "xl"}
 
 DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
     ("kpi.revenue", "sm"),
+    ("kpi.grossRevenue", "sm"),
+    ("kpi.returnsAmount", "sm"),
     ("kpi.payout", "sm"),
     ("kpi.orders", "sm"),
     ("kpi.avgCheck", "sm"),

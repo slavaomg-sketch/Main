@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator
 
 import aiosqlite
 
-from .blocks import default_layout, sanitize_layout
+from .blocks import default_layout, new_block, sanitize_layout
 from .config import settings
 
 SCHEMA = """
@@ -157,12 +157,53 @@ async def _hide_blocks_without_cost_price(db: aiosqlite.Connection) -> None:
     )
 
 
+# Блоки сверки с личным кабинетом площадки: «Выкупы» и «Возвраты, ₽».
+# Без них выручку панели («выкупы минус возвраты») не с чем было сопоставить —
+# в приложении маркетплейса показывают валовые выкупы.
+RECONCILIATION_BLOCKS = ("kpi.grossRevenue", "kpi.returnsAmount")
+
+
+async def _add_reconciliation_blocks(db: aiosqlite.Connection) -> None:
+    """Разовая добавка: поставить «Выкупы» и «Возвраты, ₽» рядом с выручкой."""
+    cursor = await db.execute(
+        "SELECT value FROM preferences WHERE key = 'reconciliation_blocks_added'"
+    )
+    if await cursor.fetchone():
+        return
+
+    cursor = await db.execute("SELECT name, blocks FROM layouts")
+    for row in await cursor.fetchall():
+        blocks = json.loads(row["blocks"])
+        present = {block.get("type") for block in blocks}
+        missing = [item for item in RECONCILIATION_BLOCKS if item not in present]
+        if not missing:
+            continue
+
+        # Ставим сразу за «Выручкой» — там их и ищут глазами.
+        after = next(
+            (index for index, block in enumerate(blocks) if block.get("type") == "kpi.revenue"),
+            len(blocks) - 1,
+        )
+        added = [new_block(item, "sm") for item in missing]
+        blocks[after + 1 : after + 1] = added
+        await db.execute(
+            "UPDATE layouts SET blocks = ? WHERE name = ?",
+            (json.dumps(blocks, ensure_ascii=False), row["name"]),
+        )
+
+    await db.execute(
+        "INSERT OR REPLACE INTO preferences (key, value)"
+        " VALUES ('reconciliation_blocks_added', '1')"
+    )
+
+
 async def init_db() -> None:
     async with connect() as db:
         await _drop_pre_release_credentials(db)
         await db.executescript(SCHEMA)
         await _add_missing_columns(db)
         await _hide_blocks_without_cost_price(db)
+        await _add_reconciliation_blocks(db)
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

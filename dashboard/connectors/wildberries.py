@@ -418,6 +418,13 @@ class WildberriesConnector(HttpConnector):
             point.revenue += sign * amount
             point.units += sign
             report.revenue += sign * amount
+            # Валовые выкупы и сумма возвратов хранятся порознь: в личном
+            # кабинете Wildberries показывают именно выкупы, без вычета
+            # возвратов, и панель должна давать возможность сверить цифры.
+            if is_return:
+                report.returns_amount += amount
+            else:
+                report.gross_revenue += amount
             report.units += sign
             report.payout += sign * for_pay
             if for_pay:
@@ -543,6 +550,10 @@ class WildberriesConnector(HttpConnector):
                 point.returns += quantity
 
             report.revenue += sign * amount
+            if sign < 0:
+                report.returns_amount += amount
+            else:
+                report.gross_revenue += amount
             report.units += sign * quantity
             report.payout += sign * for_pay
             if for_pay:

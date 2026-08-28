@@ -148,3 +148,22 @@ async def test_cache_separates_different_marketplace_sets():
     period = Period.from_preset("today", today=date(2025, 3, 10))
     await cache.put(period, ("ozon",), Snapshot(period=period, reports=[]))
     assert await cache.get(period, ("ozon", "ali")) is None
+
+
+def test_totals_publish_both_halves_of_revenue():
+    """«Выкупы минус возвраты» должно сходиться и в своде по площадкам."""
+    from dashboard.aggregator import build_totals
+    from dashboard.models import MarketplaceReport
+
+    reports = [
+        MarketplaceReport(marketplace="wildberries", title="WB", connected=True, demo=False,
+                          revenue=750, gross_revenue=1000, returns_amount=250, orders=4),
+        MarketplaceReport(marketplace="ozon", title="Ozon", connected=True, demo=False,
+                          revenue=200, gross_revenue=300, returns_amount=100, orders=2),
+    ]
+    totals = build_totals(reports)
+
+    assert totals["grossRevenue"] == 1300
+    assert totals["returnsAmount"] == 350
+    assert totals["revenue"] == totals["grossRevenue"] - totals["returnsAmount"]
+    assert totals["returnsShare"] == pytest.approx(26.9, abs=0.1)

@@ -329,7 +329,12 @@ class MarketplaceReport:
     # глубже, цифры будут неполными, и об этом нужно сказать вслух.
     data_from: date | None = None
 
+    # Выручка — чистая: выкупы за вычетом возвратов. Обе половины хранятся
+    # отдельно, чтобы цифру можно было сверить с личным кабинетом площадки:
+    # там показывают валовые выкупы, без вычета возвратов.
     revenue: float = 0.0
+    gross_revenue: float = 0.0
+    returns_amount: float = 0.0
     orders: int = 0
     units: int = 0
     returns: int = 0
@@ -416,6 +421,8 @@ class MarketplaceReport:
             "warnings": list(self.warnings),
             "dataFrom": self.data_from.isoformat() if self.data_from else "",
             "revenue": _round(self.revenue),
+            "grossRevenue": _round(self.gross_revenue),
+            "returnsAmount": _round(self.returns_amount),
             "orders": int(self.orders),
             "units": int(self.units),
             "returns": int(self.returns),
