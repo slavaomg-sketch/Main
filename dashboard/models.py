@@ -30,6 +30,11 @@ ROLLING_MONTHS = {"quarter": 3, "half": 6, "year": 12}
 
 MONTHS_BACK = {"month": 1, **ROLLING_MONTHS}
 
+# Периоды, которые упираются в сегодня. Сегодняшний день неполный, и его
+# бывает нужно отбросить целиком — иначе неделя это шесть полных суток
+# плюс огрызок, и сравнивать такое не с чем.
+OPEN_ENDED = {"7d", "14d", "30d", "90d", "month", "quarter", "half", "year"}
+
 
 def shift_months(day: date, months: int) -> date:
     """Сдвинуть дату на несколько месяцев назад, не выходя за длину месяца."""
@@ -101,32 +106,44 @@ class Period:
         }
 
     @classmethod
-    def from_preset(cls, preset: str, today: date | None = None) -> "Period":
+    def from_preset(
+        cls, preset: str, today: date | None = None, skip_today: bool = False
+    ) -> "Period":
+        """Период по названию. `skip_today` отбрасывает незавершённые сутки:
+        «7 дней» становится последними семью полными днями, до вчера."""
         today = today or date.today()
+
+        # Отсчитываем от вчера — тогда и длина окна, и его конец сдвигаются.
+        anchor = today - timedelta(days=1) if skip_today else today
 
         # Квартал, полугодие и год отсчитываются назад от сегодня: «Квартал» —
         # последние три месяца, «Полгода» — шесть, «Год» — двенадцать. Так они
         # всегда разной длины и всегда показывают полный отрезок, а не огрызок
         # календарного периода.
         def months_back(months: int) -> date:
-            return shift_months(today, months) + timedelta(days=1)
+            return shift_months(anchor, months) + timedelta(days=1)
 
         presets: dict[str, tuple[date, date]] = {
+            # «Сегодня» и «Вчера» названы датами — их сдвигать нельзя.
             "today": (today, today),
             "yesterday": (today - timedelta(days=1), today - timedelta(days=1)),
-            "7d": (today - timedelta(days=6), today),
-            "14d": (today - timedelta(days=13), today),
-            "30d": (today - timedelta(days=29), today),
-            "90d": (today - timedelta(days=89), today),
-            "month": (today.replace(day=1), today),
-            "quarter": (months_back(ROLLING_MONTHS["quarter"]), today),
-            "half": (months_back(ROLLING_MONTHS["half"]), today),
-            "year": (months_back(ROLLING_MONTHS["year"]), today),
+            "7d": (anchor - timedelta(days=6), anchor),
+            "14d": (anchor - timedelta(days=13), anchor),
+            "30d": (anchor - timedelta(days=29), anchor),
+            "90d": (anchor - timedelta(days=89), anchor),
+            "month": (anchor.replace(day=1), anchor),
+            "quarter": (months_back(ROLLING_MONTHS["quarter"]), anchor),
+            "half": (months_back(ROLLING_MONTHS["half"]), anchor),
+            "year": (months_back(ROLLING_MONTHS["year"]), anchor),
         }
         if preset not in presets:
             preset = "30d"
         date_from, date_to = presets[preset]
-        return cls(date_from=date_from, date_to=date_to, preset=preset)
+
+        # Период, упирающийся в сегодня, неполон — отмечаем это временем
+        # отсечки, чтобы на карточке было видно «до 16:40», а не просто дата.
+        until = datetime.now() if date_to >= date.today() else None
+        return cls(date_from=date_from, date_to=date_to, preset=preset, until=until)
 
 
 @dataclass

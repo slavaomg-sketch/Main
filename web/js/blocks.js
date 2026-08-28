@@ -979,17 +979,21 @@
     }
   };
 
+  /* На каждой карточке подписан её период — иначе, глядя на цифру, нельзя
+     сказать, за что она: за неделю с сегодняшним неполным днём или без него.
+     У показателей рядом стоит и период сравнения: без него «−69%» непонятно —
+     то ли к полному дню, то ли к тому же часу. */
   function subtitle(type, data) {
-    if (type.indexOf('chart.') === 0 || type.indexOf('table.') === 0) {
-      return Fmt.periodLabel(data.period);
+    var period = Fmt.periodLabel(data.period);
+    if (data.period && data.period.until) {
+      period += ' до ' + Fmt.timeLabel(data.period.until);
     }
-    // У показателей подписываем, с чем сравнивается динамика: без этого
-    // «−69%» непонятно — то ли к полному дню, то ли к тому же часу.
+
     if (type.indexOf('kpi.') === 0) {
       var label = comparisonLabel(data);
-      return label ? 'в сравнении с ' + label : '';
+      return label ? period + '  ·  в сравнении с ' + label : period;
     }
-    return '';
+    return period;
   }
 
   global.Blocks = {

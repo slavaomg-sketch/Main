@@ -34,6 +34,7 @@
     to: '',
     selected: null,      // Set кодов площадок; null — все
     store: '',           // id магазина; пусто — все магазины вместе
+    skipToday: false,    // отбросить незавершённые сегодняшние сутки
     storeList: [],
     data: null,
     editing: false,
@@ -50,7 +51,7 @@
 
   function cacheDom() {
     ['gate', 'gate-form', 'gate-password', 'gate-error', 'app', 'tabs', 'periods',
-     'marketplaces', 'stores', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
+     'marketplaces', 'stores', 'skip-today', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
      'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
      'toasts', 'footer-note', 'brand-sub', 'topbar',
@@ -129,10 +130,36 @@
         state.to = '';
         writeStorage('dashboard.preset', period.key);
         renderPeriods();
+        renderSkipToday();
         loadData();
       });
       dom.periods.appendChild(button);
     });
+  }
+
+  /* Сегодняшний день неполный. Для длинных периодов это заметно искажает
+     цифры, поэтому его можно отбросить целиком — одним переключателем. */
+  function renderSkipToday() {
+    Fmt.clear(dom['skip-today']);
+    var open = ['7d', '14d', '30d', '90d', 'month', 'quarter', 'half', 'year'];
+    var applies = open.indexOf(state.preset) !== -1;
+    dom['skip-today'].hidden = !applies;
+    if (!applies) return;
+
+    var chip = Fmt.el('button', 'chip');
+    chip.type = 'button';
+    chip.appendChild(Fmt.el('span', null, 'Без сегодня'));
+    if (state.skipToday) chip.classList.add('is-active');
+    chip.title = state.skipToday
+      ? 'Период считается по вчерашний день включительно'
+      : 'Сегодняшний неполный день входит в период';
+    chip.addEventListener('click', function () {
+      state.skipToday = !state.skipToday;
+      writeStorage('dashboard.skipToday', state.skipToday ? '1' : '');
+      renderSkipToday();
+      loadData();
+    });
+    dom['skip-today'].appendChild(chip);
   }
 
   function renderMarketplaceChips(list) {
@@ -703,6 +730,7 @@
     }
     if (state.selected) params.marketplaces = Array.from(state.selected).join(',');
     if (state.store) params.stores = state.store;
+    if (state.skipToday) params.skipToday = 'true';
 
     return Api.overview(params).then(function (data) {
       state.data = data;
@@ -903,10 +931,12 @@
     var codes = readStorage('dashboard.marketplaces', '');
     state.selected = codes ? new Set(codes.split(',')) : null;
     state.store = readStorage('dashboard.store', '');
+    state.skipToday = readStorage('dashboard.skipToday', '') === '1';
   }
 
   function start() {
     renderPeriods();
+    renderSkipToday();
 
     Promise.all([Api.blocks(), Api.marketplaces()]).then(function (results) {
       state.catalog = results[0].catalog;

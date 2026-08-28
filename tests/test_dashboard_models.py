@@ -221,3 +221,33 @@ def test_covers_respects_the_cutoff():
     assert period.covers(datetime(2025, 3, 9, 11, 59))
     assert not period.covers(datetime(2025, 3, 9, 12, 1))
     assert not period.covers(datetime(2025, 3, 10, 1, 0))
+
+
+# --- незавершённые сутки --------------------------------------------------------
+
+
+def test_open_periods_can_drop_the_unfinished_day():
+    """«7 дней» с сегодняшним днём — это шесть полных суток и огрызок.
+    С отключённым сегодня это семь полных дней, по вчера включительно."""
+    today = date(2026, 8, 28)
+
+    week = Period.from_preset("7d", today=today)
+    assert (week.date_from, week.date_to) == (date(2026, 8, 22), today)
+
+    full = Period.from_preset("7d", today=today, skip_today=True)
+    assert (full.date_from, full.date_to) == (date(2026, 8, 21), date(2026, 8, 27))
+    assert full.days == 7
+
+
+def test_today_and_yesterday_are_never_shifted():
+    """Эти два периода названы датами — сдвигать их было бы обманом."""
+    today = date(2026, 8, 28)
+    assert Period.from_preset("today", today=today, skip_today=True).date_to == today
+    assert Period.from_preset("yesterday", today=today, skip_today=True).date_to == date(2026, 8, 27)
+
+
+def test_period_ending_today_carries_a_cutoff_time():
+    """Период, упирающийся в сегодня, неполон — и говорит об этом."""
+    assert Period.from_preset("7d").until is not None
+    assert Period.from_preset("7d", skip_today=True).until is None
+    assert Period.from_preset("yesterday").until is None

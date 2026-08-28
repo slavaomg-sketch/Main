@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
@@ -64,7 +64,9 @@ async def logout(response: Response) -> dict[str, Any]:
 # --- данные ------------------------------------------------------------------
 
 
-def _period(preset: str, date_from: str | None, date_to: str | None) -> Period:
+def _period(
+    preset: str, date_from: str | None, date_to: str | None, skip_today: bool = False
+) -> Period:
     if date_from and date_to:
         try:
             start = date.fromisoformat(date_from)
@@ -75,8 +77,9 @@ def _period(preset: str, date_from: str | None, date_to: str | None) -> Period:
             start, end = end, start
         if (end - start).days > 366:
             raise HTTPException(status_code=400, detail="Период больше года не поддерживается")
-        return Period(date_from=start, date_to=end, preset="custom")
-    return Period.from_preset(preset)
+        until = datetime.now() if end >= date.today() else None
+        return Period(date_from=start, date_to=end, preset="custom", until=until)
+    return Period.from_preset(preset, skip_today=skip_today)
 
 
 @guarded.get("/overview")
@@ -86,9 +89,10 @@ async def overview(
     date_to: str | None = Query(None, alias="to"),
     marketplaces: str | None = Query(None),
     stores: str | None = Query(None),
+    skip_today: bool = Query(False, alias="skipToday"),
     refresh: bool = Query(False),
 ) -> dict[str, Any]:
-    period = _period(preset, date_from, date_to)
+    period = _period(preset, date_from, date_to, skip_today)
     codes = normalize_codes(marketplaces)
     all_stores = await conn.load(settings)
 
