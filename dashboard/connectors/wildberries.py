@@ -407,7 +407,7 @@ class WildberriesConnector(HttpConnector):
             # saleID начинается с "S" у продажи и с "R" у возврата.
             sale_id = str(row.get("saleID") or "")
             is_return = sale_id.startswith("R") or self.to_float(row.get("finishedPrice")) < 0
-            amount = abs(self.to_float(row.get("finishedPrice") or row.get("totalPrice")))
+            amount = self._price(row)
             for_pay = abs(self.to_float(row.get("forPay")))
 
             # Возврат уменьшает выручку того дня, когда он произошёл:
@@ -614,6 +614,30 @@ class WildberriesConnector(HttpConnector):
         )
 
     # --- остатки -------------------------------------------------------------
+
+    def _price(self, row: dict[str, Any]) -> float:
+        """Цена, от которой считается выручка продавца.
+
+        Wildberries отдаёт по каждой продаже три цены:
+
+        * `totalPrice` — до всех скидок;
+        * `priceWithDisc` — со скидкой продавца. **Это выручка магазина**:
+          именно от неё площадка считает «К перечислению», и именно её
+          показывает приложение Wildberries;
+        * `finishedPrice` — сколько заплатил покупатель, то есть цена после
+          скидки самой площадки (СПП). Эту скидку даёт Wildberries из своих
+          денег, на доход продавца она не влияет.
+
+        Считать выручку по `finishedPrice` — значит занижать её на размер
+        СПП и завышать долю «К перечислению». Поэтому берём `priceWithDisc`,
+        а на остальные цены опираемся, только пока она не заполнена: WB
+        подтягивает эти поля до суток и до тех пор отдаёт ноль.
+        """
+        for field_name in ("priceWithDisc", "finishedPrice", "totalPrice"):
+            value = abs(self.to_float(row.get(field_name)))
+            if value:
+                return value
+        return 0.0
 
     def _sku(self, row: dict[str, Any]) -> str:
         return str(row.get("supplierArticle") or row.get("nmId") or "—")

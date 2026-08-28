@@ -551,3 +551,27 @@ def test_rows_after_the_cutoff_are_not_counted():
 
     assert report.revenue == 100      # вечерняя продажа за отсечкой
     assert report.units == 1
+
+
+# --- какая цена считается выручкой ----------------------------------------------
+
+
+def _wb() -> "WildberriesConnector":
+    from dashboard.connectors.wildberries import WildberriesConnector
+
+    return WildberriesConnector({"token": "t"})
+
+
+def test_revenue_is_counted_at_the_seller_price_not_the_buyer_price():
+    """Скидку WB (СПП) площадка даёт из своих денег: выручка продавца
+    считается от цены со скидкой продавца, как и «К перечислению»."""
+    row = {"totalPrice": 1887, "discountPercent": 18, "spp": 26,
+           "priceWithDisc": 1547, "finishedPrice": 1145}
+    assert _wb()._price(row) == 1547
+
+
+def test_price_falls_back_while_wildberries_has_not_filled_it_in():
+    """Первые сутки WB отдаёт нули: считаем по тому, что уже пришло."""
+    assert _wb()._price({"priceWithDisc": 0, "finishedPrice": 1145}) == 1145
+    assert _wb()._price({"priceWithDisc": 0, "finishedPrice": 0, "totalPrice": 1887}) == 1887
+    assert _wb()._price({}) == 0.0
