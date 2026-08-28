@@ -6,6 +6,21 @@
   var Fmt = global.Fmt;
   var Charts = global.Charts;
 
+  // Срез, который сейчас рисуется: нужен, чтобы подписать, с чем сравниваем.
+  var current = null;
+
+  /* Человеческое название периода сравнения: «вчера до 12:31», «1–28 июля». */
+  function comparisonLabel(data) {
+    var previous = data && data.comparedTo;
+    if (!previous) return '';
+
+    var label = Fmt.periodLabel(previous);
+    if (!previous.until) return label;
+
+    var time = Fmt.timeLabel(previous.until);
+    return previous.from === previous.to ? label + ' до ' + time : label + ' до ' + time;
+  }
+
   var ICONS = {
     revenue: '<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
     profit: '<path d="M3 17l6-6 4 4 8-8M21 7v5h-5"/>',
@@ -38,11 +53,13 @@
     if (!delta || delta.change === null || delta.change === undefined) {
       return Fmt.el('span', 'delta', 'нет данных за прошлый период');
     }
+    var label = comparisonLabel(current);
     var up = delta.change >= 0;
     var node = Fmt.el('span', 'delta ' + (up ? 'delta--up' : 'delta--down'));
     node.innerHTML = '<svg viewBox="0 0 12 12">' +
       (up ? '<path d="M6 2l4 6H2z"/>' : '<path d="M6 10L2 4h8z"/>') + '</svg>';
     node.appendChild(Fmt.el('span', null, Fmt.signedPercent(Math.abs(delta.change) * (up ? 1 : -1))));
+    if (label) node.title = 'В сравнении с: ' + label;
     return node;
   }
 
@@ -710,11 +727,18 @@
     if (type.indexOf('chart.') === 0 || type.indexOf('table.') === 0) {
       return Fmt.periodLabel(data.period);
     }
+    // У показателей подписываем, с чем сравнивается динамика: без этого
+    // «−69%» непонятно — то ли к полному дню, то ли к тому же часу.
+    if (type.indexOf('kpi.') === 0) {
+      var label = comparisonLabel(data);
+      return label ? 'в сравнении с ' + label : '';
+    }
     return '';
   }
 
   global.Blocks = {
     render: function (type, body, ctx) {
+      current = ctx.data;
       var renderer = RENDERERS[type];
       if (!renderer) {
         body.appendChild(Charts.emptyState('Неизвестный блок'));

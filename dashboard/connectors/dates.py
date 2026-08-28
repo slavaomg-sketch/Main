@@ -28,6 +28,27 @@ WIDTHS: tuple[tuple[str, int], ...] = tuple(
 )
 
 
+def parse_moment(raw: Any) -> datetime | None:
+    """Разобрать дату вместе со временем — нужно для сравнения «до этого часа»."""
+    text = str(raw or "").strip()
+    if not text:
+        return None
+
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        pass
+
+    for fmt, width in WIDTHS:
+        if len(text) < width:
+            continue
+        try:
+            return datetime.strptime(text[:width], fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def parse_day(raw: Any) -> date | None:
     """Вернуть дату или None, если строку разобрать не удалось."""
     text = str(raw or "").strip()

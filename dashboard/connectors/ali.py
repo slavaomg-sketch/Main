@@ -27,7 +27,7 @@ from ..models import (
     StockAlert,
 )
 from .base import HttpConnector, Probe
-from .dates import parse_day
+from .dates import parse_moment
 
 FALLBACK_COMMISSION = 0.08
 FALLBACK_LOGISTICS = 0.09
@@ -166,9 +166,10 @@ class AliExpressConnector(HttpConnector):
         by_sku: dict[str, Product] = {}
 
         for row in rows:
-            day = parse_day(row.get("gmt_create") or row.get("create_date"))
-            if not day or not (period.date_from <= day <= period.date_to):
+            moment = parse_moment(row.get("gmt_create") or row.get("create_date"))
+            if not moment or not period.covers(moment):
                 continue
+            day = moment.date()
 
             status = str(row.get("order_status") or "").upper()
             if "CANCEL" in status or "CLOSED" in status:

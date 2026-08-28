@@ -1,6 +1,6 @@
 """Периоды, расчётные показатели и приведение отчёта к JSON."""
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -148,3 +148,70 @@ def test_long_periods_compare_with_equal_stretch_before(preset):
     previous = period.previous()
     assert previous.days == period.days
     assert previous.date_to < period.date_from
+
+
+# --- с чем сравнивается период --------------------------------------------------
+
+
+def test_today_compares_with_yesterday_up_to_the_same_hour():
+    """Неполные сутки нельзя сравнивать с полными: цифра краснела бы каждое утро."""
+    now = datetime(2025, 3, 10, 12, 31)
+    period = Period.from_preset("today", today=now.date())
+    previous = period.previous(now=now)
+
+    assert previous.date_from == date(2025, 3, 9)
+    assert previous.date_to == date(2025, 3, 9)
+    assert previous.until == datetime(2025, 3, 9, 12, 31)
+
+
+def test_finished_period_compares_without_a_cutoff():
+    now = datetime(2025, 3, 10, 12, 31)
+    previous = Period.from_preset("yesterday", today=now.date()).previous(now=now)
+    assert previous.until is None
+
+
+def test_month_compares_with_the_same_days_of_the_previous_month():
+    now = datetime(2025, 8, 28, 12, 0)
+    period = Period.from_preset("month", today=now.date())
+    previous = period.previous(now=now)
+
+    assert previous.date_from == date(2025, 7, 1)
+    assert previous.date_to == date(2025, 7, 28)
+
+
+@pytest.mark.parametrize(
+    "preset, expected_from",
+    [
+        ("quarter", date(2025, 4, 1)),   # третий квартал сравнивается со вторым
+        ("half", date(2025, 1, 1)),      # второе полугодие — с первым
+        ("year", date(2024, 1, 1)),      # год — с прошлым годом
+    ],
+)
+def test_calendar_periods_compare_with_the_previous_calendar_stretch(preset, expected_from):
+    now = datetime(2025, 8, 28, 12, 0)
+    previous = Period.from_preset(preset, today=now.date()).previous(now=now)
+    assert previous.date_from == expected_from
+
+
+def test_rolling_window_shifts_by_its_own_length():
+    now = datetime(2025, 3, 10, 12, 0)
+    previous = Period.from_preset("7d", today=now.date()).previous(now=now)
+    assert previous.date_from == date(2025, 2, 25)
+    assert previous.date_to == date(2025, 3, 3)
+
+
+def test_shift_months_does_not_overflow_short_months():
+    from dashboard.models import shift_months
+
+    assert shift_months(date(2025, 3, 31), 1) == date(2025, 2, 28)
+    assert shift_months(date(2024, 3, 31), 1) == date(2024, 2, 29)
+
+
+def test_covers_respects_the_cutoff():
+    period = Period(
+        date_from=date(2025, 3, 9), date_to=date(2025, 3, 9),
+        until=datetime(2025, 3, 9, 12, 0),
+    )
+    assert period.covers(datetime(2025, 3, 9, 11, 59))
+    assert not period.covers(datetime(2025, 3, 9, 12, 1))
+    assert not period.covers(datetime(2025, 3, 10, 1, 0))

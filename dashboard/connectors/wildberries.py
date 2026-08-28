@@ -43,7 +43,7 @@ from ..models import (
     StockAlert,
 )
 from .base import HttpConnector, Probe, RateLimited, Throttle
-from .dates import parse_day
+from .dates import parse_moment
 
 # Ставки, по которым считается юнит-экономика, если API их не отдал.
 FALLBACK_COMMISSION = 0.17
@@ -268,9 +268,10 @@ class WildberriesConnector(HttpConnector):
         by_region: dict[str, RegionSales] = defaultdict(lambda: RegionSales(region=""))
 
         for row in rows:
-            day = parse_day(row.get("date") or row.get("lastChangeDate"))
-            if not day or not (period.date_from <= day <= period.date_to):
+            moment = parse_moment(row.get("date") or row.get("lastChangeDate"))
+            if not moment or not period.covers(moment):
                 continue
+            day = moment.date()
 
             self._remember_article(row)
 
@@ -342,9 +343,10 @@ class WildberriesConnector(HttpConnector):
     ) -> None:
         orders_by_day: dict[date, int] = defaultdict(int)
         for row in rows:
-            day = parse_day(row.get("date") or row.get("lastChangeDate"))
-            if not day or not (period.date_from <= day <= period.date_to):
+            moment = parse_moment(row.get("date") or row.get("lastChangeDate"))
+            if not moment or not period.covers(moment):
                 continue
+            day = moment.date()
             self._remember_article(row)
             if row.get("isCancel"):
                 report.cancellations += 1

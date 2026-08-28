@@ -362,14 +362,16 @@ async def build_snapshot(
     # поэтому более широкая выборка закрывает и текущий период — второй запрос
     # к площадке не понадобится и лимит частоты не сработает.
     previous: list[MarketplaceReport] = []
-    if compare:
-        previous = await collect(period.previous(), codes, config, connections)
+    previous_period = period.previous() if compare else None
+    if previous_period is not None:
+        previous = await collect(previous_period, codes, config, connections)
     reports = await collect(period, codes, config, connections)
 
     snapshot = Snapshot(
         period=period,
         reports=reports,
         previous=previous,
+        previous_period=previous_period,
         currency=config.default_currency,
     )
     if use_cache:

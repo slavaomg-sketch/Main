@@ -22,7 +22,7 @@ from ..models import (
     StockAlert,
 )
 from .base import HttpConnector, Probe
-from .dates import parse_day
+from .dates import parse_moment
 
 FALLBACK_COMMISSION = 0.13
 FALLBACK_LOGISTICS = 0.055
@@ -122,9 +122,10 @@ class YandexConnector(HttpConnector):
         by_region: dict[str, RegionSales] = defaultdict(lambda: RegionSales(region=""))
 
         for row in rows:
-            day = parse_day(row.get("creationDate") or row.get("statusUpdateDate"))
-            if not day or not (period.date_from <= day <= period.date_to):
+            moment = parse_moment(row.get("creationDate") or row.get("statusUpdateDate"))
+            if not moment or not period.covers(moment):
                 continue
+            day = moment.date()
 
             status = str(row.get("status") or "").upper()
             if status in {"CANCELLED", "CANCELED"}:

@@ -527,3 +527,21 @@ async def test_different_stores_do_not_share_cached_answers(monkeypatch):
     )
 
     assert calls["n"] == 2
+
+
+def test_rows_after_the_cutoff_are_not_counted():
+    """Сравнение «сегодня к вчера» обрезает вчерашний день тем же часом."""
+    from datetime import datetime as dt
+
+    connector = WildberriesConnector(credentials("wildberries", token="x"))
+    report = blank("wildberries")
+    connector._apply_sales(report, [
+        {"date": "2025-03-01T10:00:00", "saleID": "S1", "finishedPrice": 100, "forPay": 90,
+         "supplierArticle": "ART-1", "subject": "Кружка"},
+        {"date": "2025-03-01T18:00:00", "saleID": "S2", "finishedPrice": 900, "forPay": 800,
+         "supplierArticle": "ART-1", "subject": "Кружка"},
+    ], Period(date_from=date(2025, 3, 1), date_to=date(2025, 3, 1),
+              until=dt(2025, 3, 1, 12, 0)))
+
+    assert report.revenue == 100      # вечерняя продажа за отсечкой
+    assert report.units == 1

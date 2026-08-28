@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from calendar import monthrange
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -15,26 +16,70 @@ def _round(value: float, digits: int = 2) -> float:
     return round(float(value or 0), digits)
 
 
+# Периоды, которые считаются от начала календарного отрезка. Сравнивать их
+# нужно с тем же отрезком предыдущего месяца, квартала, полугодия или года,
+# а не со «сдвигом на столько же дней назад».
+CALENDAR_PRESETS = {"month", "quarter", "half", "year"}
+
+MONTHS_BACK = {"month": 1, "quarter": 3, "half": 6, "year": 12}
+
+
+def shift_months(day: date, months: int) -> date:
+    """Сдвинуть дату на несколько месяцев назад, не выходя за длину месяца."""
+    month_index = (day.year * 12 + day.month - 1) - months
+    year, month = divmod(month_index, 12)
+    month += 1
+    last_day = monthrange(year, month)[1]
+    return date(year, month, min(day.day, last_day))
+
+
 @dataclass
 class Period:
-    """Отчётный период (границы включительно)."""
+    """Отчётный период (границы включительно).
+
+    `until` отсекает незавершённый день: сегодняшние данные обрываются
+    текущим часом, поэтому и вчерашние для сравнения нужно обрезать тем же
+    часом — иначе неполные сутки сопоставлялись бы с полными.
+    """
 
     date_from: date
     date_to: date
     preset: str = "custom"
+    until: datetime | None = None
 
     @property
     def days(self) -> int:
         return (self.date_to - self.date_from).days + 1
 
-    def previous(self) -> "Period":
-        """Сопоставимый предыдущий период — для расчёта динамики."""
-        length = timedelta(days=self.days)
-        return Period(
-            date_from=self.date_from - length,
-            date_to=self.date_to - length,
-            preset=f"prev:{self.preset}",
-        )
+    def covers(self, moment: datetime) -> bool:
+        """Попадает ли момент времени в период с учётом отсечки."""
+        if not (self.date_from <= moment.date() <= self.date_to):
+            return False
+        return self.until is None or moment <= self.until
+
+    def previous(self, now: datetime | None = None) -> "Period":
+        """Сопоставимый предыдущий период — для расчёта динамики.
+
+        Календарные периоды сравниваются с тем же отрезком прошлого месяца,
+        квартала, полугодия или года: «1–28 августа» с «1–28 июля», а не с
+        «4–31 июля». Скользящие окна сдвигаются на свою длину.
+        """
+        now = now or datetime.now()
+
+        if self.preset in CALENDAR_PRESETS:
+            start = shift_months(self.date_from, MONTHS_BACK[self.preset])
+            end = start + timedelta(days=self.days - 1)
+        else:
+            length = timedelta(days=self.days)
+            start = self.date_from - length
+            end = self.date_to - length
+
+        # Если период упирается в сегодня, он неполный — обрезаем и прошлый.
+        until = None
+        if self.date_to >= now.date():
+            until = datetime.combine(end, now.time())
+
+        return Period(date_from=start, date_to=end, preset=f"prev:{self.preset}", until=until)
 
     def each_day(self) -> list[date]:
         return [self.date_from + timedelta(days=i) for i in range(self.days)]
@@ -45,6 +90,7 @@ class Period:
             "to": self.date_to.isoformat(),
             "preset": self.preset,
             "days": self.days,
+            "until": self.until.isoformat() if self.until else "",
         }
 
     @classmethod
@@ -398,6 +444,7 @@ class Snapshot:
     period: Period
     reports: list[MarketplaceReport]
     previous: list[MarketplaceReport] = field(default_factory=list)
+    previous_period: Period | None = None
     generated_at: datetime = field(default_factory=datetime.utcnow)
     currency: str = "RUB"
 
@@ -406,6 +453,7 @@ class Snapshot:
 
         return {
             "period": self.period.to_dict(),
+            "comparedTo": self.previous_period.to_dict() if self.previous_period else None,
             "currency": self.currency,
             "generatedAt": self.generated_at.replace(microsecond=0).isoformat() + "Z",
             "totals": build_totals(self.reports),
