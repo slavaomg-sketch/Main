@@ -650,19 +650,23 @@ class WildberriesConnector(HttpConnector):
                 continue
             day = moment.date()
             self._remember_article(row)
-            if row.get("isCancel"):
-                report.cancellations += 1
-                continue
-            orders_by_day[day] += 1
-            report.orders += 1
 
-            amount = self._price(row)
+            # Деньги считаются по всем размещённым заказам и по цене до
+            # скидки продавца — так эту сумму показывает приложение WB.
+            amount = self.to_float(row.get("totalPrice")) or self._price(row)
+            report.orders_placed += 1
             report.orders_amount += amount
             parent = self._parent(
                 self._sku(row), str(row.get("subject") or row.get("brand") or "")
             )
             parent.orders += 1
             parent.orders_amount += amount
+
+            if row.get("isCancel"):
+                report.cancellations += 1
+                continue
+            orders_by_day[day] += 1
+            report.orders += 1
 
         for point in report.series:
             point.orders = orders_by_day.get(point.day, 0)

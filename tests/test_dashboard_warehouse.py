@@ -980,3 +980,31 @@ async def test_daily_reports_give_the_amount_that_reaches_the_account(store, mon
     assert report.bank_payment == pytest.approx(46200)
     assert report.report_sale == pytest.approx(71114.82)
     assert report.delivery_cost == pytest.approx(5400)
+
+
+async def test_orders_money_matches_the_marketplace_app(store, monkeypatch):
+    """Приложение WB показывает заказы по цене до скидки продавца и вместе
+    с отменёнными — панель считает так же, чтобы цифры сходились."""
+    today = date.today()
+
+    def make(srid: str, total: float, disc: float, cancel: bool = False) -> dict:
+        row = order(today, srid)
+        row["totalPrice"] = total
+        row["priceWithDisc"] = disc
+        row["isCancel"] = cancel
+        return row
+
+    mock_wb(monkeypatch, wb_handler(sales=[], orders=[
+        make("o1", 1000.0, 750.0),
+        make("o2", 500.0, 400.0),
+        make("o3", 300.0, 250.0, cancel=True),
+    ]))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.orders_placed == 3          # все размещённые
+    assert report.orders == 2                 # принятые, по ним считается выкуп
+    assert report.cancellations == 1
+    assert report.orders_amount == 1800       # 1000 + 500 + 300, до скидки
+    assert report.avg_check == 600

@@ -64,7 +64,8 @@ def merge_reports(
 
     for attr in (
         "revenue", "gross_revenue", "returns_amount", "buyer_paid",
-        "orders", "orders_amount", "units", "returns", "cancellations", "buyouts",
+        "orders", "orders_placed", "orders_amount", "units", "returns",
+        "cancellations", "buyouts",
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
         "balance_current", "balance_for_withdraw", "balance_delta",
@@ -165,6 +166,7 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     returns_amount = _sum(reports, "returns_amount")
     buyer_paid = _sum(reports, "buyer_paid")
     orders = int(_sum(reports, "orders"))
+    placed = int(_sum(reports, "orders_placed")) or orders
     units = int(_sum(reports, "units"))
     returns = int(_sum(reports, "returns"))
     buyouts = int(_sum(reports, "buyouts"))
@@ -218,7 +220,8 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         # Средний чек — по заказам, а не по выкупам: выкуп случается днями
         # позже заказа, и делить одно на другое нечестно.
         "ordersAmount": round(orders_amount, 2),
-        "avgCheck": round(orders_amount / orders, 2) if orders else 0.0,
+        "ordersPlaced": placed,
+        "avgCheck": round(orders_amount / placed, 2) if placed else 0.0,
         "buyoutRate": round(buyouts / orders * 100, 1) if orders else 0.0,
         "returnRate": round(returns / orders * 100, 1) if orders else 0.0,
         "drr": round(ad_spend / revenue * 100, 1) if revenue else 0.0,

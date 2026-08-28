@@ -300,13 +300,17 @@
 
     'kpi.orders': function (body, ctx) {
       var totals = ctx.data.totals;
+      var placed = totals.ordersPlaced || totals.orders;
       metricPair(body, {
-        value: totals.orders,
+        value: placed,
         format: function (value) { return Fmt.number(value) + ' шт'; },
         secondValue: totals.ordersAmount,
         secondFormat: Fmt.compactMoney,
         delta: ctx.data.deltas.orders,
-        footer: 'средний чек ' + Fmt.compactMoney(totals.avgCheck),
+        footer: 'средний чек ' + Fmt.compactMoney(totals.avgCheck) +
+                (totals.cancellations
+                  ? ' · отменено ' + Fmt.number(totals.cancellations)
+                  : ''),
         spark: seriesValues(ctx.data, 'orders'),
         color: 'var(--ozon)'
       });

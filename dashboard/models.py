@@ -377,8 +377,10 @@ class MarketplaceReport:
     # На доход продавца не влияет: разницу площадка берёт на себя.
     buyer_paid: float = 0.0
     orders: int = 0
-    # Сумма заказов за период: заказ и выкуп — разные события, и средний
-    # чек считается именно по заказам.
+    # Заказы в деньгах — по цене до скидки продавца и вместе с отменёнными:
+    # так их показывает приложение Wildberries, и владелец сверяется с ним.
+    # Отдельно живёт `orders` — принятые заказы, по ним считается выкуп.
+    orders_placed: int = 0
     orders_amount: float = 0.0
     units: int = 0
     returns: int = 0
@@ -433,7 +435,8 @@ class MarketplaceReport:
     def avg_check(self) -> float:
         """Средняя сумма заказа. Считается по заказам, а не по выкупам:
         выкуп — уже другое событие, случившееся днями позже."""
-        return self.orders_amount / self.orders if self.orders else 0.0
+        placed = self.orders_placed or self.orders
+        return self.orders_amount / placed if placed else 0.0
 
     @property
     def profit(self) -> float:
@@ -494,6 +497,7 @@ class MarketplaceReport:
             "returnsAmount": _round(self.returns_amount),
             "buyerPaid": _round(self.buyer_paid),
             "orders": int(self.orders),
+            "ordersPlaced": int(self.orders_placed),
             "ordersAmount": _round(self.orders_amount),
             "units": int(self.units),
             "returns": int(self.returns),
