@@ -7,11 +7,13 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 
+from . import connections as conn
 from . import db
 from .aggregator import build_snapshot, cache, normalize_codes
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
-from .connectors import MARKETPLACE_ORDER, build_connector
+from .connectors import MARKETPLACE_ORDER, REAL_CONNECTORS
+from .diagnose import probe_to_dict, secret_values
 from .models import Period
 from .security import COOKIE_NAME, SESSION_TTL, issue_token, is_authenticated, password_matches
 from .security import require_auth
@@ -86,26 +88,139 @@ async def overview(
 ) -> dict[str, Any]:
     period = _period(preset, date_from, date_to)
     codes = normalize_codes(marketplaces)
-    snapshot = await build_snapshot(period, codes, use_cache=not refresh)
+    stores = await conn.load(settings)
+    snapshot = await build_snapshot(
+        period, codes, use_cache=not refresh, connections=stores
+    )
     return snapshot.to_dict()
 
 
 @guarded.get("/marketplaces")
 async def marketplaces() -> dict[str, Any]:
+    stores = await conn.load(settings)
     items = []
     for code in MARKETPLACE_ORDER:
-        credentials = settings.marketplaces[code]
-        connector = build_connector(code)
+        base = settings.marketplaces[code]
+        ready = conn.active(stores, (code,))
         items.append(
             {
                 "code": code,
-                "title": credentials.title,
-                "connected": credentials.configured and not settings.force_demo,
-                "demo": type(connector).__name__ == "DemoConnector",
-                "requires": list(credentials.required),
+                "title": base.title,
+                "connected": bool(ready) and not settings.force_demo,
+                "demo": not ready or settings.force_demo,
+                "stores": len(ready),
+                "storeTitles": [store.title for store in ready],
+                "requires": list(base.required),
             }
         )
     return {"marketplaces": items, "forceDemo": settings.force_demo}
+
+
+# --- магазины и их ключи --------------------------------------------------------
+
+
+async def _connections_payload() -> dict[str, Any]:
+    stores = await conn.load(settings)
+    return {
+        "marketplaces": conn.describe(stores, settings),
+        "authEnabled": settings.auth_enabled,
+        "secretIsDefault": conn.secret_is_default(),
+        "forceDemo": settings.force_demo,
+    }
+
+
+@guarded.get("/connections")
+async def read_connections() -> dict[str, Any]:
+    """Состояние магазинов: что заполнено. Самих ключей здесь нет."""
+    return await _connections_payload()
+
+
+@guarded.post("/connections")
+async def add_connection(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    code = str(payload.get("marketplace") or "")
+    if code not in MARKETPLACE_ORDER:
+        raise HTTPException(status_code=404, detail="Неизвестная площадка")
+    title = str(payload.get("title") or "").strip() or f"{settings.marketplaces[code].title} — магазин"
+    try:
+        created = await conn.create(code, title, settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return dict(await _connections_payload(), created=created.id)
+
+
+@guarded.put("/connections/{connection_id}")
+async def edit_connection(
+    connection_id: str, payload: dict[str, Any] = Body(default_factory=dict)
+) -> dict[str, Any]:
+    try:
+        if "title" in payload or "enabled" in payload:
+            await conn.update(
+                connection_id,
+                title=str(payload["title"]) if "title" in payload else None,
+                enabled=bool(payload["enabled"]) if "enabled" in payload else None,
+            )
+        values = payload.get("values")
+        if isinstance(values, dict):
+            await conn.save_values(
+                connection_id, {str(key): str(value) for key, value in values.items()}
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    await cache.clear()  # следующий запрос должен пойти уже с новыми ключами
+    return await _connections_payload()
+
+
+@guarded.delete("/connections/{connection_id}")
+async def remove_connection(connection_id: str) -> dict[str, Any]:
+    try:
+        await conn.delete(connection_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await cache.clear()
+    return await _connections_payload()
+
+
+@guarded.post("/connections/{connection_id}/test")
+async def test_connection(connection_id: str) -> dict[str, Any]:
+    """Сделать реальные запросы к площадке и вернуть структуру ответа."""
+    store = await conn.get(connection_id, settings)
+    if store is None:
+        raise HTTPException(status_code=404, detail="Магазин не найден")
+
+    credentials = store.credentials(settings)
+    if not credentials.configured:
+        return {
+            "id": store.id,
+            "ok": False,
+            "reason": "Заполните обязательные поля",
+            "missing": store.missing(settings),
+            "probes": [],
+        }
+
+    connector = REAL_CONNECTORS[store.marketplace](credentials)
+    period = Period.from_preset("7d")
+    secrets = secret_values(settings) + [
+        value for value in credentials.values.values() if value and len(value) >= 6
+    ]
+
+    probes = [probe_to_dict(probe, secrets) for probe in await connector.probe(period)]
+    report = await connector.safe_fetch(period)
+
+    return {
+        "id": store.id,
+        "ok": all(probe["ok"] for probe in probes) and not report.error,
+        "period": period.to_dict(),
+        "probes": probes,
+        "summary": {
+            "error": report.error,
+            "days": len(report.series),
+            "orders": report.orders,
+            "products": len(report.products),
+            "hasRevenue": bool(report.revenue),
+            "hasStock": bool(report.stock_units),
+        },
+    }
 
 
 @guarded.post("/cache/clear")

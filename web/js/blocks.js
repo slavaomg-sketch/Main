@@ -26,7 +26,8 @@
     funnel: '<path d="M3 4h18l-7 8v8l-4-2v-6z"/>',
     message: '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
-    plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>'
+    plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>',
+    store: '<path d="M3 9l1.5-5h15L21 9M3 9h18v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>'
   };
 
   function icon(name) {
@@ -325,6 +326,63 @@
       body.appendChild(wrap);
     },
 
+    'table.accounts': function (body, ctx) {
+      var accounts = ctx.data.totals.accounts || [];
+      if (!accounts.length) {
+        body.appendChild(Charts.emptyState('Магазины не подключены'));
+        return;
+      }
+
+      var wrap = Fmt.el('div', 'table-wrap');
+      var table = Fmt.el('table', 'table');
+      var head = Fmt.el('thead');
+      head.innerHTML = '<tr><th>Магазин</th><th>Площадка</th><th>Выручка</th><th>Доля</th>' +
+        '<th>Заказы</th><th>Ср. чек</th><th>Прибыль</th></tr>';
+      table.appendChild(head);
+
+      var tbody = Fmt.el('tbody');
+      accounts.forEach(function (account) {
+        var row = Fmt.el('tr');
+
+        var nameCell = Fmt.el('td', 'is-name');
+        var name = Fmt.el('span', 'cell-mp');
+        var dot = Fmt.el('span', 'cell-mp__dot');
+        dot.style.background = Fmt.colorOf(account.marketplace);
+        name.appendChild(dot);
+        name.appendChild(Fmt.el('span', null, account.title));
+        if (account.error) {
+          var badge = Fmt.el('span', 'badge badge--critical', 'ошибка');
+          badge.title = account.error;
+          name.appendChild(badge);
+        } else if (account.demo) {
+          name.appendChild(Fmt.el('span', 'badge badge--muted', 'демо'));
+        }
+        nameCell.appendChild(name);
+        row.appendChild(nameCell);
+
+        row.appendChild(Fmt.el('td', 'is-muted', Fmt.titleOf(account.marketplace)));
+        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.revenue)));
+        row.appendChild(Fmt.el('td', 'is-muted', Fmt.percent(account.share || 0)));
+        row.appendChild(Fmt.el('td', 'is-muted', Fmt.number(account.orders)));
+        row.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(account.avgCheck)));
+        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.profit)));
+        tbody.appendChild(row);
+      });
+
+      var totals = Fmt.el('tr');
+      totals.innerHTML = '<td><strong>Итого</strong></td><td class="is-muted"></td>' +
+        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.revenue) + '</strong></td>' +
+        '<td class="is-muted">100%</td>' +
+        '<td><strong>' + Fmt.number(ctx.data.totals.orders) + '</strong></td>' +
+        '<td class="is-muted">' + Fmt.compactMoney(ctx.data.totals.avgCheck) + '</td>' +
+        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.profit) + '</strong></td>';
+      tbody.appendChild(totals);
+
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      body.appendChild(wrap);
+    },
+
     'table.topProducts': function (body, ctx) {
       var merged = {};
       ctx.data.marketplaces.forEach(function (report) {
@@ -336,7 +394,8 @@
             revenue: product.revenue,
             units: product.units,
             stock: product.stock,
-            marketplace: report.marketplace
+            marketplace: report.marketplace,
+            account: product.account
           };
         });
       });
@@ -371,7 +430,7 @@
         var dot = Fmt.el('span', 'cell-mp__dot');
         dot.style.background = Fmt.colorOf(row.marketplace);
         mp.appendChild(dot);
-        mp.appendChild(Fmt.el('span', null, Fmt.titleOf(row.marketplace)));
+        mp.appendChild(Fmt.el('span', null, row.account || Fmt.titleOf(row.marketplace)));
         mpCell.appendChild(mp);
         tr.appendChild(mpCell);
 
@@ -407,7 +466,8 @@
 
         var main = Fmt.el('div', 'list__main');
         main.appendChild(Fmt.el('div', 'list__name', alert.name));
-        var meta = Fmt.titleOf(alert.marketplace) + ' · остаток ' + Fmt.number(alert.stock) + ' шт';
+        var meta = (alert.account || Fmt.titleOf(alert.marketplace)) +
+          ' · остаток ' + Fmt.number(alert.stock) + ' шт';
         if (alert.warehouse) meta += ' · ' + alert.warehouse;
         main.appendChild(Fmt.el('div', 'list__meta', meta));
         row.appendChild(main);

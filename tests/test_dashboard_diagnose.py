@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from dashboard import diagnose
+from dashboard.connections import Connection
 from dashboard.config import MarketplaceCredentials, load_settings
 from dashboard.connectors.base import Probe
 from dashboard.connectors.wildberries import WildberriesConnector
@@ -23,6 +24,25 @@ def wb_credentials() -> MarketplaceCredentials:
         code="wildberries", title="Wildberries",
         values={"token": TOKEN}, required=("token",),
     )
+
+
+def wb_store(**overrides) -> Connection:
+    defaults = dict(
+        id="c_test", marketplace="wildberries", title="WB Основной",
+        enabled=True, source="panel", values={"token": TOKEN},
+    )
+    defaults.update(overrides)
+    return Connection(**defaults)
+
+
+def wb_config():
+    config = load_settings()
+    object.__setattr__(config, "marketplaces", {
+        "wildberries": MarketplaceCredentials(
+            code="wildberries", title="Wildberries", values={"token": ""}, required=("token",),
+        )
+    })
+    return config
 
 
 # --- маскирование -------------------------------------------------------------
@@ -152,16 +172,14 @@ async def test_check_reports_working_connection(monkeypatch):
         }])
 
     mock_wildberries(monkeypatch, handler)
-    config = load_settings()
-    object.__setattr__(config, "marketplaces", {"wildberries": wb_credentials()})
-
-    text = "\n".join(await diagnose.check("wildberries", period(), config, with_values=False))
+    text = "\n".join(await diagnose.check(wb_store(), period(), wb_config(), with_values=False))
 
     assert TOKEN not in text
     assert "••••" in text
     assert "строк: 1" in text
     assert "выручка посчитана" in text
     assert "Кружка" not in text and "Москва" not in text
+    assert "WB Основной" in text
 
 
 async def test_check_reports_bad_token_without_leaking_it(monkeypatch):
@@ -169,35 +187,55 @@ async def test_check_reports_bad_token_without_leaking_it(monkeypatch):
         return httpx.Response(401, text=f"invalid token {TOKEN}")
 
     mock_wildberries(monkeypatch, handler)
-    config = load_settings()
-    object.__setattr__(config, "marketplaces", {"wildberries": wb_credentials()})
-
-    text = "\n".join(await diagnose.check("wildberries", period(), config, with_values=False))
+    text = "\n".join(await diagnose.check(wb_store(), period(), wb_config(), with_values=False))
 
     assert "ОШИБКА 401" in text
     assert TOKEN not in text
 
 
-async def test_check_skips_marketplace_without_keys():
+async def test_check_skips_store_without_keys():
     config = load_settings()
     object.__setattr__(config, "marketplaces", {
         "ozon": MarketplaceCredentials(code="ozon", title="Ozon",
                                        values={"client_id": "", "api_key": ""},
                                        required=("client_id", "api_key")),
     })
-    text = "\n".join(await diagnose.check("ozon", period(), config, with_values=False))
+    store = Connection(id="c_1", marketplace="ozon", title="Ozon пустой", values={})
+    text = "\n".join(await diagnose.check(store, period(), config, with_values=False))
     assert "ключи не заданы" in text
     assert "client_id" in text
+
+
+async def test_check_says_when_store_is_switched_off():
+    text = "\n".join(
+        await diagnose.check(wb_store(enabled=False), period(), wb_config(), with_values=False)
+    )
+    assert "выключен" in text
 
 
 async def test_run_rejects_unknown_marketplace():
     assert "Неизвестная площадка" in await diagnose.run(7, "озон", False)
 
 
-async def test_run_covers_all_marketplaces_by_default():
+async def test_run_explains_that_no_stores_are_added(dashboard_db):
+    from dashboard import db
+
+    await db.init_db()
     text = await diagnose.run(7, None, False)
-    for title in ("Wildberries", "Ozon", "Яндекс Маркет", "AliExpress"):
-        assert title in text
+    assert "Магазины не добавлены" in text
+
+
+async def test_run_lists_added_stores(dashboard_db):
+    from dashboard import connections as conn
+    from dashboard import db
+
+    await db.init_db()
+    created = await conn.create("yandex", "Яндекс Основной")
+    await conn.save_values(created.id, {"api_key": "", "campaign_id": ""})
+
+    text = await diagnose.run(7, "yandex", False)
+    assert "Яндекс Основной" in text
+    assert "ключи не заданы" in text
 
 
 # --- вымарывание на уровне коннектора -----------------------------------------

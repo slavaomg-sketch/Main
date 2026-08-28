@@ -1,4 +1,4 @@
-"""Самодиагностика подключений к маркетплейсам.
+"""Самодиагностика магазинов.
 
     python -m dashboard.diagnose
     python -m dashboard.diagnose --days 7 --marketplace ozon
@@ -21,6 +21,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from .config import Settings, load_settings
+from .connections import Connection, load as load_connections
 from .connectors import MARKETPLACE_ORDER, REAL_CONNECTORS
 from .connectors.base import Probe
 from .models import Period
@@ -109,13 +110,43 @@ def describe_probe(probe: Probe, secrets: list[str], with_values: bool) -> list[
     return [f"{head}  →  {probe.status} · {shape(payload)}"]
 
 
-async def check(code: str, period: Period, config: Settings, with_values: bool) -> list[str]:
-    credentials = config.marketplaces[code]
-    lines = [f"\n{credentials.title}"]
+def probe_to_dict(probe: Probe, secrets: list[str]) -> dict[str, Any]:
+    """Тот же разбор, что и в консоли, но для страницы настроек."""
+    result: dict[str, Any] = {
+        "label": probe.label,
+        "ok": probe.ok,
+        "status": probe.status,
+        "error": mask(probe.error, secrets),
+        "rows": None,
+        "fields": [],
+    }
+    if isinstance(probe.payload, list):
+        result["rows"] = len(probe.payload)
+        shapes: dict[str, str] = {}
+        for row in probe.payload[:20]:
+            for key, value in row.items():
+                if key not in shapes or shapes[key] == "null":
+                    shapes[key] = shape(value)
+        result["fields"] = [
+            {"name": key, "shape": shapes[key]} for key in sorted(shapes)[:MAX_FIELDS]
+        ]
+    return result
 
-    missing = [key for key in credentials.required if not credentials.get(key)]
+
+async def check(
+    store: Connection, period: Period, config: Settings, with_values: bool
+) -> list[str]:
+    credentials = store.credentials(config)
+    source = "из .env" if store.source == "env" else "введён в панели"
+    lines = [f"\n{store.title}  ({config.marketplaces[store.marketplace].title}, {source})"]
+
+    if not store.enabled:
+        lines.append("    магазин выключен — панель его не опрашивает")
+        return lines
+
+    missing = store.missing(config)
     if missing:
-        lines.append(f"    ключи не заданы ({', '.join(missing)}) — площадка работает на демо-данных")
+        lines.append(f"    ключи не заданы ({', '.join(missing)}) — магазин не опрашивается")
         return lines
 
     filled = ", ".join(
@@ -123,8 +154,10 @@ async def check(code: str, period: Period, config: Settings, with_values: bool) 
     )
     lines.append(f"    ключи: {filled}")
 
-    connector = REAL_CONNECTORS[code](credentials)
-    secrets = secret_values(config)
+    connector = REAL_CONNECTORS[store.marketplace](credentials)
+    secrets = secret_values(config) + [
+        value for value in credentials.values.values() if value and len(value) >= 6
+    ]
 
     probes = await connector.probe(period)
     for probe in probes:
@@ -166,15 +199,23 @@ async def run(days: int, only: str | None, with_values: bool) -> str:
         return f"Неизвестная площадка: {', '.join(unknown)}. Доступны: {', '.join(MARKETPLACE_ORDER)}"
 
     lines = [
-        "Диагностика подключений к маркетплейсам",
+        "Диагностика магазинов",
         f"Период: {period.date_from} — {period.date_to} ({period.days} дн.)",
         "Ключи в выводе замаскированы, значения показаны как форма (9999-99-99).",
     ]
     if config.force_demo:
         lines.append("ВНИМАНИЕ: DASHBOARD_DEMO=1 — панель всё равно покажет демо-данные.")
 
+    stores = [store for store in await load_connections(config) if store.marketplace in codes]
+    if not stores:
+        lines.append("")
+        lines.append("Магазины не добавлены — панель показывает демо-данные.")
+        lines.append("Добавьте магазины на странице «Ключи» или впишите ключи в .env.")
+        lines.append("")
+        return "\n".join(lines)
+
     results = await asyncio.gather(
-        *(check(code, period, config, with_values) for code in codes)
+        *(check(store, period, config, with_values) for store in stores)
     )
     for result in results:
         lines.extend(result)
@@ -188,7 +229,7 @@ def main() -> None:
         description="Проверить ключи маркетплейсов и посмотреть, что отдаёт их API."
     )
     parser.add_argument("--days", type=int, default=30, help="за сколько дней запрашивать (по умолчанию 30)")
-    parser.add_argument("--marketplace", help="проверить одну площадку: wildberries, ozon, yandex, ali")
+    parser.add_argument("--marketplace", help="проверить магазины одной площадки: wildberries, ozon, yandex, ali")
     parser.add_argument(
         "--values",
         action="store_true",

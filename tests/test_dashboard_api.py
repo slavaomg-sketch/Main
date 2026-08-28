@@ -183,3 +183,109 @@ def test_login_opens_access_and_logout_closes_it(protected_client):
 
     protected_client.post("/api/auth/logout")
     assert protected_client.get("/api/overview?preset=today").status_code == 401
+
+
+# --- магазины и их ключи --------------------------------------------------------
+
+
+def add_store(client, marketplace, title):
+    return client.post("/api/connections", json={"marketplace": marketplace, "title": title}).json()
+
+
+def stores_of(client, code):
+    payload = client.get("/api/connections").json()
+    return [item for item in payload["marketplaces"] if item["code"] == code][0]["connections"]
+
+
+def test_connections_start_empty(client):
+    payload = client.get("/api/connections").json()
+    assert [item["code"] for item in payload["marketplaces"]] == \
+        ["wildberries", "ozon", "yandex", "ali"]
+    assert all(not item["connections"] for item in payload["marketplaces"])
+
+
+def test_two_stores_can_be_added_to_one_marketplace(client):
+    add_store(client, "wildberries", "WB Основной")
+    add_store(client, "wildberries", "WB Второй")
+    titles = [store["title"] for store in stores_of(client, "wildberries")]
+    assert titles == ["WB Основной", "WB Второй"]
+
+
+def test_store_on_unknown_marketplace_is_rejected(client):
+    assert client.post("/api/connections", json={"marketplace": "avito"}).status_code == 404
+
+
+def test_saved_key_comes_back_only_as_a_tail(client):
+    created = add_store(client, "wildberries", "WB")["created"]
+    client.put(f"/api/connections/{created}", json={"values": {"token": "secret-token-7777"}})
+
+    response = client.get("/api/connections")
+    assert "secret-token-7777" not in response.text
+
+    field = stores_of(client, "wildberries")[0]["fields"][0]
+    assert field["filled"] is True
+    assert field["tail"] == "••••7777"
+
+
+def test_store_becomes_configured_when_all_keys_are_in(client):
+    created = add_store(client, "ozon", "Ozon")["created"]
+    client.put(f"/api/connections/{created}", json={"values": {"client_id": "12345"}})
+    assert stores_of(client, "ozon")[0]["configured"] is False
+    assert stores_of(client, "ozon")[0]["missing"] == ["api_key"]
+
+    client.put(f"/api/connections/{created}", json={"values": {"api_key": "key"}})
+    assert stores_of(client, "ozon")[0]["configured"] is True
+
+
+def test_marketplace_reports_number_of_ready_stores(client):
+    first = add_store(client, "wildberries", "WB 1")["created"]
+    second = add_store(client, "wildberries", "WB 2")["created"]
+    client.put(f"/api/connections/{first}", json={"values": {"token": "t1"}})
+    client.put(f"/api/connections/{second}", json={"values": {"token": "t2"}})
+
+    payload = client.get("/api/marketplaces").json()["marketplaces"]
+    wildberries = [item for item in payload if item["code"] == "wildberries"][0]
+    assert wildberries["stores"] == 2
+    assert wildberries["demo"] is False
+    assert [item for item in payload if item["code"] == "yandex"][0]["demo"] is True
+
+
+def test_store_can_be_renamed_and_switched_off(client):
+    created = add_store(client, "wildberries", "Старое")["created"]
+    client.put(f"/api/connections/{created}", json={"values": {"token": "t"}})
+
+    client.put(f"/api/connections/{created}", json={"title": "Новое"})
+    assert stores_of(client, "wildberries")[0]["title"] == "Новое"
+
+    client.put(f"/api/connections/{created}", json={"enabled": False})
+    assert stores_of(client, "wildberries")[0]["enabled"] is False
+
+    payload = client.get("/api/marketplaces").json()["marketplaces"]
+    assert [item for item in payload if item["code"] == "wildberries"][0]["stores"] == 0
+
+
+def test_store_deletion_removes_it_from_the_list(client):
+    created = add_store(client, "wildberries", "WB")["created"]
+    assert client.delete(f"/api/connections/{created}").status_code == 200
+    assert stores_of(client, "wildberries") == []
+
+
+def test_env_store_cannot_be_edited_through_the_page(client):
+    assert client.put("/api/connections/env:wildberries", json={"title": "нет"}).status_code == 400
+    assert client.delete("/api/connections/env:wildberries").status_code == 400
+
+
+def test_testing_a_store_without_keys_asks_to_fill_them(client):
+    created = add_store(client, "ozon", "Ozon")["created"]
+    result = client.post(f"/api/connections/{created}/test").json()
+    assert result["ok"] is False
+    assert result["missing"] == ["client_id", "api_key"]
+
+
+def test_testing_unknown_store_is_not_found(client):
+    assert client.post("/api/connections/c_нет/test").status_code == 404
+
+
+def test_connections_page_requires_login_when_password_is_set(protected_client):
+    assert protected_client.get("/api/connections").status_code == 401
+    assert protected_client.post("/api/connections", json={"marketplace": "ozon"}).status_code == 401

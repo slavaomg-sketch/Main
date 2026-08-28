@@ -47,7 +47,8 @@
      'marketplaces', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
      'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
-     'toasts', 'footer-note', 'brand-sub', 'topbar'].forEach(function (id) {
+     'toasts', 'footer-note', 'brand-sub', 'topbar',
+     'btn-keys', 'keys', 'keys-body'].forEach(function (id) {
       dom[id] = $(id);
     });
   }
@@ -66,6 +67,9 @@
   function openSheet(id) {
     dom[id].hidden = false;
   }
+
+  // Страница ключей пользуется теми же уведомлениями, что и панель.
+  global.Toast = toast;
 
   function closeSheet(id) {
     dom[id].hidden = true;
@@ -664,6 +668,7 @@
     });
     dom['btn-new-tab'].addEventListener('click', createTab);
     dom['btn-theme'].addEventListener('click', cycleTheme);
+    dom['btn-keys'].addEventListener('click', openKeys);
 
     dom['btn-refresh'].addEventListener('click', function () {
       dom['btn-refresh'].style.transform = 'rotate(360deg)';
@@ -689,7 +694,7 @@
       if (event.key === 'Escape') {
         // Сначала закрываем открытую панель и только потом выходим из настройки,
         // иначе один Escape отменял бы сразу и то и другое.
-        var openPanel = ['library', 'range'].filter(function (id) { return !dom[id].hidden; })[0];
+        var openPanel = ['library', 'range', 'keys'].filter(function (id) { return !dom[id].hidden; })[0];
         if (openPanel) {
           closeSheet(openPanel);
         } else if (state.editing) {
@@ -732,6 +737,18 @@
     });
   }
 
+  function openKeys() {
+    openSheet('keys');
+    global.Keys.mount(dom['keys-body'], {
+      onSaved: function () {
+        // Ключи изменились — площадки могли перестать быть демонстрационными.
+        Api.marketplaces()
+          .then(function (payload) { renderMarketplaceChips(payload.marketplaces); })
+          .then(function () { return loadData(true); });
+      }
+    });
+  }
+
   function restoreFilters() {
     applyTheme(readStorage('dashboard.theme', 'auto'));
     state.preset = readStorage('dashboard.preset', '30d');
@@ -766,6 +783,9 @@
       if (error.status === 401) { showGate(); return; }
       toast(error.message);
     });
+
+    // Ссылка вида /#keys открывает страницу ключей сразу.
+    if (global.location.hash === '#keys') openKeys();
 
     if (state.refreshTimer) clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(function () {

@@ -29,6 +29,26 @@ CREATE TABLE IF NOT EXISTS preferences (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Магазины: у одной площадки их может быть несколько.
+CREATE TABLE IF NOT EXISTS connections (
+    id          TEXT PRIMARY KEY,
+    marketplace TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    position    INTEGER NOT NULL DEFAULT 0,
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL
+);
+
+-- Ключи магазина, введённые через страницу настроек.
+-- Значение хранится зашифрованным (см. dashboard/connections.py).
+CREATE TABLE IF NOT EXISTS credentials (
+    connection_id TEXT NOT NULL,
+    field         TEXT NOT NULL,
+    value         TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    PRIMARY KEY (connection_id, field)
+);
 """
 
 DEFAULT_LAYOUT_NAME = "Основной"
@@ -38,7 +58,14 @@ DEFAULT_LAYOUT_NAME = "Основной"
 async def connect() -> AsyncIterator[aiosqlite.Connection]:
     """Соединение с базой панели. Файл и каталог создаются при первом обращении."""
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+    existed = settings.db_path.exists()
     connection = await aiosqlite.connect(settings.db_path)
+    if not existed:
+        # В базе лежат ключи маркетплейсов — читать её должен только владелец.
+        try:
+            settings.db_path.chmod(0o600)
+        except OSError:  # на некоторых файловых системах права не выставить
+            pass
     connection.row_factory = aiosqlite.Row
     try:
         yield connection
@@ -46,8 +73,22 @@ async def connect() -> AsyncIterator[aiosqlite.Connection]:
         await connection.close()
 
 
+async def _drop_pre_release_credentials(db: aiosqlite.Connection) -> None:
+    """Убрать таблицу ключей первой редакции — она была «по площадке».
+
+    Магазинов у площадки может быть несколько, поэтому ключи переехали
+    на подключения. Перенести старые записи не к чему: подключений тогда
+    ещё не существовало.
+    """
+    cursor = await db.execute("PRAGMA table_info(credentials)")
+    columns = {row["name"] for row in await cursor.fetchall()}
+    if columns and "connection_id" not in columns:
+        await db.execute("DROP TABLE credentials")
+
+
 async def init_db() -> None:
     async with connect() as db:
+        await _drop_pre_release_credentials(db)
         await db.executescript(SCHEMA)
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")

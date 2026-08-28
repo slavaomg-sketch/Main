@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..config import Settings, settings
+from ..config import MarketplaceCredentials, Settings, settings
 from .ali import AliExpressConnector
 from .base import HttpConnector, MarketplaceConnector
 from .demo import DemoConnector
@@ -20,10 +20,18 @@ REAL_CONNECTORS: dict[str, type[MarketplaceConnector]] = {
 MARKETPLACE_ORDER = ("wildberries", "ozon", "yandex", "ali")
 
 
-def build_connector(code: str, config: Settings | None = None) -> MarketplaceConnector:
-    """Вернуть боевой коннектор, если ключи заданы, иначе демонстрационный."""
+def build_connector(
+    code: str,
+    config: Settings | None = None,
+    credentials: MarketplaceCredentials | None = None,
+) -> MarketplaceConnector:
+    """Вернуть боевой коннектор, если ключи заданы, иначе демонстрационный.
+
+    `credentials` позволяет передать ключи, введённые на странице настроек;
+    без него берутся значения из `.env`.
+    """
     config = config or settings
-    credentials = config.marketplaces[code]
+    credentials = credentials or config.marketplaces[code]
     if config.force_demo or not credentials.configured:
         return DemoConnector(code=code, title=credentials.title, credentials=credentials)
     return REAL_CONNECTORS[code](credentials)
@@ -36,6 +44,7 @@ def all_connectors(config: Settings | None = None) -> list[MarketplaceConnector]
 
 __all__ = [
     "AliExpressConnector",
+    "MarketplaceCredentials",
     "DemoConnector",
     "HttpConnector",
     "MARKETPLACE_ORDER",

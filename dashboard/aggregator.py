@@ -10,17 +10,104 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import replace
+from datetime import date
 from typing import Any, Iterable
 
 from .config import Settings, settings
+from .connections import Connection
 from .connectors import MARKETPLACE_ORDER, build_connector
-from .models import MarketplaceReport, Period, Snapshot
+from .models import DayPoint, MarketplaceReport, Period, Product, RegionSales, Snapshot
 
 log = logging.getLogger(__name__)
 
 
 def _sum(reports: Iterable[MarketplaceReport], attr: str) -> float:
     return sum(getattr(report, attr, 0) or 0 for report in reports)
+
+
+def merge_reports(
+    code: str, title: str, reports: list[MarketplaceReport], period: Period
+) -> MarketplaceReport:
+    """Свести отчёты нескольких магазинов одной площадки в один.
+
+    У руководителя может быть два магазина на Wildberries — в графиках и
+    таблицах площадка должна оставаться одной строкой, но с разбивкой
+    по магазинам внутри.
+    """
+    merged = MarketplaceReport(
+        marketplace=code,
+        title=title,
+        connected=any(report.connected for report in reports),
+        demo=all(report.demo for report in reports) if reports else True,
+    )
+    errors = [report.error for report in reports if report.error]
+    merged.error = "; ".join(dict.fromkeys(errors))
+    merged.accounts = [report.to_account_summary() for report in reports]
+
+    for attr in (
+        "revenue", "orders", "units", "returns", "cancellations", "buyouts",
+        "commission", "logistics", "ad_spend", "cost_price", "reviews_count",
+        "stock_units",
+    ):
+        setattr(merged, attr, _sum(reports, attr))
+
+    # Рейтинг — средневзвешенный по числу отзывов, иначе магазин с тремя
+    # отзывами перевесил бы магазин с тремя тысячами.
+    weighted = sum(report.rating * max(report.reviews_count, 1) for report in reports if report.rating)
+    weights = sum(max(report.reviews_count, 1) for report in reports if report.rating)
+    merged.rating = weighted / weights if weights else 0.0
+
+    days: dict[date, DayPoint] = {day: DayPoint(day=day) for day in period.each_day()}
+    for report in reports:
+        for point in report.series:
+            bucket = days.get(point.day)
+            if bucket is None:
+                continue
+            bucket.revenue += point.revenue
+            bucket.orders += point.orders
+            bucket.units += point.units
+            bucket.returns += point.returns
+    merged.series = [days[day] for day in period.each_day()]
+
+    products: dict[str, Product] = {}
+    for report in reports:
+        for product in report.products:
+            existing = products.get(product.sku)
+            if existing is None:
+                products[product.sku] = replace(product)
+                continue
+            existing.revenue += product.revenue
+            existing.units += product.units
+            existing.stock += product.stock
+            existing.returns += product.returns
+            existing.rating = max(existing.rating, product.rating)
+            if existing.account != product.account:
+                existing.account = "несколько магазинов"
+    merged.products = sorted(products.values(), key=lambda item: item.revenue, reverse=True)[:20]
+
+    regions: dict[str, RegionSales] = {}
+    for report in reports:
+        for region in report.regions:
+            existing = regions.setdefault(region.region, RegionSales(region=region.region))
+            existing.revenue += region.revenue
+            existing.orders += region.orders
+    merged.regions = sorted(regions.values(), key=lambda item: item.revenue, reverse=True)
+
+    alerts = [alert for report in reports for alert in report.stock_alerts]
+    merged.stock_alerts = sorted(alerts, key=lambda item: item.days_left)[:8]
+
+    reviews = [review for report in reports for review in report.reviews]
+    merged.reviews = sorted(reviews, key=lambda item: item.created_at, reverse=True)[:8]
+
+    for attr in ("impressions", "card_views", "cart_adds", "orders", "buyouts"):
+        setattr(
+            merged.funnel,
+            attr,
+            int(sum(getattr(report.funnel, attr, 0) for report in reports)),
+        )
+
+    return merged
 
 
 def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
@@ -77,6 +164,15 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
                 "share": round(report.revenue / revenue * 100, 1) if revenue else 0.0,
             }
             for report in sorted(reports, key=lambda item: item.revenue, reverse=True)
+        ],
+        # Разбивка по магазинам: у площадки их может быть несколько.
+        "accounts": [
+            dict(account.to_dict(), share=round(account.revenue / revenue * 100, 1) if revenue else 0.0)
+            for account in sorted(
+                (account for report in reports for account in report.accounts),
+                key=lambda item: item.revenue,
+                reverse=True,
+            )
         ],
     }
 
@@ -169,16 +265,55 @@ def normalize_codes(raw: str | None) -> tuple[str, ...]:
     return selected or MARKETPLACE_ORDER
 
 
+def _tag_account(report: MarketplaceReport, title: str) -> MarketplaceReport:
+    """Проставить название магазина всему, что он принёс."""
+    report.account_title = title
+    for product in report.products:
+        product.account = title
+    for alert in report.stock_alerts:
+        alert.account = title
+    for review in report.reviews:
+        review.account = title
+    return report
+
+
 async def collect(
     period: Period,
     codes: tuple[str, ...],
     config: Settings | None = None,
+    connections: list[Connection] | None = None,
 ) -> list[MarketplaceReport]:
-    """Опросить площадки параллельно и вернуть их отчёты в заданном порядке."""
+    """Опросить все магазины параллельно и свести их по площадкам.
+
+    Магазины опрашиваются одновременно — два кабинета Wildberries не ждут
+    друг друга. Площадка без настроенных магазинов отдаёт демо-данные.
+    """
     config = config or settings
-    connectors = [build_connector(code, config) for code in codes]
-    tasks = [connector.safe_fetch(period) for connector in connectors]
-    return list(await asyncio.gather(*tasks))
+    connections = connections or []
+
+    plan: list[tuple[str, str, Any]] = []  # (код площадки, название магазина, коннектор)
+    for code in codes:
+        stores = [
+            connection
+            for connection in connections
+            if connection.marketplace == code and connection.enabled and connection.configured
+        ]
+        if stores and not config.force_demo:
+            for store in stores:
+                plan.append((code, store.title, build_connector(code, config, store.credentials(config))))
+        else:
+            plan.append((code, config.marketplaces[code].title, build_connector(code, config)))
+
+    fetched = await asyncio.gather(*(connector.safe_fetch(period) for _, _, connector in plan))
+
+    by_code: dict[str, list[MarketplaceReport]] = {code: [] for code in codes}
+    for (code, title, _), report in zip(plan, fetched):
+        by_code[code].append(_tag_account(report, title))
+
+    return [
+        merge_reports(code, config.marketplaces[code].title, by_code[code], period)
+        for code in codes
+    ]
 
 
 async def build_snapshot(
@@ -188,6 +323,7 @@ async def build_snapshot(
     compare: bool = True,
     use_cache: bool = True,
     config: Settings | None = None,
+    connections: list[Connection] | None = None,
 ) -> Snapshot:
     config = config or settings
     if use_cache:
@@ -195,10 +331,10 @@ async def build_snapshot(
         if cached is not None:
             return cached
 
-    reports = await collect(period, codes, config)
+    reports = await collect(period, codes, config, connections)
     previous: list[MarketplaceReport] = []
     if compare:
-        previous = await collect(period.previous(), codes, config)
+        previous = await collect(period.previous(), codes, config, connections)
 
     snapshot = Snapshot(
         period=period,

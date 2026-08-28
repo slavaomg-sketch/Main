@@ -48,6 +48,20 @@
     marketplaces: function () { return request('GET', '/api/marketplaces'); },
     clearCache: function () { return request('POST', '/api/cache/clear'); },
 
+    connections: function () { return request('GET', '/api/connections'); },
+    addConnection: function (marketplace, title) {
+      return request('POST', '/api/connections', { marketplace: marketplace, title: title });
+    },
+    updateConnection: function (id, patch) {
+      return request('PUT', '/api/connections/' + encodeURIComponent(id), patch);
+    },
+    deleteConnection: function (id) {
+      return request('DELETE', '/api/connections/' + encodeURIComponent(id));
+    },
+    testConnection: function (id) {
+      return request('POST', '/api/connections/' + encodeURIComponent(id) + '/test');
+    },
+
     blocks: function () { return request('GET', '/api/blocks'); },
     newBlock: function (type, size) {
       return request('POST', '/api/blocks/instance', { type: type, size: size });

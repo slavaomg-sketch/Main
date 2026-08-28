@@ -98,6 +98,7 @@ class Product:
     returns: int = 0
     rating: float = 0.0
     marketplace: str = ""
+    account: str = ""
     image: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -110,6 +111,7 @@ class Product:
             "returns": int(self.returns),
             "rating": _round(self.rating, 1),
             "marketplace": self.marketplace,
+            "account": self.account,
             "image": self.image,
         }
 
@@ -123,6 +125,7 @@ class StockAlert:
     stock: int
     days_left: float
     marketplace: str = ""
+    account: str = ""
     warehouse: str = ""
 
     @property
@@ -140,6 +143,7 @@ class StockAlert:
             "stock": int(self.stock),
             "daysLeft": _round(self.days_left, 1),
             "marketplace": self.marketplace,
+            "account": self.account,
             "warehouse": self.warehouse,
             "severity": self.severity,
         }
@@ -167,6 +171,7 @@ class Review:
     text: str
     created_at: str = ""
     marketplace: str = ""
+    account: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -176,6 +181,7 @@ class Review:
             "text": self.text,
             "createdAt": self.created_at,
             "marketplace": self.marketplace,
+            "account": self.account,
         }
 
 
@@ -200,14 +206,54 @@ class Funnel:
 
 
 @dataclass
+class AccountSummary:
+    """Короткая сводка по одному магазину внутри площадки."""
+
+    id: str
+    title: str
+    marketplace: str
+    revenue: float = 0.0
+    orders: int = 0
+    units: int = 0
+    profit: float = 0.0
+    returns: int = 0
+    stock_units: int = 0
+    demo: bool = True
+    error: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "marketplace": self.marketplace,
+            "revenue": _round(self.revenue),
+            "orders": int(self.orders),
+            "units": int(self.units),
+            "profit": _round(self.profit),
+            "returns": int(self.returns),
+            "stockUnits": int(self.stock_units),
+            "avgCheck": _round(self.revenue / self.orders if self.orders else 0.0),
+            "demo": self.demo,
+            "error": self.error,
+        }
+
+
+@dataclass
 class MarketplaceReport:
-    """Отчёт одного маркетплейса за период, приведённый к общему виду."""
+    """Отчёт одного маркетплейса за период, приведённый к общему виду.
+
+    У площадки может быть несколько магазинов: тогда отчёт — это их сумма,
+    а разбивка лежит в `accounts`.
+    """
 
     marketplace: str
     title: str
     connected: bool = False
     demo: bool = True
     error: str = ""
+
+    account_id: str = ""
+    account_title: str = ""
 
     revenue: float = 0.0
     orders: int = 0
@@ -231,6 +277,7 @@ class MarketplaceReport:
     regions: list[RegionSales] = field(default_factory=list)
     reviews: list[Review] = field(default_factory=list)
     funnel: Funnel = field(default_factory=Funnel)
+    accounts: list[AccountSummary] = field(default_factory=list)
 
     @property
     def avg_check(self) -> float:
@@ -263,6 +310,21 @@ class MarketplaceReport:
         days = len(self.series) or 1
         per_day = self.units / days
         return (self.stock_units / per_day) if per_day else 0.0
+
+    def to_account_summary(self) -> AccountSummary:
+        return AccountSummary(
+            id=self.account_id,
+            title=self.account_title or self.title,
+            marketplace=self.marketplace,
+            revenue=self.revenue,
+            orders=self.orders,
+            units=self.units,
+            profit=self.profit,
+            returns=self.returns,
+            stock_units=self.stock_units,
+            demo=self.demo,
+            error=self.error,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -297,6 +359,7 @@ class MarketplaceReport:
             "regions": [region.to_dict() for region in self.regions],
             "reviews": [review.to_dict() for review in self.reviews],
             "funnel": self.funnel.to_dict(),
+            "accounts": [account.to_dict() for account in self.accounts],
         }
 
 

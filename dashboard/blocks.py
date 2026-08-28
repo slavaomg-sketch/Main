@@ -129,6 +129,15 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "table",
     },
     {
+        "type": "table.accounts",
+        "title": "Магазины",
+        "group": "Таблицы",
+        "description": "Каждый магазин отдельной строкой: выручка, доля, заказы, чек, прибыль.",
+        "sizes": ["md", "lg", "xl"],
+        "defaultSize": "xl",
+        "icon": "store",
+    },
+    {
         "type": "table.topProducts",
         "title": "Топ товаров",
         "group": "Таблицы",
@@ -206,6 +215,7 @@ DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
     ("chart.marketplaceShare", "md"),
     ("panel.unitEconomics", "md"),
     ("table.marketplaces", "xl"),
+    ("table.accounts", "xl"),
     ("table.topProducts", "xl"),
     ("list.stockAlerts", "md"),
     ("panel.funnel", "md"),
