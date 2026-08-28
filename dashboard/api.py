@@ -29,7 +29,9 @@ guarded = APIRouter(prefix="/api", dependencies=[Depends(require_auth)])
 
 @router.get("/health")
 async def health() -> dict[str, Any]:
-    return {"status": "ok", "demo": settings.force_demo}
+    # `agent` — виден ли панели мост к Codex. Ни ключей, ни данных здесь нет,
+    # зато сразу понятно, почему кнопка черновика не появилась.
+    return {"status": "ok", "demo": settings.force_demo, "agent": agent.available(settings)}
 
 
 @router.get("/session")
