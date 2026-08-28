@@ -1,4 +1,4 @@
-.PHONY: install dashboard run test lint docker-up docker-down docker-logs
+.PHONY: install dashboard diagnose run test lint docker-up docker-down docker-logs
 
 VENV := .venv
 PY   := $(VENV)/bin/python
@@ -11,6 +11,9 @@ install:    ## Создать окружение и поставить зави�
 
 dashboard:  ## Запустить веб-панель маркетплейсов (http://localhost:8080)
 	$(PY) -m dashboard.main
+
+diagnose:   ## Проверить ключи маркетплейсов (make diagnose ARGS="--days 7")
+	$(PY) -m dashboard.diagnose $(ARGS)
 
 run:        ## Запустить телеграм-бота напоминаний
 	$(PY) -m bot.main

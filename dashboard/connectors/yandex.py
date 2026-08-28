@@ -21,7 +21,7 @@ from ..models import (
     RegionSales,
     StockAlert,
 )
-from .base import HttpConnector
+from .base import HttpConnector, Probe
 from .dates import parse_day
 
 FALLBACK_COMMISSION = 0.13
@@ -63,6 +63,19 @@ class YandexConnector(HttpConnector):
             report.commission = report.revenue * FALLBACK_COMMISSION
         report.logistics = report.revenue * FALLBACK_LOGISTICS
         return report
+
+    async def probe(self, period: Period) -> list[Probe]:
+        async with self.client() as client:
+            return [
+                await self.capture(
+                    f"POST /campaigns/{self.campaign_id}/stats/orders",
+                    lambda: self._orders(client, period),
+                ),
+                await self.capture(
+                    f"POST /campaigns/{self.campaign_id}/offers/stocks",
+                    lambda: self._stocks(client),
+                ),
+            ]
 
     async def _orders(self, client, period: Period) -> list[dict[str, Any]]:
         path = f"/campaigns/{self.campaign_id}/stats/orders"

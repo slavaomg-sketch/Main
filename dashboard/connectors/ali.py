@@ -26,7 +26,7 @@ from ..models import (
     Product,
     StockAlert,
 )
-from .base import HttpConnector
+from .base import HttpConnector, Probe
 from .dates import parse_day
 
 FALLBACK_COMMISSION = 0.08
@@ -94,6 +94,19 @@ class AliExpressConnector(HttpConnector):
             report.commission = report.revenue * FALLBACK_COMMISSION
         report.logistics = report.revenue * FALLBACK_LOGISTICS
         return report
+
+    async def probe(self, period: Period) -> list[Probe]:
+        async with self.client() as client:
+            return [
+                await self.capture(
+                    "POST /sync aliexpress.solution.order.get",
+                    lambda: self._orders(client, period),
+                ),
+                await self.capture(
+                    "POST /sync aliexpress.solution.product.list.get",
+                    lambda: self._products(client),
+                ),
+            ]
 
     async def _orders(self, client, period: Period) -> list[dict[str, Any]]:
         collected: list[dict[str, Any]] = []

@@ -23,7 +23,7 @@ from ..models import (
     RegionSales,
     StockAlert,
 )
-from .base import HttpConnector
+from .base import HttpConnector, Probe
 from .dates import parse_day
 
 # Ставки, по которым считается юнит-экономика, если API их не отдал.
@@ -60,6 +60,24 @@ class WildberriesConnector(HttpConnector):
         self._apply_orders(report, orders, period)
         self._apply_stocks(report, stocks, period)
         return report
+
+    async def probe(self, period: Period) -> list[Probe]:
+        date_from = f"{period.date_from.isoformat()}T00:00:00"
+        async with self.client() as client:
+            return [
+                await self.capture(
+                    "GET /api/v1/supplier/sales",
+                    lambda: self._get(client, "/api/v1/supplier/sales", {"dateFrom": date_from}),
+                ),
+                await self.capture(
+                    "GET /api/v1/supplier/orders",
+                    lambda: self._get(client, "/api/v1/supplier/orders", {"dateFrom": date_from}),
+                ),
+                await self.capture(
+                    "GET /api/v1/supplier/stocks",
+                    lambda: self._get(client, "/api/v1/supplier/stocks", {"dateFrom": date_from}),
+                ),
+            ]
 
     async def _get(self, client, path: str, params: dict[str, str]) -> list[dict[str, Any]]:
         response = await client.get(path, params=params)

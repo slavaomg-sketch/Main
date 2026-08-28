@@ -19,7 +19,7 @@ from ..models import (
     Product,
     StockAlert,
 )
-from .base import HttpConnector
+from .base import HttpConnector, Probe
 
 DAY_METRICS = [
     "revenue",
@@ -69,6 +69,23 @@ class OzonConnector(HttpConnector):
             report.commission = report.revenue * FALLBACK_COMMISSION
         report.logistics = report.revenue * FALLBACK_LOGISTICS
         return report
+
+    async def probe(self, period: Period) -> list[Probe]:
+        async with self.client() as client:
+            return [
+                await self.capture(
+                    "POST /v1/analytics/data (dimension=day)",
+                    lambda: self._analytics(client, period, ["day"], DAY_METRICS),
+                ),
+                await self.capture(
+                    "POST /v1/analytics/data (dimension=sku)",
+                    lambda: self._analytics(client, period, ["sku"], SKU_METRICS, limit=50),
+                ),
+                await self.capture(
+                    "POST /v3/product/info/stocks",
+                    lambda: self._stocks(client),
+                ),
+            ]
 
     async def _analytics(
         self,
