@@ -22,7 +22,8 @@
     PORT_D: 13,
     PORT_L: 14,
     EXPLOSION: 15,
-    EXPLOSION_INFO: 16
+    EXPLOSION_INFO: 16,
+    BUG: 17          // жук: с места не сходит, но раз в цикл вспыхивает и бьёт соседа
   };
 
   var NAMES = {};
@@ -44,11 +45,20 @@
     '^': Tiles.PORT_U,
     '>': Tiles.PORT_R,
     'v': Tiles.PORT_D,
-    '<': Tiles.PORT_L
+    '<': Tiles.PORT_L,
+    // Жук. Цифра — сдвиг фазы в тиках: так в коридоре набирается бегущая волна.
+    'B': Tiles.BUG,
+    '1': Tiles.BUG, '2': Tiles.BUG, '3': Tiles.BUG, '4': Tiles.BUG,
+    '5': Tiles.BUG, '6': Tiles.BUG, '7': Tiles.BUG, '8': Tiles.BUG, '9': Tiles.BUG
   };
+
+  // Сдвиг фазы жука по символу карты ('B' — нулевая фаза).
+  var BUG_PHASE = { B: 0 };
+  for (var d = 1; d <= 9; d++) BUG_PHASE[String(d)] = d;
 
   var TO_CHAR = {};
   Object.keys(CHARS).forEach(function (c) { if (TO_CHAR[CHARS[c]] === undefined) TO_CHAR[CHARS[c]] = c; });
+  TO_CHAR[Tiles.BUG] = 'B';        // фаза в текстовый дамп не попадает — она нужна только карте
   TO_CHAR[Tiles.EXPLOSION] = '!';
   TO_CHAR[Tiles.EXPLOSION_INFO] = '!';
 
@@ -61,7 +71,8 @@
   PORT_DIR[Tiles.PORT_D] = 2;
   PORT_DIR[Tiles.PORT_L] = 3;
 
-  var api = { Tiles: Tiles, NAMES: NAMES, CHARS: CHARS, TO_CHAR: TO_CHAR, DIRS: DIRS, PORT_DIR: PORT_DIR };
+  var api = { Tiles: Tiles, NAMES: NAMES, CHARS: CHARS, TO_CHAR: TO_CHAR, DIRS: DIRS,
+              PORT_DIR: PORT_DIR, BUG_PHASE: BUG_PHASE };
 
   if (typeof module === 'object' && module.exports) module.exports = api;
   else global.SP = Object.assign(global.SP || {}, api);

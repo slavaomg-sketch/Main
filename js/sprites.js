@@ -331,6 +331,50 @@
     g.restore();
   }
 
+  /** Жук: тлеет тёмным, а на вспышке бьёт разрядом по сторонам. */
+  function drawBug(g, s, hot, timeMs) {
+    var cx = s / 2, cy = s / 2, r = s * 0.34;
+    g.fillStyle = '#0b0f18';
+    g.fillRect(0, 0, s, s);
+    // лапки-контакты по сторонам: именно ими он и достаёт соседнюю клетку
+    g.strokeStyle = hot ? '#ffe98a' : '#3a4763';
+    g.lineWidth = Math.max(1, s * 0.06);
+    g.lineCap = 'round';
+    for (var k = 0; k < 4; k++) {
+      var a = k * Math.PI / 2;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a) * r * 0.8, cy + Math.sin(a) * r * 0.8);
+      g.lineTo(cx + Math.cos(a) * r * 1.45, cy + Math.sin(a) * r * 1.45);
+      g.stroke();
+    }
+    if (hot) {
+      g.save();
+      g.shadowColor = 'rgba(255,220,90,0.95)';
+      g.shadowBlur = s * 0.5;
+      sphere(g, s, cx, cy, r, '#ffffff', '#ffdc5a', '#c05a00');
+      g.restore();
+      // искры вокруг корпуса
+      g.strokeStyle = 'rgba(255,240,170,0.9)';
+      g.lineWidth = Math.max(1, s * 0.04);
+      var t = (timeMs || 0) / 60;
+      for (var j = 0; j < 6; j++) {
+        var b = j * Math.PI / 3 + t;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(b) * r * 1.05, cy + Math.sin(b) * r * 1.05);
+        g.lineTo(cx + Math.cos(b) * r * 1.5, cy + Math.sin(b) * r * 1.5);
+        g.stroke();
+      }
+    } else {
+      sphere(g, s, cx, cy, r, '#7f8ba6', '#3d4761', '#141b2b');
+      g.strokeStyle = 'rgba(140,160,200,0.45)';
+      g.lineWidth = Math.max(1, s * 0.035);
+      g.beginPath(); g.arc(cx, cy, r * 0.98, 0, 6.2832); g.stroke();
+    }
+    // глаз: тлеет тускло, на вспышке белый
+    g.fillStyle = hot ? '#fff8d0' : '#8a3a1a';
+    g.beginPath(); g.arc(cx, cy, r * 0.28, 0, 6.2832); g.fill();
+  }
+
   function drawBlast(g, s, k, info) {
     var r = s * (0.2 + 0.32 * k);
     var grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, r);
@@ -370,7 +414,7 @@
 
   global.SP = Object.assign(global.SP, {
     Sprites: {
-      build: build, drawElectron: drawElectron, drawBlast: drawBlast,
+      build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }

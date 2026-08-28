@@ -10,6 +10,7 @@
 
   var base = (typeof module === 'object' && module.exports) ? require('./tiles.js') : global.SP;
   var T = base.Tiles, DIRS = base.DIRS, CHARS = base.CHARS, PORT_DIR = base.PORT_DIR;
+  var BUG_PHASE = base.BUG_PHASE;
 
   var EXPLOSION_TICKS = 5;
   var DEATH_TICKS = 14;
@@ -17,6 +18,10 @@
   // без неё камень трогается в тот же тик, когда из-под него ушла опора,
   // и убежать физически невозможно.
   var SHAKE_TICKS = 4;
+  // Жук: цикл «тлеет — вспыхивает». Вспышка бьёт соседа по стороне, но окно
+  // покоя длиннее вспышки втрое — этого хватает, чтобы пройти мимо.
+  var BUG_PERIOD = 12;
+  var BUG_HOT = 4;
 
   // С чего предмет может скатиться вбок. Стена сюда входит: камень, лежащий
   // на ровной твёрдой поверхности, съезжает с её края, если сбоку и наискось пусто.
@@ -69,6 +74,7 @@
         if (t === T.MURPHY) { this.murphy.x = x; this.murphy.y = y; }
         if (t === T.SNIKSNAK) this.dir[i] = 1;
         if (t === T.ELECTRON) this.dir[i] = 3;
+        if (t === T.BUG) this.dir[i] = BUG_PHASE[ch] || 0;   // жук хранит в dir сдвиг фазы
       }
     }
 
@@ -101,6 +107,11 @@
   };
 
   Engine.prototype.exitOpen = function () { return this.collected >= this.needed; };
+
+  /** Горит ли жук в этом тике. Фаза детерминирована — уровень воспроизводим. */
+  Engine.prototype.bugHot = function (i) {
+    return (this.ticks + this.dir[i]) % BUG_PERIOD < BUG_HOT;
+  };
 
   Engine.prototype.clone = function () {
     var e = Object.create(Engine.prototype);
@@ -310,7 +321,7 @@
         }
         if (this.falling[i]) {
           if (b === T.MURPHY) { this.killMurphy(); continue; }
-          if (isMonster(b)) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
+          if (isMonster(b) || b === T.BUG) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
           if (b === T.ORANGE) { this.explodeAt(x, y + 1, 'normal'); continue; }
           if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
         }
@@ -359,6 +370,17 @@
     }
   };
 
+  /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
+  Engine.prototype.updateBugs = function () {
+    var m = this.murphy;
+    for (var k = 0; k < 4; k++) {
+      var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
+      if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+      var i = this.idx(x, y);
+      if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killMurphy(); return; }
+    }
+  };
+
   /**
    * Один шаг мира.
    * input: { dir: -1..3, snap: bool }
@@ -374,6 +396,7 @@
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
     this.updateGravity();
     this.updateMonsters();
+    if (this.status === 'playing') this.updateBugs();
 
     if (this.status === 'dying') {
       this.deathTimer--;
