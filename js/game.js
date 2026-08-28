@@ -7,7 +7,7 @@
 
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
-   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full'
+   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -32,6 +32,11 @@
     try { global.localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* приватный режим — переживём */ }
   }
   var progress = loadProgress();
+
+  // Пробные главы (за пределами основного плана) открыты всегда: они не часть
+  // прохождения, а площадка для сравнения вариантов.
+  var PLAN_CHAPTERS = 10;
+  function isTrial(ch) { return ch > PLAN_CHAPTERS; }
 
   function unlockedUpTo() {
     var n = 1;
@@ -67,7 +72,7 @@
       head.innerHTML = '<span class="cn">Глава ' + ch.n + '</span>' +
         '<span class="ct">' + ch.title + '</span>' +
         '<span class="cp">' + (mine.length
-          ? 'пройдено ' + done + ' из ' + ch.planned +
+          ? (isTrial(ch.n) ? 'открыта · ' : '') + 'пройдено ' + done + ' из ' + ch.planned +
             (mine.length < ch.planned ? ' · в игре ' + mine.length : '')
           : 'в работе') + '</span>';
       grid.appendChild(head);
@@ -78,7 +83,7 @@
       mine.forEach(function (m) {
         var b = document.createElement('button');
         b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
-        b.disabled = m.i + 1 > limit;
+        b.disabled = !progress.all && !isTrial(ch.n) && m.i + 1 > limit;
         b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>';
         b.addEventListener('click', function () { startLevel(m.i); });
@@ -186,6 +191,18 @@
   };
 
   el['btn-menu'].addEventListener('click', showMenu);
+  if (el['btn-unlock']) {
+    var syncUnlock = function () {
+      el['btn-unlock'].textContent = progress.all ? 'Вернуть порядок прохождения' : 'Открыть все уровни';
+    };
+    syncUnlock();
+    el['btn-unlock'].addEventListener('click', function () {
+      progress.all = !progress.all;
+      saveProgress(progress);
+      syncUnlock();
+      renderGrid();
+    });
+  }
   if (el['btn-full'] && !document.fullscreenEnabled) el['btn-full'].style.display = 'none';
   if (el['btn-full']) el['btn-full'].addEventListener('click', function () {
     var root = document.documentElement;

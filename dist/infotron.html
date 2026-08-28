@@ -176,6 +176,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .lv:disabled { opacity: .38; cursor: not-allowed; }
 
 .legend { font-size: 12.5px; color: var(--dim); margin: 0; }
+.menu-tools { margin: 0 0 14px; }
 
 /* ---------- подсказка уровня ---------- */
 #hint {
@@ -307,6 +308,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         <h1>ИНФОТРОН</h1>
         <p class="sub">Прогрызай грунт, собирай инфотроны, не попадайся под зонк.</p>
         <div id="level-grid"></div>
+        <p class="menu-tools"><button id="btn-unlock" class="chip">Открыть все уровни</button></p>
         <p class="legend desktop-only">
           <b>Стрелки</b> или <b>WASD</b> — идти &nbsp;·&nbsp;
           <b>Space + направление</b> — выесть клетку, не сходя с места («снап») &nbsp;·&nbsp;
@@ -1846,7 +1848,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
-   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full'
+   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
@@ -1871,6 +1873,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     try { global.localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* приватный режим — переживём */ }
   }
   var progress = loadProgress();
+
+  // Пробные главы (за пределами основного плана) открыты всегда: они не часть
+  // прохождения, а площадка для сравнения вариантов.
+  var PLAN_CHAPTERS = 10;
+  function isTrial(ch) { return ch > PLAN_CHAPTERS; }
 
   function unlockedUpTo() {
     var n = 1;
@@ -1906,7 +1913,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       head.innerHTML = '<span class="cn">Глава ' + ch.n + '</span>' +
         '<span class="ct">' + ch.title + '</span>' +
         '<span class="cp">' + (mine.length
-          ? 'пройдено ' + done + ' из ' + ch.planned +
+          ? (isTrial(ch.n) ? 'открыта · ' : '') + 'пройдено ' + done + ' из ' + ch.planned +
             (mine.length < ch.planned ? ' · в игре ' + mine.length : '')
           : 'в работе') + '</span>';
       grid.appendChild(head);
@@ -1917,7 +1924,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       mine.forEach(function (m) {
         var b = document.createElement('button');
         b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
-        b.disabled = m.i + 1 > limit;
+        b.disabled = !progress.all && !isTrial(ch.n) && m.i + 1 > limit;
         b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>';
         b.addEventListener('click', function () { startLevel(m.i); });
@@ -2025,6 +2032,18 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   };
 
   el['btn-menu'].addEventListener('click', showMenu);
+  if (el['btn-unlock']) {
+    var syncUnlock = function () {
+      el['btn-unlock'].textContent = progress.all ? 'Вернуть порядок прохождения' : 'Открыть все уровни';
+    };
+    syncUnlock();
+    el['btn-unlock'].addEventListener('click', function () {
+      progress.all = !progress.all;
+      saveProgress(progress);
+      syncUnlock();
+      renderGrid();
+    });
+  }
   if (el['btn-full'] && !document.fullscreenEnabled) el['btn-full'].style.display = 'none';
   if (el['btn-full']) el['btn-full'].addEventListener('click', function () {
     var root = document.documentElement;
