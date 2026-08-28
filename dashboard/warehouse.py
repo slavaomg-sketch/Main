@@ -32,6 +32,7 @@ from typing import Any
 from . import connections, db
 from .config import Settings, settings
 from .connectors import REAL_CONNECTORS
+from .connectors import wildberries
 from .connectors.wildberries import WildberriesConnector
 from .models import MarketplaceReport, Period
 
@@ -314,7 +315,9 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
     result.date_from = date_from
 
     if isinstance(connector, WildberriesConnector):
-        raw = await connector.collect_raw(date_from)
+        # Фоновая выгрузка может себе позволить подождать, если площадка
+        # просит сбавить темп: страница всё равно читает данные из базы.
+        raw = await connector.collect_raw(date_from, wildberries.PATIENCE_BACKGROUND)
     else:  # pragma: no cover — пока хранится только Wildberries
         return result
 

@@ -63,6 +63,12 @@ ANALYTICS_INTERVAL = 20.0
 # Сколько держать ответ статистики, чтобы не ходить за ним дважды подряд.
 RESPONSE_TTL = 150.0
 
+# Сколько готовы ждать, если площадка просит сбавить темп.
+# Фоновой выгрузке спешить некуда, а вот кнопка «Проверить связь» должна
+# отвечать быстро — поэтому терпение задаётся вызывающей стороной.
+PATIENCE_INTERACTIVE = 10.0
+PATIENCE_BACKGROUND = 120.0
+
 STOCKS_PAGE = 100_000
 
 # Ответ статистики: (дата начала выборки, когда получен, строки)
@@ -104,7 +110,9 @@ class WildberriesConnector(HttpConnector):
 
     # --- обращения к API -----------------------------------------------------
 
-    async def statistics(self, path: str, date_from: date) -> list[dict[str, Any]]:
+    async def statistics(
+        self, path: str, date_from: date, max_wait: float = PATIENCE_INTERACTIVE
+    ) -> list[dict[str, Any]]:
         """Строки статистики от указанной даты, по возможности из кэша.
 
         Ответ за более раннюю дату содержит в себе и более поздние периоды,
@@ -123,13 +131,15 @@ class WildberriesConnector(HttpConnector):
                     path, params={"dateFrom": f"{date_from.isoformat()}T00:00:00"}
                 )
 
-        response = await Throttle.run(f"wb:{key[0]}:{path}", STATISTICS_INTERVAL, call)
+        response = await Throttle.run(
+            f"wb:{key[0]}:{path}", STATISTICS_INTERVAL, call, max_wait=max_wait
+        )
         response.raise_for_status()
         rows = self.as_list(response.json(), "data", "result")
         _responses[key] = (date_from, time.monotonic(), rows)
         return rows
 
-    async def stocks(self) -> list[dict[str, Any]]:
+    async def stocks(self, max_wait: float = PATIENCE_INTERACTIVE) -> list[dict[str, Any]]:
         """Остатки на складах Wildberries через Analytics API."""
 
         async def call() -> httpx.Response:
@@ -139,23 +149,31 @@ class WildberriesConnector(HttpConnector):
                 )
 
         key = _token_key(self.credentials.get("token"))
-        response = await Throttle.run(f"wb:{key}:stocks", ANALYTICS_INTERVAL, call)
+        response = await Throttle.run(
+            f"wb:{key}:stocks", ANALYTICS_INTERVAL, call, max_wait=max_wait
+        )
         response.raise_for_status()
         return self.as_list(response.json(), "items", "data", "result")
 
     # --- сборка отчёта -------------------------------------------------------
 
-    async def collect_raw(self, date_from: date) -> dict[str, Any]:
+    async def collect_raw(
+        self, date_from: date, max_wait: float = PATIENCE_INTERACTIVE
+    ) -> dict[str, Any]:
         """Скачать сырые строки с площадки за период от указанной даты.
 
         Отделено от разбора намеренно: строки складываются в хранилище на
         сервере, а отчёт за любой период считается уже из них, без обращения
         к Wildberries.
         """
-        sales, sales_error = await self._try(self.statistics(SALES_PATH, date_from))
-        orders, orders_error = await self._try(self.statistics(ORDERS_PATH, date_from))
+        sales, sales_error = await self._try(
+            self.statistics(SALES_PATH, date_from, max_wait)
+        )
+        orders, orders_error = await self._try(
+            self.statistics(ORDERS_PATH, date_from, max_wait)
+        )
         stock_rows, stocks_error = await self._try(
-            self.stocks(),
+            self.stocks(max_wait),
             denied_hint="в токене Wildberries нужна категория «Аналитика»",
         )
 

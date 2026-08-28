@@ -304,3 +304,56 @@ async def test_pruning_never_touches_stock_snapshot(store):
     )
     await warehouse.prune(store.id, today)
     assert len(await warehouse.read_rows(store.id, "stocks")) == 1
+
+
+# --- терпение при ограничении частоты -------------------------------------------
+
+
+async def test_background_sync_waits_out_the_rate_limit(store, monkeypatch):
+    """Площадка просит подождать — фоновая выгрузка ждёт и получает данные.
+
+    Страница в это время читает из базы, поэтому пауза никому не мешает.
+    """
+    today = date.today()
+    attempts = {"sales": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales" in request.url.path:
+            attempts["sales"] += 1
+            if attempts["sales"] == 1:
+                return httpx.Response(
+                    429, json={"detail": "rate limit"}, headers={"X-RateLimit-Retry": "1"}
+                )
+            return httpx.Response(200, json=[sale(today, "a")])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[order(today, "o1")])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    result = await warehouse.sync_store(store, settings)
+
+    assert attempts["sales"] == 2          # дождались и повторили
+    assert result.stored["sales"] == 1
+    assert "sales" not in result.errors
+
+
+async def test_interactive_check_does_not_hang_on_a_long_rate_limit(monkeypatch):
+    """Кнопка «Проверить связь» не должна ждать минуту — лучше честно сказать."""
+    from dashboard.config import MarketplaceCredentials
+    from dashboard.connectors.wildberries import PATIENCE_INTERACTIVE
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429, json={"detail": "rate limit"}, headers={"X-RateLimit-Retry": "300"}
+        )
+
+    mock_wb(monkeypatch, handler)
+    credentials = MarketplaceCredentials(
+        code="wildberries", title="Wildberries",
+        values={"token": "token-value"}, required=("token",),
+    )
+    connector = WildberriesConnector(credentials)
+
+    raw = await connector.collect_raw(date.today(), PATIENCE_INTERACTIVE)
+
+    assert "ограничивает частоту" in raw["errors"]["sales"]
