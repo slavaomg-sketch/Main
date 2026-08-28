@@ -788,3 +788,51 @@ async def test_fresh_days_match_the_marketplace_app(store, monkeypatch):
 
     assert report.gross_revenue == 1547   # столько показывает приложение
     assert report.buyer_paid == 1145      # столько заплатил покупатель
+
+
+# --- заказы в деньгах и разрез по родителям -------------------------------------
+
+
+async def test_orders_are_counted_in_money_too(store, monkeypatch):
+    today = date.today()
+    first = order(today, "o1")
+    first["priceWithDisc"] = 1000.0
+    second = order(today, "o2")
+    second["priceWithDisc"] = 500.0
+
+    mock_wb(monkeypatch, wb_handler(sales=[], orders=[first, second]))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.orders == 2
+    assert report.orders_amount == 1500
+    assert report.avg_check == 750
+
+
+async def test_average_check_is_broken_down_by_parent_article(store, monkeypatch):
+    """Кабель TC-TC-1M и TC-TC-2M — разные родители, и чек у них свой."""
+    today = date.today()
+
+    def with_article(row: dict, article: str, price: float) -> dict:
+        row["supplierArticle"] = article
+        row["priceWithDisc"] = price
+        return row
+
+    orders = [
+        with_article(order(today, "o1"), "TC-TC-1M", 400.0),
+        with_article(order(today, "o2"), "TC-TC-1M", 600.0),
+        with_article(order(today, "o3"), "TC-TC-2M", 1500.0),
+    ]
+    mock_wb(monkeypatch, wb_handler(sales=[], orders=orders))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+    by_article = {parent.article: parent for parent in report.parents}
+
+    assert by_article["TC-TC-1M"].orders == 2
+    assert by_article["TC-TC-1M"].avg_check == 500
+    assert by_article["TC-TC-2M"].orders == 1
+    assert by_article["TC-TC-2M"].avg_check == 1500
+    # Дороже — выше в списке.
+    assert report.parents[0].article == "TC-TC-2M"

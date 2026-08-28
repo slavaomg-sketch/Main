@@ -163,11 +163,19 @@ async def _hide_blocks_without_cost_price(db: aiosqlite.Connection) -> None:
 RECONCILIATION_BLOCKS = ("kpi.grossRevenue", "kpi.returnsAmount", "kpi.buyerPaid")
 
 
-async def _add_reconciliation_blocks(db: aiosqlite.Connection) -> None:
-    """Разовая добавка: поставить «Выкупы» и «Возвраты, ₽» рядом с выручкой."""
-    cursor = await db.execute(
-        "SELECT value FROM preferences WHERE key = 'reconciliation_blocks_added_3'"
-    )
+async def _add_blocks_once(
+    db: aiosqlite.Connection,
+    marker: str,
+    types: tuple[str, ...],
+    after_type: str = "kpi.revenue",
+    size: str | None = None,
+) -> None:
+    """Разово доставить новые блоки в уже сохранённые раскладки.
+
+    Иначе их пришлось бы искать в библиотеке вручную — а владелец панели
+    о новом блоке ещё не знает. Убрать лишнее он всегда может сам.
+    """
+    cursor = await db.execute("SELECT value FROM preferences WHERE key = ?", (marker,))
     if await cursor.fetchone():
         return
 
@@ -175,25 +183,22 @@ async def _add_reconciliation_blocks(db: aiosqlite.Connection) -> None:
     for row in await cursor.fetchall():
         blocks = json.loads(row["blocks"])
         present = {block.get("type") for block in blocks}
-        missing = [item for item in RECONCILIATION_BLOCKS if item not in present]
+        missing = [item for item in types if item not in present]
         if not missing:
             continue
 
-        # Ставим сразу за «Выручкой» — там их и ищут глазами.
         after = next(
-            (index for index, block in enumerate(blocks) if block.get("type") == "kpi.revenue"),
+            (index for index, block in enumerate(blocks) if block.get("type") == after_type),
             len(blocks) - 1,
         )
-        added = [new_block(item, "sm") for item in missing]
-        blocks[after + 1 : after + 1] = added
+        blocks[after + 1 : after + 1] = [new_block(item, size) for item in missing]
         await db.execute(
             "UPDATE layouts SET blocks = ? WHERE name = ?",
             (json.dumps(blocks, ensure_ascii=False), row["name"]),
         )
 
     await db.execute(
-        "INSERT OR REPLACE INTO preferences (key, value)"
-        " VALUES ('reconciliation_blocks_added_3', '1')"
+        "INSERT OR REPLACE INTO preferences (key, value) VALUES (?, '1')", (marker,)
     )
 
 
@@ -203,7 +208,13 @@ async def init_db() -> None:
         await db.executescript(SCHEMA)
         await _add_missing_columns(db)
         await _hide_blocks_without_cost_price(db)
-        await _add_reconciliation_blocks(db)
+        await _add_blocks_once(db, "reconciliation_blocks_added_3", RECONCILIATION_BLOCKS, size="sm")
+        # Заказы и возвраты — в штуках и в деньгах сразу, плюс разрез
+        # по родительским артикулам: об этом просил владелец панели.
+        await _add_blocks_once(db, "returns_block_added", ("kpi.returns",), size="sm")
+        await _add_blocks_once(
+            db, "parents_table_added", ("table.parents",), after_type="table.topProducts"
+        )
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

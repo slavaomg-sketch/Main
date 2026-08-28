@@ -47,6 +47,7 @@ from ..models import (
     DayPoint,
     Funnel,
     MarketplaceReport,
+    ParentSales,
     Period,
     Product,
     RegionSales,
@@ -159,6 +160,17 @@ class WildberriesConnector(HttpConnector):
         super().__init__(credentials)
         # Связка «номенклатура WB → артикул продавца», нужна для остатков.
         self._articles: dict[str, str] = {}
+        # Разрез по родительским артикулам, копится из всех источников сразу.
+        self._parents: dict[str, ParentSales] = {}
+
+    def _parent(self, article: str, name: str = "") -> ParentSales:
+        parent = self._parents.get(article)
+        if parent is None:
+            parent = ParentSales(article=article, name=name or article, marketplace=self.code)
+            self._parents[article] = parent
+        elif name and parent.name == parent.article:
+            parent.name = name
+        return parent
 
     def headers(self) -> dict[str, str]:
         return {
@@ -347,6 +359,7 @@ class WildberriesConnector(HttpConnector):
             return self.empty_report(error=f"{self.title}: {errors['sales']}")
 
         self._articles = {}
+        self._parents = {}
         self._apply_sales(report, rows.get("sales") or [], period)
         self._apply_orders(report, rows.get("orders") or [], period)
         self._apply_finance(
@@ -356,6 +369,12 @@ class WildberriesConnector(HttpConnector):
             rows.get("statisticsFrom"),
         )
         self._apply_stocks(report, rows.get("stocks") or [], period)
+
+        report.parents = sorted(
+            (parent for parent in self._parents.values() if parent.orders or parent.units),
+            key=lambda item: item.orders_amount or item.revenue,
+            reverse=True,
+        )
 
         # Ставки считаются в последнюю очередь: к этому моменту выручка уже
         # собрана из обоих источников.
@@ -473,6 +492,10 @@ class WildberriesConnector(HttpConnector):
             if is_return:
                 product.returns += 1
 
+            parent = self._parent(sku, product.name)
+            parent.revenue += sign * amount
+            parent.units += sign
+
             region_name = str(row.get("regionName") or row.get("oblastOkrugName") or "Не указан")
             region = by_region[region_name]
             region.region = region_name
@@ -508,6 +531,14 @@ class WildberriesConnector(HttpConnector):
                 continue
             orders_by_day[day] += 1
             report.orders += 1
+
+            amount = self._price(row)
+            report.orders_amount += amount
+            parent = self._parent(
+                self._sku(row), str(row.get("subject") or row.get("brand") or "")
+            )
+            parent.orders += 1
+            parent.orders_amount += amount
 
         for point in report.series:
             point.orders = orders_by_day.get(point.day, 0)
@@ -606,6 +637,10 @@ class WildberriesConnector(HttpConnector):
             product.units += sign * quantity
             if sign < 0:
                 product.returns += quantity
+
+            parent = self._parent(sku, product.name)
+            parent.revenue += sign * amount
+            parent.units += sign * quantity
 
         if not by_day:
             return

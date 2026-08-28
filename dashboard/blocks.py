@@ -70,10 +70,21 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "wallet",
     },
     {
+        "type": "kpi.returns",
+        "title": "Возвраты",
+        "group": "Показатели",
+        "description": "Возвраты за период — сразу в штуках и в деньгах, "
+                       "с долей от выкупов.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "returns",
+    },
+    {
         "type": "kpi.orders",
         "title": "Заказы",
         "group": "Показатели",
-        "description": "Количество заказов по всем выбранным площадкам.",
+        "description": "Заказы за период — в штуках и в деньгах, "
+                       "со сравнением с тем же временем прошлого периода.",
         "sizes": ["sm", "md"],
         "defaultSize": "sm",
         "icon": "orders",
@@ -184,6 +195,16 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "description": "Товары-лидеры по выручке за период.",
         "sizes": ["md", "lg", "xl"],
         "defaultSize": "lg",
+        "icon": "box",
+    },
+    {
+        "type": "table.parents",
+        "title": "Средний чек по родителям",
+        "group": "Таблицы",
+        "description": "Заказы, деньги и средний чек по каждому родительскому "
+                       "артикулу — кабель TC-TC-1M и TC-TC-2M считаются отдельно.",
+        "sizes": ["md", "lg", "xl"],
+        "defaultSize": "xl",
         "icon": "box",
     },
     {

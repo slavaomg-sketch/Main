@@ -84,6 +84,34 @@
     }
   }
 
+  /* Показатель из двух величин: штуки и деньги рядом, один бейдж динамики.
+     Так «Заказы» и «Возвраты» занимают одну карточку вместо двух. */
+  function metricPair(body, options) {
+    var wrap = Fmt.el('div', 'metric');
+
+    var pair = Fmt.el('div', 'metric__pair');
+    var main = Fmt.el('div', 'metric__value', '—');
+    pair.appendChild(main);
+    var second = Fmt.el('div', 'metric__value metric__value--second', '—');
+    pair.appendChild(second);
+    wrap.appendChild(pair);
+
+    var row = Fmt.el('div', 'metric__row');
+    if (options.delta) row.appendChild(deltaBadge(options.delta));
+    if (options.footer) row.appendChild(Fmt.el('span', 'metric__foot', options.footer));
+    wrap.appendChild(row);
+    body.appendChild(wrap);
+
+    Fmt.countUp(main, options.value, options.format);
+    Fmt.countUp(second, options.secondValue, options.secondFormat);
+
+    if (options.spark && options.spark.length > 1) {
+      var sparkHost = Fmt.el('div');
+      body.appendChild(sparkHost);
+      Charts.sparkline(sparkHost, options.spark, options.color || 'var(--accent)');
+    }
+  }
+
   function seriesValues(data, key) {
     return (data.totals.series || []).map(function (point) { return point[key] || 0; });
   }
@@ -181,14 +209,30 @@
     },
 
     'kpi.orders': function (body, ctx) {
-      metric(body, {
-        value: ctx.data.totals.orders,
-        format: function (value) { return Fmt.number(value); },
+      var totals = ctx.data.totals;
+      metricPair(body, {
+        value: totals.orders,
+        format: function (value) { return Fmt.number(value) + ' шт'; },
+        secondValue: totals.ordersAmount,
+        secondFormat: Fmt.compactMoney,
         delta: ctx.data.deltas.orders,
-        footer: Fmt.number(ctx.data.totals.units) + ' ' +
-                Fmt.plural(ctx.data.totals.units, ['товар', 'товара', 'товаров']),
+        footer: 'средний чек ' + Fmt.compactMoney(totals.avgCheck),
         spark: seriesValues(ctx.data, 'orders'),
         color: 'var(--ozon)'
+      });
+    },
+
+    'kpi.returns': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metricPair(body, {
+        value: totals.returns,
+        format: function (value) { return Fmt.number(value) + ' шт'; },
+        secondValue: totals.returnsAmount,
+        secondFormat: Fmt.compactMoney,
+        delta: reverseDelta(ctx.data.deltas.returns),
+        footer: totals.grossRevenue
+          ? Fmt.percent(totals.returnsShare) + ' от выкупов'
+          : 'за период'
       });
     },
 
@@ -519,6 +563,70 @@
         tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.units)));
         tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.stock)));
         tr.appendChild(Fmt.el('td', null, Fmt.compactMoney(row.revenue)));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      body.appendChild(wrap);
+    },
+
+    'table.parents': function (body, ctx) {
+      var merged = {};
+      ctx.data.marketplaces.forEach(function (report) {
+        (report.parents || []).forEach(function (parent) {
+          var row = merged[parent.article];
+          if (!row) {
+            merged[parent.article] = {
+              article: parent.article,
+              name: parent.name,
+              orders: parent.orders,
+              ordersAmount: parent.ordersAmount,
+              units: parent.units,
+              revenue: parent.revenue,
+              marketplace: report.marketplace
+            };
+            return;
+          }
+          row.orders += parent.orders;
+          row.ordersAmount += parent.ordersAmount;
+          row.units += parent.units;
+          row.revenue += parent.revenue;
+        });
+      });
+
+      var rows = Object.keys(merged).map(function (key) { return merged[key]; })
+        .filter(function (row) { return row.orders > 0; })
+        .sort(function (a, b) { return b.ordersAmount - a.ordersAmount; })
+        .slice(0, ctx.block.size === 'xl' ? 25 : 10);
+
+      if (!rows.length) {
+        body.appendChild(Charts.emptyState('Нет заказов за период'));
+        return;
+      }
+
+      var wrap = Fmt.el('div', 'table-wrap');
+      var table = Fmt.el('table', 'table');
+      var head = Fmt.el('thead');
+      head.innerHTML = '<tr><th>Родитель</th><th>Заказы</th><th>Сумма заказов</th>' +
+                       '<th>Средний чек</th><th>Выкуплено</th></tr>';
+      table.appendChild(head);
+
+      var tbody = Fmt.el('tbody');
+      rows.forEach(function (row, index) {
+        var tr = Fmt.el('tr');
+
+        var nameCell = Fmt.el('td', 'is-name');
+        nameCell.appendChild(Fmt.el('span', 'rank', String(index + 1)));
+        nameCell.appendChild(document.createTextNode(row.article));
+        if (row.name && row.name !== row.article) {
+          nameCell.appendChild(Fmt.el('span', 'cell-note', row.name));
+        }
+        tr.appendChild(nameCell);
+
+        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.orders)));
+        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(row.ordersAmount)));
+        tr.appendChild(Fmt.el('td', null, Fmt.compactMoney(row.ordersAmount / row.orders)));
+        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(row.revenue)));
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);

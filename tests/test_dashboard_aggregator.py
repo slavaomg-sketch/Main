@@ -19,6 +19,7 @@ def make_report(code: str, revenue: float, orders: int) -> MarketplaceReport:
     report = MarketplaceReport(marketplace=code, title=code.title())
     report.revenue = revenue
     report.orders = orders
+    report.orders_amount = revenue
     report.units = orders
     report.buyouts = orders // 2
     report.returns = orders // 10

@@ -180,6 +180,40 @@ class Product:
 
 
 @dataclass
+class ParentSales:
+    """Продажи по родительскому артикулу.
+
+    У продавца артикул задаёт «родителя»: кабель TC-TC-1M и TC-TC-2M —
+    разные товары, а их размеры и цвета висят под одним артикулом. Средний
+    чек по родителям показывает, какой товар тянет корзину вверх.
+    """
+
+    article: str
+    name: str = ""
+    orders: int = 0
+    orders_amount: float = 0.0
+    units: int = 0
+    revenue: float = 0.0
+    marketplace: str = ""
+
+    @property
+    def avg_check(self) -> float:
+        return self.orders_amount / self.orders if self.orders else 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "article": self.article,
+            "name": self.name,
+            "orders": int(self.orders),
+            "ordersAmount": _round(self.orders_amount),
+            "units": int(self.units),
+            "revenue": _round(self.revenue),
+            "avgCheck": _round(self.avg_check),
+            "marketplace": self.marketplace,
+        }
+
+
+@dataclass
 class StockAlert:
     """Предупреждение об остатках: товар скоро закончится."""
 
@@ -343,6 +377,9 @@ class MarketplaceReport:
     # На доход продавца не влияет: разницу площадка берёт на себя.
     buyer_paid: float = 0.0
     orders: int = 0
+    # Сумма заказов за период: заказ и выкуп — разные события, и средний
+    # чек считается именно по заказам.
+    orders_amount: float = 0.0
     units: int = 0
     returns: int = 0
     cancellations: int = 0
@@ -364,6 +401,7 @@ class MarketplaceReport:
 
     series: list[DayPoint] = field(default_factory=list)
     products: list[Product] = field(default_factory=list)
+    parents: list[ParentSales] = field(default_factory=list)
     stock_alerts: list[StockAlert] = field(default_factory=list)
     regions: list[RegionSales] = field(default_factory=list)
     reviews: list[Review] = field(default_factory=list)
@@ -372,7 +410,9 @@ class MarketplaceReport:
 
     @property
     def avg_check(self) -> float:
-        return self.revenue / self.orders if self.orders else 0.0
+        """Средняя сумма заказа. Считается по заказам, а не по выкупам:
+        выкуп — уже другое событие, случившееся днями позже."""
+        return self.orders_amount / self.orders if self.orders else 0.0
 
     @property
     def profit(self) -> float:
@@ -433,6 +473,7 @@ class MarketplaceReport:
             "returnsAmount": _round(self.returns_amount),
             "buyerPaid": _round(self.buyer_paid),
             "orders": int(self.orders),
+            "ordersAmount": _round(self.orders_amount),
             "units": int(self.units),
             "returns": int(self.returns),
             "cancellations": int(self.cancellations),
@@ -454,6 +495,7 @@ class MarketplaceReport:
             "stockDays": _round(self.stock_days, 1),
             "series": [point.to_dict() for point in self.series],
             "products": [product.to_dict() for product in self.products],
+            "parents": [parent.to_dict() for parent in self.parents],
             "stockAlerts": [alert.to_dict() for alert in self.stock_alerts],
             "regions": [region.to_dict() for region in self.regions],
             "reviews": [review.to_dict() for review in self.reviews],

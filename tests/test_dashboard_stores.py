@@ -376,3 +376,25 @@ def test_notes_are_merged_and_kept_apart_from_warnings():
     assert merged.notes == ["до 01.03.2026 цифры взяты из финансового отчёта"]
     assert merged.warnings == ["остатки не получены — HTTP 404"]
     assert merged.to_dict()["notes"] == merged.notes
+
+
+def test_parents_are_merged_across_stores():
+    """Один и тот же родитель может продаваться из двух кабинетов —
+    в разрезе он должен остаться одной строкой."""
+    from dashboard.models import ParentSales
+
+    first = store_report("ВБ Вячеслав", 1000, 10, "A")
+    first.parents = [ParentSales(article="TC-TC-1M", orders=10, orders_amount=5000)]
+    second = store_report("ВБ Наталья", 500, 5, "B")
+    second.parents = [
+        ParentSales(article="TC-TC-1M", orders=5, orders_amount=2500),
+        ParentSales(article="TC-TC-2M", orders=2, orders_amount=3000),
+    ]
+
+    merged = merge_reports("wildberries", "Wildberries", [first, second], period())
+    by_article = {parent.article: parent for parent in merged.parents}
+
+    assert by_article["TC-TC-1M"].orders == 15
+    assert by_article["TC-TC-1M"].orders_amount == 7500
+    assert by_article["TC-TC-1M"].avg_check == 500
+    assert by_article["TC-TC-2M"].orders == 2

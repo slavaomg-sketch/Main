@@ -45,6 +45,7 @@ def _report() -> MarketplaceReport:
     report = MarketplaceReport(marketplace="wildberries", title="Wildberries")
     report.revenue = 1_000_000
     report.orders = 400
+    report.orders_amount = 1_000_000
     report.units = 500
     report.returns = 40
     report.buyouts = 300
@@ -55,6 +56,13 @@ def _report() -> MarketplaceReport:
     report.stock_units = 900
     report.series = [DayPoint(day=date(2025, 3, 1) , units=500)]
     return report
+
+
+def test_average_check_counts_orders_not_buyouts():
+    """Заказ и выкуп — разные события: чек считается по заказам."""
+    report = _report()
+    report.orders_amount = 800_000
+    assert report.avg_check == 2000
 
 
 def test_derived_metrics():

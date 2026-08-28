@@ -17,7 +17,15 @@ from typing import Any, Iterable
 from .config import Settings, settings
 from .connections import Connection
 from .connectors import MARKETPLACE_ORDER, build_connector
-from .models import DayPoint, MarketplaceReport, Period, Product, RegionSales, Snapshot
+from .models import (
+    DayPoint,
+    MarketplaceReport,
+    ParentSales,
+    Period,
+    Product,
+    RegionSales,
+    Snapshot,
+)
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +64,7 @@ def merge_reports(
 
     for attr in (
         "revenue", "gross_revenue", "returns_amount", "buyer_paid",
-        "orders", "units", "returns", "cancellations", "buyouts",
+        "orders", "orders_amount", "units", "returns", "cancellations", "buyouts",
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
     ):
@@ -96,6 +104,23 @@ def merge_reports(
                 existing.account = "несколько магазинов"
     merged.products = sorted(products.values(), key=lambda item: item.revenue, reverse=True)[:20]
 
+    parents: dict[str, ParentSales] = {}
+    for report in reports:
+        for parent in report.parents:
+            existing = parents.get(parent.article)
+            if existing is None:
+                parents[parent.article] = replace(parent)
+                continue
+            existing.orders += parent.orders
+            existing.orders_amount += parent.orders_amount
+            existing.units += parent.units
+            existing.revenue += parent.revenue
+    merged.parents = sorted(
+        parents.values(),
+        key=lambda item: item.orders_amount or item.revenue,
+        reverse=True,
+    )
+
     regions: dict[str, RegionSales] = {}
     for report in reports:
         for region in report.regions:
@@ -123,6 +148,7 @@ def merge_reports(
 def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     """Свод по всем площадкам плюс общий дневной ряд."""
     revenue = _sum(reports, "revenue")
+    orders_amount = _sum(reports, "orders_amount")
     gross_revenue = _sum(reports, "gross_revenue")
     returns_amount = _sum(reports, "returns_amount")
     buyer_paid = _sum(reports, "buyer_paid")
@@ -177,7 +203,10 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "costPrice": round(cost_price, 2),
         "profit": round(profit, 2),
         "margin": round(profit / revenue * 100, 1) if revenue else 0.0,
-        "avgCheck": round(revenue / orders, 2) if orders else 0.0,
+        # Средний чек — по заказам, а не по выкупам: выкуп случается днями
+        # позже заказа, и делить одно на другое нечестно.
+        "ordersAmount": round(orders_amount, 2),
+        "avgCheck": round(orders_amount / orders, 2) if orders else 0.0,
         "buyoutRate": round(buyouts / orders * 100, 1) if orders else 0.0,
         "returnRate": round(returns / orders * 100, 1) if orders else 0.0,
         "drr": round(ad_spend / revenue * 100, 1) if revenue else 0.0,
@@ -227,6 +256,7 @@ def build_deltas(
     was = build_totals(previous)
     keys = (
         "revenue",
+        "ordersAmount",
         "grossRevenue",
         "returnsAmount",
         "buyerPaid",

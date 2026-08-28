@@ -580,8 +580,8 @@
       var group = Fmt.el('div', 'lib-group');
       group.appendChild(Fmt.el('h3', 'lib-group__title', groupName));
       groups[groupName].forEach(function (definition) {
-        var item = Fmt.el('button', 'lib-item');
-        item.type = 'button';
+        var shown = !!counts[definition.type];
+        var item = Fmt.el('div', 'lib-item' + (shown ? ' is-on' : ''));
 
         var iconWrap = Fmt.el('div', 'lib-item__icon');
         iconWrap.innerHTML = Blocks.icon(definition.icon);
@@ -592,27 +592,46 @@
         text.appendChild(Fmt.el('div', 'lib-item__desc', definition.description));
         item.appendChild(text);
 
-        if (counts[definition.type]) {
-          item.appendChild(Fmt.el('span', 'lib-item__count', '×' + counts[definition.type]));
-        }
-
-        item.addEventListener('click', function () {
-          Api.newBlock(definition.type, definition.defaultSize).then(function (block) {
-            var current = activeLayout();
-            current.blocks.push(block);
-            scheduleSave();
-            renderBoard();
-            renderLibrary();
-            toast('Блок «' + definition.title + '» добавлен');
-            var card = dom.board.querySelector('[data-id="' + block.id + '"]');
-            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }).catch(function (error) { toast(error.message); });
+        var toggle = Fmt.el('button', 'lib-item__toggle');
+        toggle.type = 'button';
+        toggle.textContent = shown
+          ? (counts[definition.type] > 1 ? 'Убрать ×' + counts[definition.type] : 'Убрать')
+          : 'Показать';
+        toggle.addEventListener('click', function () {
+          if (shown) removeBlockType(definition);
+          else addBlockType(definition);
         });
+        item.appendChild(toggle);
 
         group.appendChild(item);
       });
       dom['library-body'].appendChild(group);
     });
+  }
+
+  function addBlockType(definition) {
+    Api.newBlock(definition.type, definition.defaultSize).then(function (block) {
+      var current = activeLayout();
+      current.blocks.push(block);
+      scheduleSave();
+      renderBoard();
+      renderLibrary();
+      toast('Блок «' + definition.title + '» показан');
+      var card = dom.board.querySelector('[data-id="' + block.id + '"]');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }).catch(function (error) { toast(error.message); });
+  }
+
+  function removeBlockType(definition) {
+    var current = activeLayout();
+    if (!current) return;
+    current.blocks = current.blocks.filter(function (block) {
+      return block.type !== definition.type;
+    });
+    scheduleSave();
+    renderBoard();
+    renderLibrary();
+    toast('Блок «' + definition.title + '» убран');
   }
 
   /* --- Режим настройки -------------------------------------------------------- */

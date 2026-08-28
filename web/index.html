@@ -78,7 +78,7 @@
         <div class="editbar__actions">
           <button class="btn btn--ghost" id="btn-library" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            <span>Добавить блок</span>
+            <span>Показатели</span>
           </button>
           <button class="btn btn--ghost" id="btn-new-tab" type="button">Новая вкладка</button>
           <button class="btn btn--ghost" id="btn-reset" type="button">Сбросить</button>
@@ -101,11 +101,15 @@
     <div class="sheet__backdrop" data-close="library"></div>
     <aside class="sheet__panel" role="dialog" aria-label="Библиотека блоков">
       <header class="sheet__head">
-        <h2>Библиотека блоков</h2>
+        <h2>Показатели панели</h2>
         <button class="icon-btn" type="button" data-close="library" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </header>
+      <p class="sheet__hint">
+        Нажмите «Показать», чтобы вывести показатель на панель, и «Убрать» —
+        чтобы скрыть. Порядок и размер настраиваются прямо на карточках.
+      </p>
       <div class="sheet__body" id="library-body"></div>
     </aside>
   </div>
