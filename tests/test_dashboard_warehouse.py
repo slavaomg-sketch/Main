@@ -490,10 +490,14 @@ async def test_period_within_available_data_is_not_flagged(store, monkeypatch):
 # --- отчёт реализации: глубина за пределами статистики --------------------------
 
 
-async def test_finance_rows_are_stored_with_their_own_key_and_day():
+async def test_finance_rows_are_stored_by_the_day_of_the_sale():
+    """Дата операции бывает на день-другой позже самой продажи — по дням
+    отчёт должен ложиться так же, как статистика."""
     row = {"rrdId": 4242, "rrDate": "2026-01-15", "saleDt": "2026-01-14T10:00:00Z"}
     assert warehouse.row_key("finance", row, 0) == "4242"
-    assert warehouse.row_day("finance", row, date.today()) == date(2026, 1, 15)
+    assert warehouse.row_day("finance", row, date.today()) == date(2026, 1, 14)
+    # Если даты продажи нет, остаётся дата операции.
+    assert warehouse.row_day("finance", {"rrDate": "2026-01-15"}, date.today()) == date(2026, 1, 15)
 
 
 async def test_finance_fills_the_days_statistics_no_longer_keeps(store, monkeypatch):
@@ -749,5 +753,38 @@ async def test_source_check_lines_up_both_wildberries_sources(store, monkeypatch
     check = await reconcile.check_day(store.id, yesterday)
 
     assert check["статистика"]["выкупы:priceWithDisc"] == 1000
-    assert check["финотчёт"]["выкупы:retailAmount"] == 1000
-    assert check["финотчёт"]["типы строк"] == {"Продажа": 1}
+    assert check["финотчёт по дате продажи"]["выкупы:retailAmount"] == 1000
+    assert check["финотчёт по дате продажи"]["типы строк"] == {"Продажа": 1}
+
+
+async def test_deep_days_use_the_same_two_bases_as_fresh_days(store, monkeypatch):
+    """Одна логика на все периоды: и статистика, и отчёт реализации считают
+    деньги по цене покупателя, а оборот — по цене продавца."""
+    today = date.today()
+    deep = today - timedelta(days=8)
+
+    row = finance(deep, 1, price=1145.0)
+    row["retailPriceWithDisc"] = 1547.0
+
+    mock_wb(monkeypatch, wb_handler(sales=[], orders=[], finance_rows=[row]))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    assert report.gross_revenue == 1145
+    assert report.seller_revenue == 1547
+    assert report.revenue == 1145
+
+
+async def test_turnover_matches_the_marketplace_app_on_fresh_days(store, monkeypatch):
+    today = date.today()
+    row = sale(today, "a", price=1145.0)
+    row["priceWithDisc"] = 1547.0
+
+    mock_wb(monkeypatch, wb_handler(sales=[row], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.seller_revenue == 1547   # столько показывает приложение
+    assert report.gross_revenue == 1145    # столько заплатил покупатель

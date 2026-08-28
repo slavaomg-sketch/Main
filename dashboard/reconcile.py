@@ -88,16 +88,25 @@ def finance_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 async def check_day(connection_id: str, day: date) -> dict[str, Any]:
-    """Итоги одного дня по обоим источникам — для сравнения глазами."""
+    """Итоги одного дня по обоим источникам — для сравнения глазами.
+
+    Отчёт реализации считается дважды: по дате продажи и по дате операции.
+    Совпасть со статистикой должна первая — но проверять это лучше цифрами,
+    а не на слово.
+    """
     from . import warehouse
+    from .connectors.dates import parse_day
 
     period = Period(date_from=day, date_to=day)
     statistics = await warehouse.read_rows(connection_id, "sales", period)
     finance = await warehouse.read_rows(connection_id, "finance", period)
+
+    by_operation = [row for row in finance if parse_day(row.get("rrDate")) == day]
     return {
         "день": day.isoformat(),
         "статистика": statistics_totals(statistics),
-        "финотчёт": finance_totals(finance),
+        "финотчёт по дате продажи": finance_totals(finance),
+        "финотчёт по дате операции": finance_totals(by_operation),
     }
 
 

@@ -24,8 +24,18 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "type": "kpi.grossRevenue",
         "title": "Выкупы",
         "group": "Показатели",
-        "description": "Сумма выкупов до вычета возвратов — та же цифра, "
-                       "что показывает приложение маркетплейса.",
+        "description": "Сколько заплатили покупатели за выкупленное, "
+                       "до вычета возвратов.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "revenue",
+    },
+    {
+        "type": "kpi.sellerRevenue",
+        "title": "Оборот по вашим ценам",
+        "group": "Показатели",
+        "description": "Сумма выкупов по цене продавца, до скидки площадки "
+                       "покупателю. Эту цифру показывает приложение маркетплейса.",
         "sizes": ["sm", "md"],
         "defaultSize": "sm",
         "icon": "revenue",
@@ -241,6 +251,7 @@ DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
     ("kpi.revenue", "sm"),
     ("kpi.grossRevenue", "sm"),
     ("kpi.returnsAmount", "sm"),
+    ("kpi.sellerRevenue", "sm"),
     ("kpi.payout", "sm"),
     ("kpi.orders", "sm"),
     ("kpi.avgCheck", "sm"),

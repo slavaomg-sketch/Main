@@ -135,7 +135,10 @@ def row_day(source: str, row: dict[str, Any], fallback: date) -> date:
     if source in SNAPSHOT_SOURCES:
         return fallback
     if source == "finance":
-        return parse_day(row.get("rrDate") or row.get("saleDt")) or fallback
+        # `saleDt` — дата самой продажи, `rrDate` — дата, когда операция
+        # попала в отчёт; она бывает на день-другой позже. По дням отчёт
+        # должен совпадать со статистикой, поэтому берём дату продажи.
+        return parse_day(row.get("saleDt") or row.get("rrDate")) or fallback
     return parse_day(row.get("date") or row.get("lastChangeDate")) or fallback
 
 

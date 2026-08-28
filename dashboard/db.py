@@ -160,13 +160,13 @@ async def _hide_blocks_without_cost_price(db: aiosqlite.Connection) -> None:
 # Блоки сверки с личным кабинетом площадки: «Выкупы» и «Возвраты, ₽».
 # Без них выручку панели («выкупы минус возвраты») не с чем было сопоставить —
 # в приложении маркетплейса показывают валовые выкупы.
-RECONCILIATION_BLOCKS = ("kpi.grossRevenue", "kpi.returnsAmount")
+RECONCILIATION_BLOCKS = ("kpi.grossRevenue", "kpi.returnsAmount", "kpi.sellerRevenue")
 
 
 async def _add_reconciliation_blocks(db: aiosqlite.Connection) -> None:
     """Разовая добавка: поставить «Выкупы» и «Возвраты, ₽» рядом с выручкой."""
     cursor = await db.execute(
-        "SELECT value FROM preferences WHERE key = 'reconciliation_blocks_added'"
+        "SELECT value FROM preferences WHERE key = 'reconciliation_blocks_added_2'"
     )
     if await cursor.fetchone():
         return
@@ -193,7 +193,7 @@ async def _add_reconciliation_blocks(db: aiosqlite.Connection) -> None:
 
     await db.execute(
         "INSERT OR REPLACE INTO preferences (key, value)"
-        " VALUES ('reconciliation_blocks_added', '1')"
+        " VALUES ('reconciliation_blocks_added_2', '1')"
     )
 
 

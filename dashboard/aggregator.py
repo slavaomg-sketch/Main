@@ -55,7 +55,7 @@ def merge_reports(
     merged.accounts = [report.to_account_summary() for report in reports]
 
     for attr in (
-        "revenue", "gross_revenue", "returns_amount",
+        "revenue", "gross_revenue", "returns_amount", "seller_revenue",
         "orders", "units", "returns", "cancellations", "buyouts",
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
@@ -125,6 +125,7 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     revenue = _sum(reports, "revenue")
     gross_revenue = _sum(reports, "gross_revenue")
     returns_amount = _sum(reports, "returns_amount")
+    seller_revenue = _sum(reports, "seller_revenue")
     orders = int(_sum(reports, "orders"))
     units = int(_sum(reports, "units"))
     returns = int(_sum(reports, "returns"))
@@ -155,6 +156,14 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "grossRevenue": round(gross_revenue, 2),
         "returnsAmount": round(returns_amount, 2),
         "returnsShare": round(returns_amount / gross_revenue * 100, 1) if gross_revenue else 0.0,
+        # Оборот по ценам продавца и скидка, которую площадка дала покупателю
+        # за счёт продавца: разница между его ценой и тем, что реально пришло.
+        "sellerRevenue": round(seller_revenue, 2),
+        "platformDiscount": round(max(seller_revenue - gross_revenue, 0.0), 2),
+        "platformDiscountShare": (
+            round(max(seller_revenue - gross_revenue, 0.0) / seller_revenue * 100, 1)
+            if seller_revenue else 0.0
+        ),
         "orders": orders,
         "units": units,
         "returns": returns,
@@ -220,6 +229,7 @@ def build_deltas(
         "revenue",
         "grossRevenue",
         "returnsAmount",
+        "sellerRevenue",
         "orders",
         "units",
         "profit",

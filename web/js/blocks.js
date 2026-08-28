@@ -120,7 +120,22 @@
         delta: ctx.data.deltas.grossRevenue,
         footer: Fmt.number(totals.buyouts) + ' ' +
                 Fmt.plural(totals.buyouts, ['выкуп', 'выкупа', 'выкупов']) +
-                ' · до вычета возвратов',
+                ' · заплатили покупатели, до вычета возвратов',
+        color: 'var(--accent)'
+      });
+    },
+
+    'kpi.sellerRevenue': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metric(body, {
+        value: totals.sellerRevenue,
+        format: Fmt.compactMoney,
+        delta: ctx.data.deltas.sellerRevenue,
+        footer: totals.platformDiscount
+          ? 'скидка площадки покупателю — ' +
+            Fmt.compactMoney(totals.platformDiscount) + ' (' +
+            Fmt.percent(totals.platformDiscountShare) + ')'
+          : 'до скидки площадки покупателю',
         color: 'var(--accent)'
       });
     },
