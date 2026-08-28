@@ -494,7 +494,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     PORT_D: 13,
     PORT_L: 14,
     EXPLOSION: 15,
-    EXPLOSION_INFO: 16
+    EXPLOSION_INFO: 16,
+    BUG: 17          // жук: с места не сходит, но раз в цикл вспыхивает и бьёт соседа
   };
 
   var NAMES = {};
@@ -516,11 +517,20 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     '^': Tiles.PORT_U,
     '>': Tiles.PORT_R,
     'v': Tiles.PORT_D,
-    '<': Tiles.PORT_L
+    '<': Tiles.PORT_L,
+    // Жук. Цифра — сдвиг фазы в тиках: так в коридоре набирается бегущая волна.
+    'B': Tiles.BUG,
+    '1': Tiles.BUG, '2': Tiles.BUG, '3': Tiles.BUG, '4': Tiles.BUG,
+    '5': Tiles.BUG, '6': Tiles.BUG, '7': Tiles.BUG, '8': Tiles.BUG, '9': Tiles.BUG
   };
+
+  // Сдвиг фазы жука по символу карты ('B' — нулевая фаза).
+  var BUG_PHASE = { B: 0 };
+  for (var d = 1; d <= 9; d++) BUG_PHASE[String(d)] = d;
 
   var TO_CHAR = {};
   Object.keys(CHARS).forEach(function (c) { if (TO_CHAR[CHARS[c]] === undefined) TO_CHAR[CHARS[c]] = c; });
+  TO_CHAR[Tiles.BUG] = 'B';        // фаза в текстовый дамп не попадает — она нужна только карте
   TO_CHAR[Tiles.EXPLOSION] = '!';
   TO_CHAR[Tiles.EXPLOSION_INFO] = '!';
 
@@ -533,7 +543,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   PORT_DIR[Tiles.PORT_D] = 2;
   PORT_DIR[Tiles.PORT_L] = 3;
 
-  var api = { Tiles: Tiles, NAMES: NAMES, CHARS: CHARS, TO_CHAR: TO_CHAR, DIRS: DIRS, PORT_DIR: PORT_DIR };
+  var api = { Tiles: Tiles, NAMES: NAMES, CHARS: CHARS, TO_CHAR: TO_CHAR, DIRS: DIRS,
+              PORT_DIR: PORT_DIR, BUG_PHASE: BUG_PHASE };
 
   if (typeof module === 'object' && module.exports) module.exports = api;
   else global.SP = Object.assign(global.SP || {}, api);
@@ -1389,23 +1400,124 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       id: 31,
       chapter: 4,
       name: "Патруль",
-      hint: "Снипснак ходит вдоль стен и в середину зала не суётся. Порты его не выпускают — а тебя пропускают.",
-      needed: 6,
+      hint: "Снипснак ходит вдоль стен и с кольца не сворачивает. Сердцевина зала безопасна — опасен только сам обход: ныряй в лаз сразу, как патруль пройдёт мимо.",
+      needed: 30,
       map: [
-        "########################",
-        "#M.....................#",
-        "####v######v######v###.#",
-        "##S    ##S    ##S    #.#",
-        "##     ##     ##     #.#",
-        "##  *  ##  *  ##  *  #.#",
-        "##  .  ##  .  ##  .  #.#",
-        "##     ##     ##     #.#",
-        "###v######v######v####.#",
-        "#......................#",
-        "#...*......*......*....#",
-        "#......................#",
-        "#..........E...........#",
-        "########################"
+        "################################################",
+        "#..............................................#",
+        "#.M.....#....#....#....#....#....#....#....#...#",
+        "#.*......OOO..O.O..*.OO...O.....O......O.O.....#",
+        "#..#....#....#....#....#....#....#....#....#...#",
+        "#......O.OO......O.O.............*O..O.O.O.....#",
+        "#..#*...#*...#....#....#....#....#....#....#...#",
+        "########################v#######################",
+        "####      S                                  ###",
+        "#### ################### ################### ###",
+        "#### #..*...*......*..............*........# ###",
+        "#### #*.#O...#....#*...#O.O.#....#....#*...# ###",
+        "#### #.......................*...*..*......# ###",
+        "#### #..#....#.*..#..OO#....#O..*#O*..#...O# ###",
+        "#### #......*.........*.*....*.....*.......# ###",
+        "#### #O.#.O..#.OO.#..O.#OOO.#.O..#...*#O.O.# ###",
+        "#### #...**...............*........*.......# ###",
+        "#### #..#.O..#....#O..O#..*.#...O#.*.O#.E..# ###",
+        "#### #.....*..........................*....# ###",
+        "#### ####################################### ###",
+        "####                                         ###",
+        "################################################"
+      ]
+    },
+    {
+      id: 32,
+      chapter: 4,
+      name: "Перебежка",
+      hint: "Порт бросает тебя на кольцо ровно между двумя лазами, а по кольцу ходят двое. Бежать по обходу можно только в чужую спину и только в разрыв между патрулями.",
+      needed: 24,
+      map: [
+        "####################################################",
+        "#..................................................#",
+        "#.M.....#*..*#*...#....#....#....#....#....#....#..#",
+        "#......O.O.....O......O.....*...*.OO*..............#",
+        "#..#....#....#....#....#....#....#....#....#....#..#",
+        "#.O..*OO...O..*.*O..OO.........O..........O.O.*....#",
+        "#..#....#....#.*..#....#....#....#....#....#..*.#..#",
+        "##########################v#########################",
+        "####      S                                      ###",
+        "#### ####### ########################### ####### ###",
+        "#### #.......*............#....................# ###",
+        "#### #O.#..O.#....#..O.#..#O.#....#.*..#O.O.#..# ###",
+        "#### #.......*............#........*...........# ###",
+        "#### #..#.O..#..*.#....#O.#..#.O..#O...#..O.#.O# ###",
+        "#### #...*.*......**......#....................# ###",
+        "#### #..#O...#O..O#O...#O.#O.#....#..*.#....#..# ###",
+        "#### #.................*..#..........*........*# ###",
+        "#### #O.#..OO#....#....#..#..#..O.#.O..#..O.E..# ###",
+        "#### #..............*.....#....................# ###",
+        "#### ########################################### ###",
+        "####                              S              ###",
+        "####################################################"
+      ]
+    },
+    {
+      id: 33,
+      chapter: 4,
+      name: "Два круга",
+      hint: "Два зала — два такта. В тесном западном патруль возвращается к лазу раз в сорок с лишним тиков, в просторном восточном пара патрулей проходит каждые полтора десятка. Посчитай такт, прежде чем бежать.",
+      needed: 33,
+      map: [
+        "######################################################",
+        "#....................................................#",
+        "#.M...*.#....#....#...*#....#....#....#....#.*..#....#",
+        "#.....*O............O.O......O*..*..........O....O...#",
+        "#..#....#....#....#....#....#....#....#...*#....#....#",
+        "#..........O...*.............O.O...*.....O...O.O..O..#",
+        "#..#....#....#....#.........#....#....#....#....#....#",
+        "####v##^###########v###^##############################",
+        "###   S      ###          S             S          ###",
+        "### ###^## # ### ######^####################### ## ###",
+        "### #......# ### #..........**...*...............# ###",
+        "### #O*#*.O# ### #OO#OO..#O...#*..*#.O..#....#...# ###",
+        "### #......# ### #...*..*.............*..........# ###",
+        "### #.*#*O.# ### #..#.O.O#.O.O#....#OO.O#....#*..# ###",
+        "### #....*.# ### #..*............................# ###",
+        "### #.*#*O.# ### #..#....#O...#O..*#....#...*#...# ###",
+        "### #......# ### #............*.............*.*..# ###",
+        "### #.*#*O.# ### #..#O...#..*.#O...#...O#....EO..# ###",
+        "### #......# ### #....*..........................# ###",
+        "### ######## ### ################################# ###",
+        "###          ###                                   ###",
+        "######################################################"
+      ]
+    },
+    {
+      id: 34,
+      chapter: 4,
+      name: "Жук",
+      hint: "Жук с места не сходит, но раз в дюжину тиков вспыхивает и бьёт соседнюю клетку. Гнёзда идут кучно, между ними тихие пятачки: перебегай от пятачка к пятачку, пока жуки погасли.",
+      needed: 36,
+      map: [
+        "##################################################",
+        "#................................................#",
+        "#.M.....#.*..#...*#...*#....#....#....#....#.*...#",
+        "#....O.O............OOO...*...O.O........OO....O.#",
+        "#..#....#....#....#....#....#....#....#....#.....#",
+        "#....*.O....*.........*...O........O.....O.....O.#",
+        "#..#...*#....#....#....#....#...*#....#*...#*....#",
+        "#.O..OOO....O..*....O.O.O*....O.O....O....O......#",
+        "#..#....#*..*#....#....#...*#....#....#...*#.....#",
+        "#................................................#",
+        "#................................................#",
+        "##### ############################################",
+        "##### * * * * * * * * * * * * * * * * * * * * ####",
+        "#########BBBBB####BBBB#####BBBB####BBBBB##### ####",
+        "############################################# ####",
+        "############################################# ####",
+        "##################################........... ..##",
+        "##################################..#...#...#...##",
+        "##################################...............#",
+        "##################################............E..#",
+        "############################################.....#",
+        "##################################################"
       ]
     },
     {
@@ -1622,6 +1734,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   var base = (typeof module === 'object' && module.exports) ? require('./tiles.js') : global.SP;
   var T = base.Tiles, DIRS = base.DIRS, CHARS = base.CHARS, PORT_DIR = base.PORT_DIR;
+  var BUG_PHASE = base.BUG_PHASE;
 
   var EXPLOSION_TICKS = 5;
   var DEATH_TICKS = 14;
@@ -1629,6 +1742,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   // без неё камень трогается в тот же тик, когда из-под него ушла опора,
   // и убежать физически невозможно.
   var SHAKE_TICKS = 4;
+  // Жук: цикл «тлеет — вспыхивает». Вспышка бьёт соседа по стороне, но окно
+  // покоя длиннее вспышки втрое — этого хватает, чтобы пройти мимо.
+  var BUG_PERIOD = 12;
+  var BUG_HOT = 4;
 
   // С чего предмет может скатиться вбок. Стена сюда входит: камень, лежащий
   // на ровной твёрдой поверхности, съезжает с её края, если сбоку и наискось пусто.
@@ -1681,6 +1798,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         if (t === T.MURPHY) { this.murphy.x = x; this.murphy.y = y; }
         if (t === T.SNIKSNAK) this.dir[i] = 1;
         if (t === T.ELECTRON) this.dir[i] = 3;
+        if (t === T.BUG) this.dir[i] = BUG_PHASE[ch] || 0;   // жук хранит в dir сдвиг фазы
       }
     }
 
@@ -1713,6 +1831,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   };
 
   Engine.prototype.exitOpen = function () { return this.collected >= this.needed; };
+
+  /** Горит ли жук в этом тике. Фаза детерминирована — уровень воспроизводим. */
+  Engine.prototype.bugHot = function (i) {
+    return (this.ticks + this.dir[i]) % BUG_PERIOD < BUG_HOT;
+  };
 
   Engine.prototype.clone = function () {
     var e = Object.create(Engine.prototype);
@@ -1922,7 +2045,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         }
         if (this.falling[i]) {
           if (b === T.MURPHY) { this.killMurphy(); continue; }
-          if (isMonster(b)) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
+          if (isMonster(b) || b === T.BUG) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
           if (b === T.ORANGE) { this.explodeAt(x, y + 1, 'normal'); continue; }
           if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
         }
@@ -1971,6 +2094,17 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     }
   };
 
+  /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
+  Engine.prototype.updateBugs = function () {
+    var m = this.murphy;
+    for (var k = 0; k < 4; k++) {
+      var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
+      if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+      var i = this.idx(x, y);
+      if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killMurphy(); return; }
+    }
+  };
+
   /**
    * Один шаг мира.
    * input: { dir: -1..3, snap: bool }
@@ -1986,6 +2120,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
     this.updateGravity();
     this.updateMonsters();
+    if (this.status === 'playing') this.updateBugs();
 
     if (this.status === 'dying') {
       this.deathTimer--;
@@ -2343,6 +2478,50 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     g.restore();
   }
 
+  /** Жук: тлеет тёмным, а на вспышке бьёт разрядом по сторонам. */
+  function drawBug(g, s, hot, timeMs) {
+    var cx = s / 2, cy = s / 2, r = s * 0.34;
+    g.fillStyle = '#0b0f18';
+    g.fillRect(0, 0, s, s);
+    // лапки-контакты по сторонам: именно ими он и достаёт соседнюю клетку
+    g.strokeStyle = hot ? '#ffe98a' : '#3a4763';
+    g.lineWidth = Math.max(1, s * 0.06);
+    g.lineCap = 'round';
+    for (var k = 0; k < 4; k++) {
+      var a = k * Math.PI / 2;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a) * r * 0.8, cy + Math.sin(a) * r * 0.8);
+      g.lineTo(cx + Math.cos(a) * r * 1.45, cy + Math.sin(a) * r * 1.45);
+      g.stroke();
+    }
+    if (hot) {
+      g.save();
+      g.shadowColor = 'rgba(255,220,90,0.95)';
+      g.shadowBlur = s * 0.5;
+      sphere(g, s, cx, cy, r, '#ffffff', '#ffdc5a', '#c05a00');
+      g.restore();
+      // искры вокруг корпуса
+      g.strokeStyle = 'rgba(255,240,170,0.9)';
+      g.lineWidth = Math.max(1, s * 0.04);
+      var t = (timeMs || 0) / 60;
+      for (var j = 0; j < 6; j++) {
+        var b = j * Math.PI / 3 + t;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(b) * r * 1.05, cy + Math.sin(b) * r * 1.05);
+        g.lineTo(cx + Math.cos(b) * r * 1.5, cy + Math.sin(b) * r * 1.5);
+        g.stroke();
+      }
+    } else {
+      sphere(g, s, cx, cy, r, '#7f8ba6', '#3d4761', '#141b2b');
+      g.strokeStyle = 'rgba(140,160,200,0.45)';
+      g.lineWidth = Math.max(1, s * 0.035);
+      g.beginPath(); g.arc(cx, cy, r * 0.98, 0, 6.2832); g.stroke();
+    }
+    // глаз: тлеет тускло, на вспышке белый
+    g.fillStyle = hot ? '#fff8d0' : '#8a3a1a';
+    g.beginPath(); g.arc(cx, cy, r * 0.28, 0, 6.2832); g.fill();
+  }
+
   function drawBlast(g, s, k, info) {
     var r = s * (0.2 + 0.32 * k);
     var grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, r);
@@ -2382,7 +2561,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   global.SP = Object.assign(global.SP, {
     Sprites: {
-      build: build, drawElectron: drawElectron, drawBlast: drawBlast,
+      build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }
@@ -2500,6 +2679,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.BUG) {
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawBug(g, s, engine.bugHot(i), timeMs);
+          g.restore();
+          continue;
+        }
         if (t === T.ELECTRON) {
           g.save(); g.translate(px, py);
           SP.Sprites.drawElectron(g, s, timeMs / 260 + x);

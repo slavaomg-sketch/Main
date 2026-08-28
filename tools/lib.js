@@ -146,18 +146,30 @@ function unblockTargets(e) {
   return res;
 }
 
-/** Безопасен ли ход: проигрываем его и ещё несколько тиков ожидания на копии. */
-function isSafe(e, action, lookahead) {
+/** Переживает ли Мёрфи заданную цепочку ходов (хвост добивается ожиданием). */
+function survives(engine, plan, ticks) {
+  var c = engine.clone();
+  for (var i = 0; i < ticks; i++) {
+    c.step(i < plan.length ? plan[i] : { dir: -1 });
+    if (c.status === 'won') return true;
+    if (c.status === 'dying' || c.status === 'dead') return false;
+  }
+  return true;
+}
+
+/**
+ * Безопасен ли ход. Проверяем два поведения: замереть на месте и идти дальше
+ * задуманным маршрутом. Хватает любого — живой игрок тоже не обязан
+ * останавливаться там, где остановка смертельна (под качающимся зонком,
+ * посреди гнезда жуков), если ходом дальше он оттуда выходит.
+ */
+function isSafe(e, action, lookahead, cont) {
   var c = e.clone();
   c.step(action);
   if (c.status === 'dying' || c.status === 'dead') return false;
   if (c.status === 'won') return true;
-  for (var i = 0; i < lookahead; i++) {
-    c.step({ dir: -1 });
-    if (c.status === 'dying' || c.status === 'dead') return false;
-    if (c.status === 'won') return true;
-  }
-  return true;
+  if (survives(c, [], lookahead)) return true;
+  return !!(cont && cont.length && survives(c, cont, lookahead));
 }
 
 function autopilot(level, opts) {
@@ -195,13 +207,22 @@ function autopilot(level, opts) {
       if (unblock.length) path = planStep(e, unblock, false) || planStep(e, unblock, true);
     }
     var order = [];
-    if (path && path.length) order.push({ dir: path[0], snap: false });
-    order.push({ dir: -1, snap: false });
-    for (var d = 0; d < 4; d++) order.push({ dir: d, snap: false });
+    if (path && path.length) {
+      // продолжение задуманного маршрута — оно и есть «бежать дальше»
+      var tail = [];
+      for (var p = 1; p < path.length && p <= lookahead; p++) tail.push({ dir: path[p], snap: false });
+      order.push({ act: { dir: path[0], snap: false }, cont: tail });
+    }
+    order.push({ act: { dir: -1, snap: false }, cont: null });
+    for (var d = 0; d < 4; d++) {
+      var same = [];
+      for (var q = 0; q < lookahead; q++) same.push({ dir: d, snap: false });
+      order.push({ act: { dir: d, snap: false }, cont: same });   // рывок в одну сторону
+    }
 
     var chosen = null;
     for (var k = 0; k < order.length; k++) {
-      if (isSafe(e, order[k], lookahead)) { chosen = order[k]; break; }
+      if (isSafe(e, order[k].act, lookahead, order[k].cont)) { chosen = order[k].act; break; }
     }
     if (!chosen) chosen = { dir: -1, snap: false };
 
