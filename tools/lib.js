@@ -169,6 +169,15 @@ function autopilot(level, opts) {
   var actions = [];
   var stuck = 0;
 
+  // Зачин: жадный автопилот не умеет готовить дорогу заранее, поэтому
+  // такие ходы задаются вручную, а дальше он доигрывает уровень сам.
+  if (opts.prefix) {
+    parseMoves(opts.prefix).forEach(function (act) { e.step(act); actions.push(act); });
+    if (e.status !== 'playing' && e.status !== 'won') {
+      return { ok: false, moves: formatMoves(actions), reason: 'зачин губит Мёрфи' };
+    }
+  }
+
   for (var step = 0; step < limit; step++) {
     if (e.status === 'won') return { ok: true, moves: formatMoves(actions), steps: actions.length };
     if (e.status !== 'playing') return { ok: false, moves: formatMoves(actions), reason: 'погиб' };
