@@ -19,9 +19,16 @@ def _round(value: float, digits: int = 2) -> float:
 # Периоды, которые считаются от начала календарного отрезка. Сравнивать их
 # нужно с тем же отрезком предыдущего месяца, квартала, полугодия или года,
 # а не со «сдвигом на столько же дней назад».
-CALENDAR_PRESETS = {"month", "quarter", "half", "year"}
+# «Месяц» — календарный: с 1 числа по сегодня, как его понимает бухгалтерия.
+CALENDAR_PRESETS = {"month"}
 
-MONTHS_BACK = {"month": 1, "quarter": 3, "half": 6, "year": 12}
+# Квартал, полугодие и год — скользящие окна: последние 3, 6 и 12 месяцев.
+# Календарными их делать нельзя: с июля по сентябрь «текущий квартал» и
+# «текущее полугодие» — это один и тот же отрезок, и панель показывала бы
+# по ним одинаковые цифры.
+ROLLING_MONTHS = {"quarter": 3, "half": 6, "year": 12}
+
+MONTHS_BACK = {"month": 1, **ROLLING_MONTHS}
 
 
 def shift_months(day: date, months: int) -> date:
@@ -60,9 +67,9 @@ class Period:
     def previous(self, now: datetime | None = None) -> "Period":
         """Сопоставимый предыдущий период — для расчёта динамики.
 
-        Календарные периоды сравниваются с тем же отрезком прошлого месяца,
-        квартала, полугодия или года: «1–28 августа» с «1–28 июля», а не с
-        «4–31 июля». Скользящие окна сдвигаются на свою длину.
+        Календарный «Месяц» сравнивается с тем же отрезком прошлого месяца:
+        «1–28 августа» с «1–28 июля», а не с «4–31 июля». Скользящие окна —
+        неделя, квартал, полгода, год — сдвигаются на свою длину назад.
         """
         now = now or datetime.now()
 
@@ -97,10 +104,12 @@ class Period:
     def from_preset(cls, preset: str, today: date | None = None) -> "Period":
         today = today or date.today()
 
-        # Квартал, полугодие и год — календарные: считаются от начала периода,
-        # как их считает бухгалтерия, а не «последние N дней».
-        quarter_start = today.replace(month=(today.month - 1) // 3 * 3 + 1, day=1)
-        half_start = today.replace(month=1 if today.month <= 6 else 7, day=1)
+        # Квартал, полугодие и год отсчитываются назад от сегодня: «Квартал» —
+        # последние три месяца, «Полгода» — шесть, «Год» — двенадцать. Так они
+        # всегда разной длины и всегда показывают полный отрезок, а не огрызок
+        # календарного периода.
+        def months_back(months: int) -> date:
+            return shift_months(today, months) + timedelta(days=1)
 
         presets: dict[str, tuple[date, date]] = {
             "today": (today, today),
@@ -110,9 +119,9 @@ class Period:
             "30d": (today - timedelta(days=29), today),
             "90d": (today - timedelta(days=89), today),
             "month": (today.replace(day=1), today),
-            "quarter": (quarter_start, today),
-            "half": (half_start, today),
-            "year": (today.replace(month=1, day=1), today),
+            "quarter": (months_back(ROLLING_MONTHS["quarter"]), today),
+            "half": (months_back(ROLLING_MONTHS["half"]), today),
+            "year": (months_back(ROLLING_MONTHS["year"]), today),
         }
         if preset not in presets:
             preset = "30d"

@@ -106,40 +106,37 @@ def test_product_rounds_values_in_json():
     assert payload["rating"] == 4.7
 
 
-# --- календарные периоды --------------------------------------------------------
+# --- длинные периоды ------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    "today, expected_from",
+    "preset, expected_from",
     [
-        (date(2025, 8, 28), date(2025, 7, 1)),    # третий квартал
-        (date(2025, 1, 5), date(2025, 1, 1)),     # первый квартал, начало года
-        (date(2025, 4, 1), date(2025, 4, 1)),     # первый день квартала
-        (date(2025, 12, 31), date(2025, 10, 1)),  # четвёртый квартал
+        ("quarter", date(2025, 5, 29)),
+        ("half", date(2025, 3, 1)),
+        ("year", date(2024, 8, 29)),
     ],
 )
-def test_quarter_starts_at_the_calendar_quarter(today, expected_from):
-    period = Period.from_preset("quarter", today=today)
+def test_long_periods_count_back_from_today(preset, expected_from):
+    period = Period.from_preset(preset, today=date(2025, 8, 28))
     assert period.date_from == expected_from
-    assert period.date_to == today
+    assert period.date_to == date(2025, 8, 28)
 
 
-@pytest.mark.parametrize(
-    "today, expected_from",
-    [
-        (date(2025, 8, 28), date(2025, 7, 1)),
-        (date(2025, 6, 30), date(2025, 1, 1)),
-        (date(2025, 7, 1), date(2025, 7, 1)),
-    ],
-)
-def test_half_year_starts_in_january_or_july(today, expected_from):
-    assert Period.from_preset("half", today=today).date_from == expected_from
+@pytest.mark.parametrize("today", [date(2025, 8, 28), date(2025, 1, 5), date(2025, 7, 1)])
+def test_quarter_and_half_are_never_the_same_stretch(today):
+    """Календарные квартал и полугодие с июля по сентябрь совпадали —
+    и панель показывала по ним одинаковые цифры."""
+    quarter = Period.from_preset("quarter", today=today)
+    half = Period.from_preset("half", today=today)
+    year = Period.from_preset("year", today=today)
+
+    assert quarter.days < half.days < year.days
 
 
-def test_year_starts_on_the_first_of_january():
+def test_year_covers_twelve_months():
     period = Period.from_preset("year", today=date(2025, 8, 28))
-    assert period.date_from == date(2025, 1, 1)
-    assert period.days == 240
+    assert period.days == 365
 
 
 @pytest.mark.parametrize("preset", ["quarter", "half", "year"])
@@ -180,17 +177,18 @@ def test_month_compares_with_the_same_days_of_the_previous_month():
 
 
 @pytest.mark.parametrize(
-    "preset, expected_from",
+    "preset, expected_from, expected_to",
     [
-        ("quarter", date(2025, 4, 1)),   # третий квартал сравнивается со вторым
-        ("half", date(2025, 1, 1)),      # второе полугодие — с первым
-        ("year", date(2024, 1, 1)),      # год — с прошлым годом
+        ("quarter", date(2025, 2, 26), date(2025, 5, 28)),
+        ("half", date(2024, 9, 1), date(2025, 2, 28)),
+        ("year", date(2023, 8, 30), date(2024, 8, 28)),  # 2024-й високосный
     ],
 )
-def test_calendar_periods_compare_with_the_previous_calendar_stretch(preset, expected_from):
+def test_long_periods_compare_with_the_stretch_right_before(preset, expected_from, expected_to):
     now = datetime(2025, 8, 28, 12, 0)
     previous = Period.from_preset(preset, today=now.date()).previous(now=now)
     assert previous.date_from == expected_from
+    assert previous.date_to == expected_to
 
 
 def test_rolling_window_shifts_by_its_own_length():
