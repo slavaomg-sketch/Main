@@ -316,6 +316,20 @@
       });
     },
 
+    'kpi.cancellations': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metricPair(body, {
+        value: totals.cancellations,
+        format: function (value) { return Fmt.number(value) + ' шт'; },
+        secondValue: totals.cancelledAmount,
+        secondFormat: Fmt.compactMoney,
+        delta: reverseDelta(ctx.data.deltas.cancellations),
+        footer: totals.ordersAmount
+          ? Fmt.percent(totals.cancelledShare) + ' от суммы заказов'
+          : 'за период'
+      });
+    },
+
     'kpi.returns': function (body, ctx) {
       var totals = ctx.data.totals;
       metricPair(body, {

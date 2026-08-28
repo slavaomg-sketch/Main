@@ -111,6 +111,16 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "returns",
     },
     {
+        "type": "kpi.cancellations",
+        "title": "Отмены",
+        "group": "Показатели",
+        "description": "Отменённые заказы за период — в штуках и в деньгах, "
+                       "с долей от всех заказов.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "returns",
+    },
+    {
         "type": "kpi.orders",
         "title": "Заказы",
         "group": "Показатели",
@@ -308,6 +318,8 @@ DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
     ("kpi.buyerPaid", "sm"),
     ("kpi.payout", "sm"),
     ("kpi.orders", "sm"),
+    ("kpi.cancellations", "sm"),
+    ("kpi.returns", "sm"),
     ("kpi.avgCheck", "sm"),
     ("chart.revenueDynamics", "xl"),
     ("chart.marketplaceShare", "md"),

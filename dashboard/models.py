@@ -385,6 +385,8 @@ class MarketplaceReport:
     units: int = 0
     returns: int = 0
     cancellations: int = 0
+    # Отменённые заказы в деньгах — по той же цене, что и все заказы.
+    cancelled_amount: float = 0.0
     buyouts: int = 0
 
     commission: float = 0.0
@@ -502,6 +504,7 @@ class MarketplaceReport:
             "units": int(self.units),
             "returns": int(self.returns),
             "cancellations": int(self.cancellations),
+            "cancelledAmount": _round(self.cancelled_amount),
             "buyouts": int(self.buyouts),
             "commission": _round(self.commission),
             "payout": _round(self.payout),

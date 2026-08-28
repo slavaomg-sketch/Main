@@ -1007,4 +1007,5 @@ async def test_orders_money_matches_the_marketplace_app(store, monkeypatch):
     assert report.orders == 2                 # принятые, по ним считается выкуп
     assert report.cancellations == 1
     assert report.orders_amount == 1800       # 1000 + 500 + 300, до скидки
+    assert report.cancelled_amount == 300     # отменённые — отдельной цифрой
     assert report.avg_check == 600

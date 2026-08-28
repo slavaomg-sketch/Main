@@ -664,6 +664,7 @@ class WildberriesConnector(HttpConnector):
 
             if row.get("isCancel"):
                 report.cancellations += 1
+                report.cancelled_amount += amount
                 continue
             orders_by_day[day] += 1
             report.orders += 1

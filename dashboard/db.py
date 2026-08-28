@@ -213,6 +213,10 @@ async def init_db() -> None:
         # по родительским артикулам: об этом просил владелец панели.
         await _add_blocks_once(db, "returns_block_added", ("kpi.returns",), size="sm")
         await _add_blocks_once(
+            db, "cancellations_block_added", ("kpi.cancellations",),
+            after_type="kpi.orders", size="sm",
+        )
+        await _add_blocks_once(
             db, "parents_table_added", ("table.parents",), after_type="table.topProducts"
         )
         # «Пришло на баланс» — прирост баланса кабинета за период. Именно эту

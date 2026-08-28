@@ -168,3 +168,20 @@ def test_totals_publish_both_halves_of_revenue():
     assert totals["returnsAmount"] == 350
     assert totals["revenue"] == totals["grossRevenue"] - totals["returnsAmount"]
     assert totals["returnsShare"] == pytest.approx(26.9, abs=0.1)
+
+
+def test_cancellations_are_summed_in_pieces_and_money():
+    """Отмены нужны в одном блоке: сколько штук и на какую сумму."""
+    from dashboard.aggregator import build_totals
+    from dashboard.models import MarketplaceReport
+
+    reports = [
+        MarketplaceReport(marketplace="wildberries", title="WB", connected=True, demo=False,
+                          orders=112, orders_placed=120, orders_amount=138446,
+                          cancellations=8, cancelled_amount=9282),
+    ]
+    totals = build_totals(reports)
+
+    assert totals["cancellations"] == 8
+    assert totals["cancelledAmount"] == 9282
+    assert totals["cancelledShare"] == pytest.approx(6.7, abs=0.1)
