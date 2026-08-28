@@ -33,7 +33,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-AGENT_DIR = Path(os.getenv("WB_AGENT_DIR") or (Path.home() / "wb-agent"))
+AGENT_DIR = Path(os.getenv("WB_AGENT_DIR") or "/var/lib/wb-agent")
 QUEUE = AGENT_DIR / "queue"
 ANSWERS = AGENT_DIR / "answers"
 WORK = AGENT_DIR / "work"

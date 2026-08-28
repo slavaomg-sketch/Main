@@ -88,10 +88,20 @@ def _agent_dir(config: Settings) -> Path:
 
 
 def available(config: Settings | None = None) -> bool:
-    """Есть ли куда класть задания. Без этого кнопку черновика не показываем."""
+    """Есть ли куда класть задания. Без этого кнопку черновика не показываем.
+
+    Проверка обязана быть безобидной. Панель бегает от урезанного
+    пользователя, и каталог может быть просто не виден — это ответ «нет»,
+    а не повод ронять страницу.
+    """
     config = config or settings
     folder = _agent_dir(config)
-    return bool(folder) and (folder / "queue").is_dir()
+    if not folder:
+        return False
+    try:
+        return (folder / "queue").is_dir()
+    except OSError:
+        return False
 
 
 def build_prompt(item: dict, store_title: str = "") -> str:

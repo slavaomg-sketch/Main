@@ -134,7 +134,7 @@ def load_settings() -> Settings:
         sync_minutes=_env_int("DASHBOARD_SYNC_MINUTES", 15),
         force_demo=_env_bool("DASHBOARD_DEMO", False),
         default_currency=_env("DASHBOARD_CURRENCY", "RUB"),
-        agent_dir=Path(_env("DASHBOARD_AGENT_DIR", "/home/slava/wb-agent")),
+        agent_dir=Path(_env("DASHBOARD_AGENT_DIR", "/var/lib/wb-agent")),
         agent_timeout=_env_int("DASHBOARD_AGENT_TIMEOUT", 200),
         marketplaces=_marketplaces(),
     )

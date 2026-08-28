@@ -3,6 +3,7 @@
 import asyncio
 import json
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -68,6 +69,16 @@ def test_длинный_текст_обрезается():
 def test_помощник_виден_только_с_очередью(tmp_path, bridge):
     assert agent.available(bridge) is True
     assert agent.available(replace(settings, agent_dir=tmp_path / "нет")) is False
+
+
+def test_закрытый_каталог_не_роняет_панель(monkeypatch, bridge):
+    """Панель работает от урезанного пользователя, и каталог может быть ей
+    просто не виден. Это ответ «помощника нет», а не пятисотая ошибка."""
+    def запрещено(self):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(Path, "is_dir", запрещено)
+    assert agent.available(bridge) is False
 
 
 async def test_черновик_приходит_из_ящика(bridge):

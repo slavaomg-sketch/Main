@@ -10,8 +10,8 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/wb-agent
-ExecStart=/usr/bin/python3 %h/wb-agent/codex-worker.py
+WorkingDirectory=/var/lib/wb-agent
+ExecStart=/usr/bin/python3 /var/lib/wb-agent/codex-worker.py
 Restart=always
 RestartSec=5
 
