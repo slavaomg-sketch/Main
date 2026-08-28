@@ -53,7 +53,7 @@ function scatter(g, seed, opts) {
       // камень кладём только на грунт: лежащий на стене съезжает с её края,
       // стоит рядом копнуть, и заваливает залы непредсказуемо
       if (r < (opts.zonk === undefined ? 0.16 : opts.zonk) && y % 2 === 1 && under === '.') { g[y][x] = 'O'; zonks++; }
-      else if (r > 0.93) { g[y][x] = '*'; infos++; }
+      else if (r > 1 - (opts.info === undefined ? 0.07 : opts.info)) { g[y][x] = '*'; infos++; }
     }
   }
   return { zonks: zonks, infotrons: infos };
