@@ -215,6 +215,9 @@ async def init_db() -> None:
         await _add_blocks_once(
             db, "parents_table_added", ("table.parents",), after_type="table.topProducts"
         )
+        # «Пришло на баланс» — прирост баланса кабинета за период. Именно эту
+        # сумму владелец выводит на расчётный счёт.
+        await _add_blocks_once(db, "balance_block_added", ("kpi.balance",), size="sm")
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

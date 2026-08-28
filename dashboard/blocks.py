@@ -61,10 +61,21 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "profit",
     },
     {
-        "type": "kpi.payout",
-        "title": "К перечислению",
+        "type": "kpi.balance",
+        "title": "Пришло на баланс",
         "group": "Показатели",
-        "description": "Сколько площадка фактически переведёт после своей комиссии.",
+        "description": "Насколько вырос баланс кабинета за период — деньги "
+                       "после всех удержаний площадки, те самые, что выводятся на счёт.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "wallet",
+    },
+    {
+        "type": "kpi.payout",
+        "title": "К перечислению за товар",
+        "group": "Показатели",
+        "description": "Цена продавца минус комиссия площадки и эквайринг. "
+                       "Логистика, хранение и штрафы сюда ещё не входят.",
         "sizes": ["sm", "md"],
         "defaultSize": "sm",
         "icon": "wallet",
@@ -269,6 +280,7 @@ BLOCK_TYPES: dict[str, dict[str, Any]] = {block["type"]: block for block in BLOC
 VALID_SIZES = {"sm", "md", "lg", "xl"}
 
 DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
+    ("kpi.balance", "sm"),
     ("kpi.revenue", "sm"),
     ("kpi.grossRevenue", "sm"),
     ("kpi.returnsAmount", "sm"),

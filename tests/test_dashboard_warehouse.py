@@ -59,8 +59,10 @@ def finance(day: date, rrd_id: int, price: float = 1000.0, doc: str = "Прод�
     }
 
 
-def wb_handler(sales, orders, stocks=None, finance_rows=None):
+def wb_handler(sales, orders, stocks=None, finance_rows=None, balance=None):
     def handler(request: httpx.Request) -> httpx.Response:
+        if "account/balance" in request.url.path:
+            return httpx.Response(200, json=balance or {"current": 0, "for_withdraw": 0})
         if "sales-reports" in request.url.path:
             if not finance_rows:
                 return httpx.Response(204)
@@ -151,7 +153,7 @@ async def test_sync_downloads_and_stores_everything(store, monkeypatch):
     result = await warehouse.sync_store(store, settings)
 
     assert result.ok
-    assert result.stored == {"sales": 2, "orders": 1, "stocks": 1, "finance": 0}
+    assert result.stored == {"balance": 1, "sales": 2, "orders": 1, "stocks": 1, "finance": 0}
     assert len(await warehouse.read_rows(store.id, "sales")) == 2
 
 
@@ -836,3 +838,72 @@ async def test_average_check_is_broken_down_by_parent_article(store, monkeypatch
     assert by_article["TC-TC-2M"].avg_check == 1500
     # Дороже — выше в списке.
     assert report.parents[0].article == "TC-TC-2M"
+
+
+# --- баланс кабинета и его прирост ----------------------------------------------
+
+
+async def test_balance_is_recorded_once_a_day(store, monkeypatch):
+    """Площадка отдаёт только «сейчас» — историю панель ведёт сама,
+    перезаписывая запись текущего дня."""
+    today = date.today()
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[], orders=[], balance={"current": 100000, "for_withdraw": 25000},
+    ))
+    await warehouse.sync_store(store, settings)
+
+    from dashboard.connectors import wildberries
+
+    wildberries.reset_cache()
+    mock_wb(monkeypatch, wb_handler(
+        sales=[], orders=[], balance={"current": 130000, "for_withdraw": 30000},
+    ))
+    await warehouse.sync_store(store, settings)
+
+    history = await warehouse.balance_history(store.id, today)
+    assert len(history) == 1
+    assert history[0]["current"] == 130000
+
+
+async def test_balance_growth_over_the_period_is_the_money_that_arrived(store, monkeypatch):
+    """Прирост баланса — это и есть деньги, начисленные за период."""
+    from dashboard.models import MarketplaceReport
+
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(sales=[], orders=[], balance={"current": 0}))
+    await warehouse.sync_store(store, settings)
+
+    # Подкладываем историю за три дня, как её накопила бы панель.
+    for offset, amount in ((2, 500_000.0), (1, 560_000.0), (0, 610_000.0)):
+        day = today - timedelta(days=offset)
+        await warehouse.store_rows(
+            store.id, "balance",
+            [{"day": day.isoformat(), "current": amount, "forWithdraw": amount / 2}],
+            day,
+        )
+
+    report = MarketplaceReport(marketplace="wildberries", title="WB")
+    await warehouse.apply_balance(report, store.id, period(1))   # только сегодня
+
+    assert report.balance_delta_known is True
+    assert report.balance_delta == 50_000        # 610 000 − 560 000
+    assert report.balance_current == 610_000
+    assert report.balance_for_withdraw == 305_000
+
+
+async def test_balance_growth_needs_a_day_to_compare_with(store, monkeypatch):
+    """Одной записи мало: пока сравнивать не с чем, прирост не показывается."""
+    from dashboard.models import MarketplaceReport
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[], orders=[], balance={"current": 700000, "for_withdraw": 0},
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = MarketplaceReport(marketplace="wildberries", title="WB")
+    await warehouse.apply_balance(report, store.id, period(1))
+
+    assert report.balance_current == 700000
+    assert report.balance_delta_known is False
+    assert report.balance_delta == 0

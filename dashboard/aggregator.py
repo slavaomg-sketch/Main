@@ -67,8 +67,17 @@ def merge_reports(
         "orders", "orders_amount", "units", "returns", "cancellations", "buyouts",
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
+        "balance_current", "balance_for_withdraw", "balance_delta",
     ):
         setattr(merged, attr, _sum(reports, attr))
+
+    # Прирост баланса имеет смысл, только если он известен по каждому
+    # кабинету: иначе сумма получится неполной и обманет.
+    with_balance = [report for report in reports if report.balance_current]
+    merged.balance_delta_known = bool(with_balance) and all(
+        report.balance_delta_known for report in with_balance
+    )
+    merged.balance_at = max((report.balance_at for report in reports), default="")
 
     # Рейтинг — средневзвешенный по числу отзывов, иначе магазин с тремя
     # отзывами перевесил бы магазин с тремя тысячами.
@@ -211,6 +220,16 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "returnRate": round(returns / orders * 100, 1) if orders else 0.0,
         "drr": round(ad_spend / revenue * 100, 1) if revenue else 0.0,
         "stockUnits": int(_sum(reports, "stock_units")),
+        # Прирост баланса кабинета — деньги, реально начисленные площадкой
+        # за период, уже после всех её удержаний.
+        "balanceCurrent": round(_sum(reports, "balance_current"), 2),
+        "balanceForWithdraw": round(_sum(reports, "balance_for_withdraw"), 2),
+        "balanceDelta": round(_sum(reports, "balance_delta"), 2),
+        "balanceDeltaKnown": all(
+            report.balance_delta_known
+            for report in reports
+            if report.balance_current
+        ) and any(report.balance_current for report in reports),
         "rating": round(sum(ratings) / len(ratings), 2) if ratings else 0.0,
         "reviewsCount": reviews_count,
         "series": [series[key] for key in sorted(series)],
@@ -259,6 +278,7 @@ def build_deltas(
         "ordersAmount",
         "grossRevenue",
         "returnsAmount",
+        "balanceDelta",
         "buyerPaid",
         "orders",
         "units",

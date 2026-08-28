@@ -194,6 +194,30 @@
       });
     },
 
+    'kpi.balance': function (body, ctx) {
+      var totals = ctx.data.totals;
+
+      if (!totals.balanceDeltaKnown) {
+        body.appendChild(Charts.emptyState(
+          totals.balanceCurrent
+            ? 'Баланс ' + Fmt.compactMoney(totals.balanceCurrent) +
+              '. Панель записывает его ежедневно — прирост появится, ' +
+              'когда наберётся вторая запись.'
+            : 'Панель ещё не записала баланс кабинета'
+        ));
+        return;
+      }
+
+      metric(body, {
+        value: totals.balanceDelta,
+        format: Fmt.compactMoney,
+        delta: ctx.data.deltas.balanceDelta,
+        footer: 'баланс ' + Fmt.compactMoney(totals.balanceCurrent) +
+                ' · к выводу ' + Fmt.compactMoney(totals.balanceForWithdraw),
+        color: 'var(--positive)'
+      });
+    },
+
     'kpi.payout': function (body, ctx) {
       var totals = ctx.data.totals;
       metric(body, {
@@ -201,8 +225,8 @@
         format: Fmt.compactMoney,
         delta: ctx.data.deltas.payout,
         footer: totals.revenue
-          ? Fmt.percent(totals.payoutShare) + ' от выручки, после комиссии площадки'
-          : 'после комиссии площадки',
+          ? Fmt.percent(totals.payoutShare) + ' от выручки · до логистики, хранения и штрафов'
+          : 'до логистики, хранения и штрафов',
         spark: (ctx.data.totals.series || []).map(function (point) { return point.revenue; }),
         color: 'var(--positive)'
       });

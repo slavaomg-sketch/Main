@@ -37,7 +37,7 @@ from __future__ import annotations
 import hashlib
 import time
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import httpx
@@ -68,6 +68,7 @@ SALES_PATH = "/api/v1/supplier/sales"
 ORDERS_PATH = "/api/v1/supplier/orders"
 STOCKS_PATH = "/api/analytics/v1/stocks-report/wb-warehouses"
 FINANCE_PATH = "/api/finance/v1/sales-reports/detailed"
+BALANCE_PATH = "/api/v1/account/balance"
 
 # Пауза между обращениями к одному методу одним токеном.
 STATISTICS_INTERVAL = 20.0
@@ -288,6 +289,48 @@ class WildberriesConnector(HttpConnector):
             rrd_id = last
 
         return rows
+
+    async def balance(self, max_wait: float = FINANCE_PATIENCE) -> dict[str, Any]:
+        """Баланс кабинета: текущий и сколько из него доступно к выводу.
+
+        Тот же виджет, что на главной странице портала продавцов. Площадка
+        пускает сюда раз в минуту, поэтому спрашиваем только в фоне.
+        """
+
+        async def call() -> httpx.Response:
+            async with self.client(FINANCE_URL) as client:
+                return await client.get(BALANCE_PATH)
+
+        key = _token_key(self.credentials.get("token"))
+        response = await Throttle.run(
+            f"wb:{key}:balance", FINANCE_INTERVAL, call, max_wait=max_wait
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, dict) else {}
+
+    async def _balance_rows(self, today: date, max_wait: float) -> list[dict[str, Any]]:
+        payload = await self.balance(max_wait)
+        return [
+            {
+                "day": today.isoformat(),
+                "current": self.to_float(payload.get("current")),
+                "forWithdraw": self.to_float(payload.get("for_withdraw")),
+                "at": datetime.utcnow().isoformat(timespec="seconds"),
+            }
+        ]
+
+    async def collect_balance(
+        self, today: date, max_wait: float = FINANCE_PATIENCE
+    ) -> dict[str, Any]:
+        """Снять баланс и подписать сегодняшним днём.
+
+        Площадка отдаёт только «сейчас», истории у неё нет. Поэтому панель
+        ведёт её сама: по одной записи в день, а разница между днями и есть
+        то, что за день накапало к выводу.
+        """
+        rows, error = await self._try(self._balance_rows(today, max_wait))
+        return {"balance": rows, "errors": {"balance": error}}
 
     # --- сборка отчёта -------------------------------------------------------
 

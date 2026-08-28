@@ -41,14 +41,18 @@ log = logging.getLogger(__name__)
 # Площадки, данные которых складываются в хранилище.
 # Остальные пока опрашиваются напрямую при каждом запросе.
 STORED: dict[str, tuple[str, ...]] = {
-    "wildberries": ("sales", "orders", "stocks", "finance"),
+    "wildberries": ("sales", "orders", "stocks", "finance", "balance"),
 }
+
+# Источники, которые несут историю продаж. По ним считается глубина
+# выгрузки и предупреждение «данных нет за весь период».
+HISTORY_SOURCES = ("sales", "orders", "finance")
 
 # Источники, которые качаются своим заходом и своим темпом. Отчёт реализации
 # Wildberries отдаётся раз в минуту, зато хранится годами — именно он даёт
 # панели полугодие и год. Из общей выгрузки он вынесен, чтобы не задерживать
 # статистику.
-SLOW_SOURCES = {"finance"}
+SLOW_SOURCES = {"finance", "balance"}
 
 # Источники, из которых считаются свежие дни. Отчёт реализации добирает
 # только то, до чего статистика уже не достаёт.
@@ -111,6 +115,11 @@ def row_key(source: str, row: dict[str, Any], index: int) -> str:
     if source == "finance":
         return str(row.get("rrdId") or row.get("srid") or index)
 
+    if source == "balance":
+        # По одной записи в день: в течение дня она перезаписывается, и в
+        # базе остаётся последнее известное значение баланса за этот день.
+        return str(row.get("day") or index)
+
     for field_name in ("srid", "saleID", "odid", "gNumber"):
         value = row.get(field_name)
         if value:
@@ -134,6 +143,9 @@ def row_day(source: str, row: dict[str, Any], fallback: date) -> date:
 
     if source in SNAPSHOT_SOURCES:
         return fallback
+    if source == "balance":
+        return parse_day(row.get("day")) or fallback
+
     if source == "finance":
         # `saleDt` — дата самой продажи, `rrDate` — дата, когда операция
         # попала в отчёт; она бывает на день-другой позже. По дням отчёт
@@ -300,7 +312,7 @@ async def prune(connection_id: str, before: date) -> int:
     async with db.connect() as connection:
         cursor = await connection.execute(
             "DELETE FROM marketplace_rows"
-            " WHERE connection_id = ? AND source NOT IN ('stocks') AND day < ?",
+            " WHERE connection_id = ? AND source NOT IN ('stocks', 'balance') AND day < ?",
             (connection_id, before.isoformat()),
         )
         await connection.commit()
@@ -329,6 +341,60 @@ async def read_rows(
         except json.JSONDecodeError:
             continue
     return result
+
+
+async def balance_history(connection_id: str, until: date) -> list[dict[str, Any]]:
+    """Записи баланса по дням, не позже указанной даты, от старых к новым."""
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            "SELECT day, payload FROM marketplace_rows"
+            " WHERE connection_id = ? AND source = 'balance' AND day <= ?"
+            " ORDER BY day",
+            (connection_id, until.isoformat()),
+        )
+        rows = await cursor.fetchall()
+
+    history: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            payload = json.loads(row["payload"])
+        except json.JSONDecodeError:
+            continue
+        payload["day"] = row["day"]
+        history.append(payload)
+    return history
+
+
+async def apply_balance(
+    report: MarketplaceReport, connection_id: str, period: Period
+) -> None:
+    """Проставить баланс кабинета и его прирост за период.
+
+    Площадка отдаёт только «сколько сейчас», поэтому историю панель ведёт
+    сама — по записи в день. Прирост за период это разница между последней
+    записью внутри периода и последней записью до его начала: именно
+    столько за это время накапало на баланс.
+    """
+    history = await balance_history(connection_id, period.date_to)
+    if not history:
+        return
+
+    latest = history[-1]
+    report.balance_current = float(latest.get("current") or 0)
+    report.balance_for_withdraw = float(latest.get("forWithdraw") or 0)
+    report.balance_at = str(latest.get("day") or "")
+
+    start = period.date_from.isoformat()
+    before = [item for item in history if item["day"] < start]
+    inside = [item for item in history if start <= item["day"]]
+    if not before or not inside:
+        # Одной точки мало: прирост посчитать не из чего.
+        return
+
+    report.balance_delta = float(inside[-1].get("current") or 0) - float(
+        before[-1].get("current") or 0
+    )
+    report.balance_delta_known = True
 
 
 async def status(config: Settings | None = None) -> dict[str, Any]:
@@ -418,6 +484,11 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
     slow_sources = tuple(
         source for source in STORED[store.marketplace] if source in SLOW_SOURCES
     )
+    if "balance" in slow_sources and isinstance(connector, WildberriesConnector):
+        raw = await connector.collect_balance(today)
+        await _save(store.id, ("balance",), raw, today, today, result)
+        slow_sources = tuple(item for item in slow_sources if item != "balance")
+
     if slow_sources and isinstance(connector, WildberriesConnector):
         # Набор колонок отчёта расширили — значит, в старых строках их нет,
         # и историю надо перекачать целиком, а не только свежие дни.
@@ -436,7 +507,7 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
                 await db.set_preference(version_key, str(wildberries.FINANCE_FIELDS_VERSION))
 
     await prune(store.id, horizon)
-    result.earliest, result.latest = await stored_range(store.id, STORED[store.marketplace])
+    result.earliest, result.latest = await stored_range(store.id, HISTORY_SOURCES)
     return result
 
 
@@ -548,10 +619,11 @@ async def report_for(
     rows["statisticsFrom"] = statistics_from
 
     report = connector.build(rows, period, errors)
+    await apply_balance(report, store.id, period)
 
     # Площадка хранит статистику ограниченный срок. Если период начинается
     # раньше, чем есть данные, цифры неполные — и молчать об этом нельзя.
-    earliest, _ = await stored_range(store.id, STORED[store.marketplace])
+    earliest, _ = await stored_range(store.id, HISTORY_SOURCES)
     if earliest:
         report.data_from = earliest
         if period.date_from < earliest:

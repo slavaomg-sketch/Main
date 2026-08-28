@@ -399,6 +399,15 @@ class MarketplaceReport:
     reviews_count: int = 0
     stock_units: int = 0
 
+    # Баланс кабинета: сколько на нём сейчас, сколько доступно к выводу и
+    # насколько он вырос за период. Прирост — это и есть деньги, которые
+    # площадка начислила за период, уже за вычетом всех своих расходов.
+    balance_current: float = 0.0
+    balance_for_withdraw: float = 0.0
+    balance_delta: float = 0.0
+    balance_delta_known: bool = False
+    balance_at: str = ""
+
     series: list[DayPoint] = field(default_factory=list)
     products: list[Product] = field(default_factory=list)
     parents: list[ParentSales] = field(default_factory=list)
@@ -486,6 +495,11 @@ class MarketplaceReport:
             "rating": _round(self.rating, 2),
             "reviewsCount": int(self.reviews_count),
             "stockUnits": int(self.stock_units),
+            "balanceCurrent": _round(self.balance_current),
+            "balanceForWithdraw": _round(self.balance_for_withdraw),
+            "balanceDelta": _round(self.balance_delta),
+            "balanceDeltaKnown": self.balance_delta_known,
+            "balanceAt": self.balance_at,
             "avgCheck": _round(self.avg_check),
             "profit": _round(self.profit),
             "margin": _round(self.margin, 1),
