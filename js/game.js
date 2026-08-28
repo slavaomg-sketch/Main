@@ -3,7 +3,7 @@
   'use strict';
   var SP = global.SP;
   var TICK_MS = 135;
-  var STORE_KEY = 'infotron.progress.v1';
+  var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
@@ -54,15 +54,37 @@
 
   function renderGrid() {
     var limit = unlockedUpTo();
-    el['level-grid'].innerHTML = '';
-    SP.LEVELS.forEach(function (lv, i) {
-      var b = document.createElement('button');
-      b.className = 'lv' + (progress.done[lv.id] ? ' done' : '');
-      b.disabled = i + 1 > limit;
-      b.innerHTML = '<span class="n">Уровень ' + lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
-        '<span class="t">' + lv.name + '</span>';
-      b.addEventListener('click', function () { startLevel(i); });
-      el['level-grid'].appendChild(b);
+    var grid = el['level-grid'];
+    grid.innerHTML = '';
+
+    (SP.CHAPTERS || []).forEach(function (ch) {
+      var mine = [];
+      SP.LEVELS.forEach(function (lv, i) { if (lv.chapter === ch.n) mine.push({ lv: lv, i: i }); });
+      var done = mine.filter(function (m) { return progress.done[m.lv.id]; }).length;
+
+      var head = document.createElement('div');
+      head.className = 'chapter-head' + (mine.length ? '' : ' pending');
+      head.innerHTML = '<span class="cn">Глава ' + ch.n + '</span>' +
+        '<span class="ct">' + ch.title + '</span>' +
+        '<span class="cp">' + (mine.length
+          ? 'пройдено ' + done + ' из ' + ch.planned +
+            (mine.length < ch.planned ? ' · в игре ' + mine.length : '')
+          : 'в работе') + '</span>';
+      grid.appendChild(head);
+
+      if (!mine.length) return;
+      var row = document.createElement('div');
+      row.className = 'chapter-levels';
+      mine.forEach(function (m) {
+        var b = document.createElement('button');
+        b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
+        b.disabled = m.i + 1 > limit;
+        b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
+          '<span class="t">' + m.lv.name + '</span>';
+        b.addEventListener('click', function () { startLevel(m.i); });
+        row.appendChild(b);
+      });
+      grid.appendChild(row);
     });
   }
 

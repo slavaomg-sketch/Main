@@ -122,12 +122,31 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
 /* ---------- выбор уровня ---------- */
 #level-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 16px;
-  max-height: min(46vh, 380px);
+  max-height: min(52vh, 420px);
   overflow: auto;
+  text-align: left;
+}
+.chapter-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 4px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.chapter-head .cn { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.chapter-head .ct { font-weight: 700; }
+.chapter-head .cp { margin-left: auto; font-size: 12px; color: var(--dim); }
+.chapter-head.pending { opacity: .45; }
+.chapter-head.pending .cn { color: var(--dim); }
+.chapter-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
 }
 .lv {
   text-align: left;

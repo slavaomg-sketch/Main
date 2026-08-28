@@ -13,6 +13,7 @@ var fs = require('fs');
 var path = require('path');
 
 var dir = path.join(__dirname, '..', 'levels');
+var plan = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'plan-100.json'), 'utf8'));
 var files = fs.readdirSync(dir).filter(function (f) { return /\.txt$/.test(f); }).sort();
 
 var levels = files.map(function (file) {
@@ -44,6 +45,7 @@ var levels = files.map(function (file) {
 
   return {
     id: parseInt(file, 10) || levels.length + 1,
+    chapter: Math.ceil((parseInt(file, 10) || 1) / 10),
     name: meta.name || file.replace(/\.txt$/, ''),
     hint: meta.hint || '',
     needed: needed,
@@ -63,6 +65,7 @@ out.push('  var LEVELS = [');
 levels.forEach(function (lv, n) {
   out.push('    {');
   out.push('      id: ' + lv.id + ',');
+  out.push('      chapter: ' + lv.chapter + ',');
   out.push('      name: ' + JSON.stringify(lv.name) + ',');
   out.push('      hint: ' + JSON.stringify(lv.hint) + ',');
   out.push('      needed: ' + lv.needed + ',');
@@ -72,13 +75,24 @@ levels.forEach(function (lv, n) {
   out.push('    }' + (n < levels.length - 1 ? ',' : ''));
 });
 out.push('  ];');
-out.push('  var api = { LEVELS: LEVELS };');
+out.push('  var CHAPTERS = [');
+out.push(plan.chapters.map(function (c) {
+  return '    { n: ' + c.n + ', title: ' + JSON.stringify(c.title) + ', planned: ' + c.levels.length + ' }';
+}).join(',\n'));
+out.push('  ];');
+out.push('  var api = { LEVELS: LEVELS, CHAPTERS: CHAPTERS };');
 out.push("  if (typeof module === 'object' && module.exports) module.exports = api;");
 out.push('  else global.SP = Object.assign(global.SP || {}, api);');
 out.push("})(typeof globalThis !== 'undefined' ? globalThis : this);");
 
 fs.writeFileSync(path.join(__dirname, '..', 'js', 'levels.js'), out.join('\n') + '\n');
 levels.forEach(function (l) {
-  console.log('  ' + l._file + '  ' + l._w + 'x' + l._h + '  инфотронов ' + l._total + ', нужно ' + l.needed + '  — ' + l.name);
+  console.log('  ' + l._file + '  гл.' + l.chapter + '  ' + l._w + 'x' + l._h +
+    '  инфотронов ' + l._total + ', нужно ' + l.needed + '  — ' + l.name);
 });
-console.log('Собрано уровней: ' + levels.length + ' → js/levels.js');
+var built = {};
+levels.forEach(function (l) { built[l.chapter] = (built[l.chapter] || 0) + 1; });
+console.log('Собрано уровней: ' + levels.length + ' из 100 → js/levels.js');
+console.log('По главам: ' + plan.chapters.map(function (c) {
+  return c.n + ':' + (built[c.n] || 0) + '/' + c.levels.length;
+}).join('  '));

@@ -8,7 +8,8 @@
     "levels": "node tools/build-levels.js",
     "play": "node tools/play.js",
     "serve": "http-server -p 8080 -c-1 .",
-    "bundle": "node tools/bundle.js"
+    "bundle": "node tools/bundle.js",
+    "plan": "node tools/build-plan.js"
   },
   "license": "MIT"
 }

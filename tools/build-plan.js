@@ -6,6 +6,11 @@ var path = require('path');
 var root = path.join(__dirname, '..');
 var plan = JSON.parse(fs.readFileSync(path.join(root, 'docs', 'plan-100.json'), 'utf8'));
 
+var levelDir = path.join(root, 'levels');
+var builtIds = {};
+fs.readdirSync(levelDir).filter(function (f) { return /^\d+\.txt$/.test(f); })
+  .forEach(function (f) { builtIds[parseInt(f, 10)] = true; });
+
 var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 var hue = function (n) { return 210 + (n - 1) * 19; };
 
@@ -13,9 +18,12 @@ var chapters = plan.chapters.map(function (c) {
   var rows = c.levels.map(function (l, i) {
     var num = (c.n - 1) * 10 + i + 1;
     var tags = l[2].map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
-    return '<tr><td class="num">' + num + '</td><td class="lname">' + esc(l[0]) + '</td>' +
+    var done = builtIds[num];
+    return '<tr class="' + (done ? 'built' : '') + '"><td class="num">' + num + '</td>' +
+           '<td class="lname">' + (done ? '<b class="ok">✓</b> ' : '') + esc(l[0]) + '</td>' +
            '<td class="idea">' + esc(l[1]) + '</td><td class="tags">' + tags + '</td></tr>';
   }).join('\n');
+  var cbuilt = c.levels.filter(function (l, i) { return builtIds[(c.n - 1) * 10 + i + 1]; }).length;
   var novelty = c.new.length
     ? '<p class="new">Новое в движке: ' + c.new.map(function (x) { return '<b>' + esc(x) + '</b>'; }).join(', ') + '</p>'
     : '';
@@ -24,6 +32,8 @@ var chapters = plan.chapters.map(function (c) {
       '<span class="cnum">Глава ' + c.n + '</span>' +
       '<h3>' + esc(c.title) + '</h3>' +
       '<span class="crange">уровни ' + esc(c.range) + '</span>' +
+      '<span class="cbuilt' + (cbuilt === c.levels.length ? ' full' : '') + '">' +
+        (cbuilt ? 'собрано ' + cbuilt + '/' + c.levels.length : 'не начата') + '</span>' +
       '<span class="cdiff" title="Сложность главы"><i style="--w:' + (c.difficulty * 10) + '%"></i>' + c.difficulty + '/10</span>' +
     '</header>' +
     '<p class="teaches">' + esc(c.teaches) + '</p>' + novelty +
@@ -98,7 +108,10 @@ nav.chapters a b{font-family:var(--mono);color:hsl(var(--hue) 70% 62%)}
 .cnum{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:hsl(var(--hue) 80% 72%)}
 .chead h3{font-size:21px}
 .crange{font-family:var(--mono);font-size:12.5px;color:var(--dimmer)}
-.cdiff{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px}
+.cbuilt{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--dimmer);
+  border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.cbuilt.full{color:var(--green);border-color:#2c6b4c}
+.cdiff{font-family:var(--mono);font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px}
 .cdiff i{display:block;width:76px;height:5px;border-radius:3px;background:var(--line);position:relative}
 .cdiff i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);border-radius:3px;background:hsl(var(--hue) 75% 58%)}
 .teaches{padding:13px 18px 0;margin:0;color:var(--dim);font-size:15px}
@@ -112,6 +125,11 @@ td.num{font-family:var(--mono);font-size:13px;color:var(--dimmer);width:44px;tex
 td.lname{font-weight:600;white-space:nowrap;width:1%}
 td.idea{color:var(--dim)}
 td.tags{width:1%;white-space:nowrap;padding-right:18px;text-align:right}
+tr.built td.lname{color:var(--text)}
+tr.built td.idea{color:var(--dim)}
+tr:not(.built) td.lname{color:var(--dim);font-weight:500}
+tr:not(.built) td.idea{color:var(--dimmer)}
+b.ok{color:var(--green);font-weight:700;margin-right:2px}
 .tag{display:inline-block;font-family:var(--mono);font-size:11px;color:var(--dimmer);
   border:1px solid var(--line);border-radius:5px;padding:1px 6px;margin-left:4px}
 
@@ -137,7 +155,7 @@ footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);color:v
   <p class="lede">Из чего складывается интерес в такой игре, что для ста уровней нужно
   добавить в движок, и весь список — десять глав по десять уровней, у каждого своя мысль.</p>
   <div class="meta">
-    <span class="pill">Готово: <b>12 уровней</b></span>
+    <span class="pill">Собрано: <b>${Object.keys(builtIds).length} из 100</b></span>
     <span class="pill">План: <b>100</b></span>
     <span class="pill">Новых механик: <b>6</b></span>
     <span class="pill">Поставка: <b>по главам</b></span>
