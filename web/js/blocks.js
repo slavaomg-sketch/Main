@@ -73,6 +73,15 @@
     else if (text.length > 11) node.classList.add('is-long');
   }
 
+  /* Сумма за неделю сама по себе мало о чём говорит — важен темп. Поэтому
+     под каждым потоковым показателем стоит среднее за день: итог, делённый
+     на число дней периода. У долей и остатков такого смысла нет. */
+  function perDayNote(options, value, format) {
+    var days = (current && current.period && current.period.days) || 1;
+    if (options.perDay === false || days < 2 || !value) return null;
+    return Fmt.el('span', 'metric__perday', 'в день ' + format(value / days));
+  }
+
   function metric(body, options) {
     var wrap = Fmt.el('div', 'metric');
     var value = Fmt.el('div', 'metric__value', '—');
@@ -80,6 +89,8 @@
 
     var row = Fmt.el('div', 'metric__row');
     if (options.delta) row.appendChild(deltaBadge(options.delta));
+    var note = perDayNote(options, options.value, options.format);
+    if (note) row.appendChild(note);
     if (options.footer) row.appendChild(Fmt.el('span', 'metric__foot', options.footer));
     wrap.appendChild(row);
     body.appendChild(wrap);
@@ -108,6 +119,15 @@
 
     var row = Fmt.el('div', 'metric__row');
     if (options.delta) row.appendChild(deltaBadge(options.delta));
+
+    // У парных показателей среднее нужно и в штуках, и в деньгах.
+    var days = (current && current.period && current.period.days) || 1;
+    if (options.perDay !== false && days > 1 && (options.value || options.secondValue)) {
+      row.appendChild(Fmt.el('span', 'metric__perday',
+        'в день ' + options.format((options.value || 0) / days) +
+        '  ' + options.secondFormat((options.secondValue || 0) / days)));
+    }
+
     if (options.footer) row.appendChild(Fmt.el('span', 'metric__foot', options.footer));
     wrap.appendChild(row);
     body.appendChild(wrap);
@@ -359,6 +379,7 @@
     'kpi.avgCheck': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.avgCheck,
+        perDay: false,          // чек и так средний
         format: Fmt.fullMoney,
         delta: ctx.data.deltas.avgCheck,
         footer: 'на заказ',
@@ -372,6 +393,7 @@
     'kpi.buyoutRate': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.buyoutRate,
+        perDay: false,          // доля, а не поток
         format: function (value) { return Fmt.percent(value); },
         delta: ctx.data.deltas.buyoutRate,
         footer: Fmt.number(ctx.data.totals.buyouts) + ' выкуплено'
@@ -381,6 +403,7 @@
     'kpi.drr': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.drr,
+        perDay: false,          // доля, а не поток
         format: function (value) { return Fmt.percent(value); },
         delta: reverseDelta(ctx.data.deltas.drr),
         footer: 'реклама ' + Fmt.fullMoney(ctx.data.totals.adSpend)
@@ -390,6 +413,7 @@
     'kpi.returnRate': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.returnRate,
+        perDay: false,          // доля, а не поток
         format: function (value) { return Fmt.percent(value); },
         delta: reverseDelta(ctx.data.deltas.returnRate),
         footer: Fmt.number(ctx.data.totals.returns) + ' ' +
@@ -400,6 +424,7 @@
     'kpi.rating': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.rating,
+        perDay: false,          // доля, а не поток
         format: function (value) { return (Math.round(value * 100) / 100).toFixed(2).replace('.', ','); },
         footer: Fmt.number(ctx.data.totals.reviewsCount) + ' ' +
                 Fmt.plural(ctx.data.totals.reviewsCount, ['отзыв', 'отзыва', 'отзывов'])

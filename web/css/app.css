@@ -591,6 +591,14 @@ html[data-theme="auto"] .icon-moon { display: none; }
 
 .metric__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .metric__foot { font-size: 12.5px; color: var(--text-tertiary); }
+/* Среднее за день — второй по важности ориентир после самой цифры. */
+.metric__perday {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
 
 .delta {
   display: inline-flex;
