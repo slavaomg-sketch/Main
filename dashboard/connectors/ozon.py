@@ -2,12 +2,23 @@
 
 Документация: https://docs.ozon.ru/api/seller
 Используются `/v1/analytics/data` (динамика по дням и по SKU) и
-`/v3/product/info/stocks` (остатки). Авторизация — заголовки
+`/v4/product/info/stocks` (остатки). Авторизация — заголовки
 `Client-Id` и `Api-Key`.
+
+Два обстоятельства определяют устройство коннектора:
+
+* **Лимит частоты.** Ozon пускает к Seller API пару запросов в секунду на
+  весь ключ, а панель за один заход делает три. Без паузы второй запрос
+  отвечает `429 rate limit exceeded`, и половина отчёта теряется.
+* **Версии методов.** Остатки жили по адресу `/v3/product/info/stocks`,
+  который Ozon отключил — он отвечает `404 page not found`. В четвёртой
+  версии изменился и способ листать страницы: вместо `last_id` курсор,
+  и `items` лежат в корне ответа, а не внутри `result`.
 """
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date
 from typing import Any
 
@@ -19,7 +30,7 @@ from ..models import (
     Product,
     StockAlert,
 )
-from .base import HttpConnector, Probe
+from .base import HttpConnector, Probe, Throttle
 
 DAY_METRICS = [
     "revenue",
@@ -34,6 +45,13 @@ SKU_METRICS = ["revenue", "ordered_units", "returns"]
 
 FALLBACK_COMMISSION = 0.15
 FALLBACK_LOGISTICS = 0.075
+
+# Пауза между обращениями к Seller API одним ключом. Ozon сообщает
+# «current max rate per sec.: 2», но аналитика тяжёлая — берём с запасом.
+REQUEST_INTERVAL = 1.5
+
+# Сколько готовы ждать, если площадка всё же просит сбавить темп.
+PATIENCE = 12.0
 
 
 class OzonConnector(HttpConnector):
@@ -82,10 +100,27 @@ class OzonConnector(HttpConnector):
                     lambda: self._analytics(client, period, ["sku"], SKU_METRICS, limit=50),
                 ),
                 await self.capture(
-                    "POST /v3/product/info/stocks",
+                    "POST /v4/product/info/stocks",
                     lambda: self._stocks(client),
                 ),
             ]
+
+    def _key(self) -> str:
+        """Короткий отпечаток ключа — общий ограничитель на все методы Ozon."""
+        raw = str(self.credentials.get("client_id") or "")
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+    async def _post(self, client, path: str, payload: dict[str, Any]):
+        """Запрос к Seller API с общей паузой между обращениями."""
+
+        async def call():
+            return await client.post(path, json=payload)
+
+        response = await Throttle.run(
+            f"ozon:{self._key()}", REQUEST_INTERVAL, call, max_wait=PATIENCE
+        )
+        response.raise_for_status()
+        return response
 
     async def _analytics(
         self,
@@ -103,8 +138,7 @@ class OzonConnector(HttpConnector):
             "limit": limit,
             "offset": 0,
         }
-        response = await client.post("/v1/analytics/data", json=payload)
-        response.raise_for_status()
+        response = await self._post(client, "/v1/analytics/data", payload)
         body = response.json()
         result = body.get("result") if isinstance(body, dict) else None
         if isinstance(result, dict):
@@ -112,19 +146,28 @@ class OzonConnector(HttpConnector):
         return self.as_list(body, "data", "result")
 
     async def _stocks(self, client) -> list[dict[str, Any]]:
+        """Остатки постранично: в четвёртой версии метода — курсором."""
         items: list[dict[str, Any]] = []
-        last_id = ""
+        cursor = ""
+
         for _ in range(10):  # страховка от бесконечной пагинации
-            payload = {"filter": {"visibility": "ALL"}, "last_id": last_id, "limit": 1000}
-            response = await client.post("/v3/product/info/stocks", json=payload)
-            response.raise_for_status()
-            body = response.json()
-            result = body.get("result") if isinstance(body, dict) else {}
-            page = self.as_list(result, "items")
+            payload: dict[str, Any] = {"filter": {}, "limit": 1000}
+            if cursor:
+                payload["cursor"] = cursor
+
+            response = await self._post(client, "/v4/product/info/stocks", payload)
+            body = response.json() if isinstance(response.json(), dict) else {}
+
+            # Ответ отдаётся в корне, но старые ключи тоже поддержим:
+            # площадка не раз переносила их туда и обратно.
+            source = body if "items" in body else (body.get("result") or {})
+            page = self.as_list(source, "items")
             items.extend(page)
-            last_id = str(result.get("last_id") or "") if isinstance(result, dict) else ""
-            if not last_id or not page:
+
+            cursor = str(source.get("cursor") or "") if isinstance(source, dict) else ""
+            if not cursor or not page:
                 break
+
         return items
 
     @staticmethod

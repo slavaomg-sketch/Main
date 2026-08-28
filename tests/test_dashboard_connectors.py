@@ -589,3 +589,79 @@ def test_price_falls_back_while_wildberries_has_not_filled_it_in():
     assert _wb()._price({"priceWithDisc": 0, "finishedPrice": 0, "totalPrice": 1887}) == 1887
     assert _wb()._price({}) == 0.0
     assert _wb()._buyer_price({"finishedPrice": 0, "priceWithDisc": 1547}) == 1547
+
+
+# --- Ozon: версия метода остатков и лимит частоты --------------------------------
+
+
+async def test_ozon_reads_stocks_from_the_current_endpoint(monkeypatch):
+    """Третью версию метода Ozon отключил — она отвечает «404 page not found».
+    В четвёртой строки лежат в корне ответа, а страницы листаются курсором."""
+    import httpx
+
+    from dashboard.connectors.ozon import OzonConnector
+
+    seen: list[str] = []
+    pages = [
+        {"items": [{"offer_id": "A", "stocks": [{"present": 4}]}], "cursor": "next"},
+        {"items": [{"offer_id": "B", "stocks": [{"present": 6}]}], "cursor": ""},
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        if request.url.path == "/v3/product/info/stocks":
+            return httpx.Response(404, text="404 page not found")
+        return httpx.Response(200, json=pages[len(seen) - 1])
+
+    connector = OzonConnector({"client_id": "1", "api_key": "k"})
+
+    def client(self):
+        return httpx.AsyncClient(
+            base_url=self.base_url, headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(OzonConnector, "client", client)
+
+    async with connector.client() as opened:
+        rows = await connector._stocks(opened)
+
+    assert seen == ["/v4/product/info/stocks", "/v4/product/info/stocks"]
+    assert [row["offer_id"] for row in rows] == ["A", "B"]
+
+
+async def test_ozon_waits_between_requests(monkeypatch):
+    """Ozon пускает пару запросов в секунду на ключ, а панель делает три
+    подряд — без паузы второй отвечает «rate limit exceeded»."""
+    import asyncio
+
+    import httpx
+
+    from dashboard.connectors import ozon
+    from dashboard.connectors.ozon import OzonConnector
+
+    monkeypatch.setattr(ozon, "REQUEST_INTERVAL", 0.05)
+
+    moments: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        moments.append(asyncio.get_event_loop().time())
+        return httpx.Response(200, json={"items": [], "cursor": ""})
+
+    # Client-Id уходит в заголовок — он обязан быть ASCII, как у Ozon.
+    connector = OzonConnector({"client_id": "998877", "api_key": "k"})
+
+    def client(self):
+        return httpx.AsyncClient(
+            base_url=self.base_url, headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(OzonConnector, "client", client)
+
+    async with connector.client() as opened:
+        await connector._post(opened, "/v1/analytics/data", {})
+        await connector._post(opened, "/v1/analytics/data", {})
+
+    assert len(moments) == 2
+    assert moments[1] - moments[0] >= 0.04
