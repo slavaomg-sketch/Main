@@ -1,0 +1,12 @@
+# Следит за файлом-сигналом. Как только он появляется, запускается
+# обновление, а сам файл удаляется — чтобы поймать следующий сигнал.
+
+[Unit]
+Description=Watch for marketplace dashboard update requests
+
+[Path]
+PathExists=__QUEUE__/request
+Unit=marketplace-dashboard-update.service
+
+[Install]
+WantedBy=multi-user.target

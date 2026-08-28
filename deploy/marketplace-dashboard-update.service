@@ -1,0 +1,23 @@
+# Разовое обновление панели из репозитория.
+# Запускается не по расписанию, а по сигналу — см. одноимённый .path.
+# Плейсхолдеры подставляет deploy/enable-selfupdate.sh.
+
+[Unit]
+Description=Update marketplace dashboard from git
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/marketplace-dashboard-update
+Environment=SRC=__SRC__
+Environment=APP=__APP__
+Environment=APP_USER=__APP_USER__
+Environment=SRC_USER=__SRC_USER__
+Environment=BRANCH=__BRANCH__
+Environment=QUEUE=__QUEUE__
+TimeoutStartSec=1800
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=marketplace-dashboard-update
