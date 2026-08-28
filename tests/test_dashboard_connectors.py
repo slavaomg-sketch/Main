@@ -566,20 +566,20 @@ ROW = {"totalPrice": 1887, "discountPercent": 18, "spp": 26,
        "priceWithDisc": 1547, "finishedPrice": 1145}
 
 
-def test_money_is_counted_at_the_price_the_buyer_paid():
-    """Сверка с отчётом реализации показала: «К перечислению» площадка
-    считает от цены покупателя — скидку СПП она продавцу не компенсирует."""
-    assert _wb()._price(ROW) == 1145
+def test_revenue_is_counted_at_the_seller_price():
+    """Годовой ряд показал: «К перечислению» держится в коридоре 62–66%
+    именно от цены продавца. Скидку покупателю площадка берёт на себя."""
+    assert _wb()._price(ROW) == 1547
 
 
-def test_turnover_is_counted_at_the_seller_price():
-    """А оборот — по цене продавца: именно её показывает приложение WB."""
-    assert _wb()._seller_price(ROW) == 1547
+def test_what_the_buyer_paid_is_kept_separately():
+    """Цена покупателя нужна отдельно — показать глубину скидки площадки."""
+    assert _wb()._buyer_price(ROW) == 1145
 
 
 def test_price_falls_back_while_wildberries_has_not_filled_it_in():
     """Первые сутки WB отдаёт нули: считаем по тому, что уже пришло."""
-    assert _wb()._price({"finishedPrice": 0, "priceWithDisc": 1547}) == 1547
-    assert _wb()._price({"finishedPrice": 0, "priceWithDisc": 0, "totalPrice": 1887}) == 1887
+    assert _wb()._price({"priceWithDisc": 0, "finishedPrice": 1145}) == 1145
+    assert _wb()._price({"priceWithDisc": 0, "finishedPrice": 0, "totalPrice": 1887}) == 1887
     assert _wb()._price({}) == 0.0
-    assert _wb()._seller_price({"priceWithDisc": 0, "finishedPrice": 1145}) == 1145
+    assert _wb()._buyer_price({"finishedPrice": 0, "priceWithDisc": 1547}) == 1547

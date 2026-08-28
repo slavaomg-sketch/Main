@@ -447,7 +447,7 @@ class WildberriesConnector(HttpConnector):
                 report.returns_amount += amount
             else:
                 report.gross_revenue += amount
-                report.seller_revenue += self._seller_price(row)
+                report.buyer_paid += self._buyer_price(row)
             report.units += sign
             report.payout += sign * for_pay
             if for_pay:
@@ -561,11 +561,11 @@ class WildberriesConnector(HttpConnector):
 
             quantity = max(self.to_int(row.get("quantity"), 1), 1)
             # Сверка показала соответствие колонок один в один:
-            # `retailAmount` — это `finishedPrice` статистики (деньги
-            # покупателя), `retailPriceWithDisc` — её `priceWithDisc`
-            # (цена продавца). Считаем по тем же базам, что и свежие дни.
-            amount = abs(self.to_float(row.get("retailAmount")))
-            seller = abs(self.to_float(row.get("retailPriceWithDisc"))) * quantity
+            # `retailPriceWithDisc` — это `priceWithDisc` статистики (цена
+            # продавца), `retailAmount` — её `finishedPrice` (деньги
+            # покупателя). Считаем по тем же базам, что и свежие дни.
+            buyer = abs(self.to_float(row.get("retailAmount")))
+            amount = abs(self.to_float(row.get("retailPriceWithDisc"))) * quantity or buyer
             for_pay = abs(self.to_float(row.get("forPay")))
 
             earliest = day if earliest is None else min(earliest, day)
@@ -582,7 +582,7 @@ class WildberriesConnector(HttpConnector):
                 report.returns_amount += amount
             else:
                 report.gross_revenue += amount
-                report.seller_revenue += seller or amount
+                report.buyer_paid += buyer or amount
             report.units += sign * quantity
             report.payout += sign * for_pay
             if for_pay:
@@ -645,35 +645,37 @@ class WildberriesConnector(HttpConnector):
     # --- остатки -------------------------------------------------------------
 
     def _price(self, row: dict[str, Any]) -> float:
-        """Деньги, которые реально пришли за товар.
+        """Выручка продавца — цена со скидкой продавца, до скидки площадки.
 
         Wildberries отдаёт по каждой продаже три цены:
 
         * `totalPrice` — до всех скидок;
-        * `priceWithDisc` — со скидкой продавца, **до** скидки площадки;
-        * `finishedPrice` — сколько заплатил покупатель, то есть после
+        * `priceWithDisc` — со скидкой продавца, **до** скидки Wildberries;
+        * `finishedPrice` — сколько заплатил покупатель, то есть уже после
           скидки Wildberries (СПП).
 
-        Сверка с отчётом реализации показала, что «К перечислению» площадка
-        считает именно от `finishedPrice`: скидку покупателю она не
-        компенсирует. Поэтому денежная часть отчёта — выручка, комиссия,
-        «К перечислению» — считается от неё. Цена продавца показывается
-        отдельно, как оборот: см. `_seller_price`.
+        Считать надо от `priceWithDisc`. Это видно на годовом ряде: доля
+        «К перечислению» от неё держится в узком коридоре 62–66% месяц за
+        месяцем, тогда как от цены покупателя гуляет от 66% до 91% вслед
+        за глубиной СПП. Так ведёт себя база расчёта: скидку покупателю
+        площадка берёт на себя, а продавцу платит по его цене.
+
+        На остальные цены опираемся, только пока `priceWithDisc` не
+        заполнена: WB подтягивает эти поля до суток и до тех пор шлёт ноль.
         """
-        for field_name in ("finishedPrice", "priceWithDisc", "totalPrice"):
+        for field_name in ("priceWithDisc", "finishedPrice", "totalPrice"):
             value = abs(self.to_float(row.get(field_name)))
             if value:
                 return value
         return 0.0
 
-    def _seller_price(self, row: dict[str, Any]) -> float:
-        """Цена продавца — оборот до скидки площадки.
+    def _buyer_price(self, row: dict[str, Any]) -> float:
+        """Сколько заплатил покупатель — цена после скидки площадки.
 
-        Эту сумму показывает приложение Wildberries в «Выкупах», по ней же
-        руководитель привык оценивать масштаб продаж. Денег она не отражает:
-        разницу с `_price` площадка удерживает как свою скидку покупателю.
+        На доход продавца не влияет, но показывает глубину скидки, которой
+        Wildberries продвигает товар.
         """
-        for field_name in ("priceWithDisc", "finishedPrice", "totalPrice"):
+        for field_name in ("finishedPrice", "priceWithDisc", "totalPrice"):
             value = abs(self.to_float(row.get(field_name)))
             if value:
                 return value

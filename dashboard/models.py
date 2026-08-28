@@ -339,9 +339,9 @@ class MarketplaceReport:
     revenue: float = 0.0
     gross_revenue: float = 0.0
     returns_amount: float = 0.0
-    # Оборот по ценам продавца, до скидки площадки покупателю. Денег не
-    # отражает — нужен, чтобы сверяться с приложением маркетплейса.
-    seller_revenue: float = 0.0
+    # Сколько заплатили покупатели — то есть уже после скидки площадки.
+    # На доход продавца не влияет: разницу площадка берёт на себя.
+    buyer_paid: float = 0.0
     orders: int = 0
     units: int = 0
     returns: int = 0
@@ -431,7 +431,7 @@ class MarketplaceReport:
             "revenue": _round(self.revenue),
             "grossRevenue": _round(self.gross_revenue),
             "returnsAmount": _round(self.returns_amount),
-            "sellerRevenue": _round(self.seller_revenue),
+            "buyerPaid": _round(self.buyer_paid),
             "orders": int(self.orders),
             "units": int(self.units),
             "returns": int(self.returns),
