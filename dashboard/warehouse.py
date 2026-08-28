@@ -155,14 +155,59 @@ async def store_rows(
     return len(rows)
 
 
-async def mark_sync(connection_id: str, source: str, error: str = "") -> None:
+async def mark_sync(
+    connection_id: str, source: str, error: str = "", covered_from: date | None = None
+) -> None:
+    """Отметить выгрузку источника и то, с какой даты она покрыта."""
     async with db.connect() as connection:
+        cursor = await connection.execute(
+            "SELECT covered_from FROM sync_state WHERE connection_id = ? AND source = ?",
+            (connection_id, source),
+        )
+        row = await cursor.fetchone()
+        known = row["covered_from"] if row else ""
+
+        # Покрытие только расширяется: более ранняя дата вытесняет позднюю.
+        covered = known
+        if covered_from is not None:
+            candidate = covered_from.isoformat()
+            covered = min(known, candidate) if known else candidate
+
         await connection.execute(
-            "INSERT OR REPLACE INTO sync_state (connection_id, source, synced_at, error)"
-            " VALUES (?, ?, ?, ?)",
-            (connection_id, source, datetime.utcnow().isoformat(), error),
+            "INSERT OR REPLACE INTO sync_state"
+            " (connection_id, source, synced_at, error, covered_from)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (connection_id, source, datetime.utcnow().isoformat(), error, covered),
         )
         await connection.commit()
+
+
+async def covered_from(connection_id: str, sources: tuple[str, ...]) -> date | None:
+    """С какой даты выгрузка покрыта по всем источникам магазина.
+
+    Берём самую позднюю из дат: если хоть один источник выгружен не так
+    глубоко, считаем непокрытым весь период.
+    """
+    history = [source for source in sources if source not in SNAPSHOT_SOURCES]
+    if not history:
+        return None
+
+    placeholders = ",".join("?" for _ in history)
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            f"SELECT source, covered_from FROM sync_state"
+            f" WHERE connection_id = ? AND source IN ({placeholders})",
+            [connection_id, *history],
+        )
+        rows = await cursor.fetchall()
+
+    covered = {row["source"]: row["covered_from"] for row in rows}
+    if set(covered) != set(history) or not all(covered.values()):
+        return None
+    try:
+        return max(date.fromisoformat(value) for value in covered.values())
+    except ValueError:
+        return None
 
 
 async def forget(connection_id: str) -> None:
@@ -306,12 +351,19 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
     today = date.today()
     horizon = today - timedelta(days=max(config.history_days, 1) - 1)
 
-    # Первая выгрузка качает всю историю, последующие — только то, что
-    # изменилось за последние дни. Иначе каждые четверть часа пришлось бы
-    # перекачивать год продаж.
+    # Обычно качаем только свежие изменения. Полная выгрузка нужна дважды:
+    # в самый первый раз и когда глубину хранения увеличили — иначе длинные
+    # периоды молча показывали бы неполные данные.
     known = await last_stored_day(store.id, STORED[store.marketplace])
-    date_from = max(known - timedelta(days=OVERLAP_DAYS), horizon) if known else horizon
-    result.full = known is None
+    covered = await covered_from(store.id, STORED[store.marketplace])
+    needs_history = covered is None or covered > horizon
+
+    if known is None or needs_history:
+        date_from = horizon
+        result.full = True
+    else:
+        date_from = max(known - timedelta(days=OVERLAP_DAYS), horizon)
+        result.full = False
     result.date_from = date_from
 
     if isinstance(connector, WildberriesConnector):
@@ -330,7 +382,7 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
             continue
         stored = await store_rows(store.id, source, raw.get(source) or [], today)
         result.stored[source] = stored
-        await mark_sync(store.id, source)
+        await mark_sync(store.id, source, covered_from=date_from)
 
     await prune(store.id, horizon)
     return result

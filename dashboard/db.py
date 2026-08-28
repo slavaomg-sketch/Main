@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS sync_state (
     source        TEXT NOT NULL,
     synced_at     TEXT NOT NULL,
     error         TEXT NOT NULL DEFAULT '',
+    -- С какой даты выгрузка реально запрашивалась. По ней видно, что глубину
+    -- истории увеличили и недостающее нужно докачать.
+    covered_from  TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (connection_id, source)
 );
 """
@@ -110,10 +113,26 @@ async def _drop_pre_release_credentials(db: aiosqlite.Connection) -> None:
         await db.execute("DROP TABLE credentials")
 
 
+async def _add_missing_columns(db: aiosqlite.Connection) -> None:
+    """Дозаписать столбцы, появившиеся в новых версиях панели."""
+    additions = {
+        "sync_state": {"covered_from": "TEXT NOT NULL DEFAULT ''"},
+    }
+    for table, columns in additions.items():
+        cursor = await db.execute(f"PRAGMA table_info({table})")
+        existing = {row["name"] for row in await cursor.fetchall()}
+        if not existing:
+            continue  # таблицы ещё нет — её создаст схема
+        for name, definition in columns.items():
+            if name not in existing:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+
+
 async def init_db() -> None:
     async with connect() as db:
         await _drop_pre_release_credentials(db)
         await db.executescript(SCHEMA)
+        await _add_missing_columns(db)
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

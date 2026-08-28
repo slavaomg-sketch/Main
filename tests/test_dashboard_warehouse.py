@@ -1,5 +1,6 @@
 """Выгрузка данных площадок на сервер: хранение, чтение, обновление."""
 
+from dataclasses import replace
 from datetime import date, timedelta
 
 import httpx
@@ -357,3 +358,73 @@ async def test_interactive_check_does_not_hang_on_a_long_rate_limit(monkeypatch)
     raw = await connector.collect_raw(date.today(), PATIENCE_INTERACTIVE)
 
     assert "ограничивает частоту" in raw["errors"]["sales"]
+
+
+# --- углубление истории ---------------------------------------------------------
+
+
+async def test_deeper_history_triggers_a_full_download(store, monkeypatch):
+    """Увеличили глубину хранения — недостающее нужно докачать.
+
+    Иначе длинные периоды («Год») молча показывали бы данные только за то
+    время, что успели выгрузить раньше.
+    """
+    today = date.today()
+    windows: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        window = request.url.params.get("dateFrom", "")
+        if window:
+            windows.append(window[:10])
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[sale(today, "a")])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[order(today, "o1")])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+
+    shallow = replace(settings, history_days=30)
+    await warehouse.sync_store(store, shallow)
+    from dashboard.connectors import wildberries
+
+    wildberries.reset_cache()
+    windows.clear()
+
+    deep = replace(settings, history_days=400)
+    result = await warehouse.sync_store(store, deep)
+
+    assert result.full is True
+    assert result.date_from == today - timedelta(days=399)
+    assert all(value == str(today - timedelta(days=399)) for value in windows)
+
+
+async def test_unchanged_history_depth_keeps_incremental_sync(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(sales=[sale(today, "a")], orders=[order(today, "o1")]))
+    await warehouse.sync_store(store, settings)
+
+    from dashboard.connectors import wildberries
+
+    wildberries.reset_cache()
+    result = await warehouse.sync_store(store, settings)
+
+    assert result.full is False
+    assert result.date_from == today - timedelta(days=warehouse.OVERLAP_DAYS)
+
+
+async def test_coverage_is_remembered_only_for_successful_sources(store, monkeypatch):
+    today = date.today()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "orders" in request.url.path:
+            return httpx.Response(500, text="boom")
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[sale(today, "a")])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    await warehouse.sync_store(store, settings)
+
+    # Заказы не выгрузились — значит период не покрыт целиком.
+    assert await warehouse.covered_from(store.id, ("sales", "orders", "stocks")) is None
