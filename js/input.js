@@ -64,5 +64,42 @@
     }
   };
 
+  /**
+   * Джойстик по всему полю: палец ведёт в сторону — Мёрфи идёт туда,
+   * пока палец не отпущен. Удобнее крестовины и не закрывает экран.
+   */
+  Input.prototype.bindJoystick = function (el) {
+    var self = this, origin = null, cur = -1;
+    var DEAD = 16;
+
+    function set(dir) {
+      if (dir === cur) return;
+      if (cur >= 0) self.release(cur);
+      cur = dir;
+      if (cur >= 0) self.press(cur);
+    }
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse') return;
+      origin = { x: e.clientX, y: e.clientY };
+      el.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!origin) return;
+      var dx = e.clientX - origin.x, dy = e.clientY - origin.y;
+      if (Math.abs(dx) < DEAD && Math.abs(dy) < DEAD) { set(-1); return; }
+      if (Math.abs(dx) > Math.abs(dy)) set(dx > 0 ? 1 : 3);
+      else set(dy > 0 ? 2 : 0);
+      // палец «переносим» следом, чтобы смена направления была лёгкой
+      var far = 44;
+      if (dx > far) origin.x = e.clientX - far; else if (dx < -far) origin.x = e.clientX + far;
+      if (dy > far) origin.y = e.clientY - far; else if (dy < -far) origin.y = e.clientY + far;
+      e.preventDefault();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      el.addEventListener(ev, function () { set(-1); origin = null; });
+    });
+  };
+
   global.SP = Object.assign(global.SP, { Input: Input });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

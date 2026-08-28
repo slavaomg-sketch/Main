@@ -2,27 +2,41 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ИНФОТРОН — игра в духе Supaplex</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ИНФОТРОН — головоломка в духе Supaplex</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
   <header id="hud">
     <div class="hud-left">
-      <button id="btn-menu" class="chip" title="К списку уровней (Esc)">☰ Уровни</button>
+      <button id="btn-menu" class="chip" title="К списку уровней (Esc)">☰<span class="wide-only"> Уровни</span></button>
       <span id="hud-level" class="hud-title">—</span>
     </div>
     <div class="hud-right">
       <span class="stat" title="Собрано инфотронов"><b id="hud-info">0</b><i>/</i><span id="hud-need">0</span> ⬤</span>
-      <span class="stat" title="Ходов"><b id="hud-moves">0</b> ходов</span>
+      <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
       <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
       <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
+      <button id="btn-full" class="chip" title="Во весь экран">⛶</button>
     </div>
   </header>
 
   <div id="stage">
     <canvas id="screen"></canvas>
+
+    <div id="pad">
+      <div class="pad-cluster">
+        <button data-dir="0" class="pad-btn up">▲</button>
+        <button data-dir="3" class="pad-btn left">◀</button>
+        <button data-dir="1" class="pad-btn right">▶</button>
+        <button data-dir="2" class="pad-btn down">▼</button>
+      </div>
+      <button data-act="snap" class="pad-btn snap">СНАП</button>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="panel">
@@ -37,26 +51,20 @@
         <h1>ИНФОТРОН</h1>
         <p class="sub">Прогрызай грунт, собирай инфотроны, не попадайся под зонк.</p>
         <div id="level-grid"></div>
-        <p class="legend">
+        <p class="legend desktop-only">
           <b>Стрелки</b> или <b>WASD</b> — идти &nbsp;·&nbsp;
           <b>Space + направление</b> — выесть клетку, не сходя с места («снап») &nbsp;·&nbsp;
           <b>R</b> — заново &nbsp;·&nbsp; <b>Esc</b> — пауза
+        </p>
+        <p class="legend touch-only">
+          Веди пальцем по полю — Мёрфи идёт следом. Крестовина внизу — для точных шагов,
+          <b>СНАП</b> + направление — выесть клетку, не сходя с места.
         </p>
       </div>
     </div>
   </div>
 
   <div id="hint"></div>
-
-  <div id="pad">
-    <div class="pad-cluster">
-      <button data-dir="0" class="pad-btn up">▲</button>
-      <button data-dir="3" class="pad-btn left">◀</button>
-      <button data-dir="1" class="pad-btn right">▶</button>
-      <button data-dir="2" class="pad-btn down">▼</button>
-    </div>
-    <button data-act="snap" class="pad-btn snap">СНАП</button>
-  </div>
 </div>
 
 <script src="js/tiles.js"></script>

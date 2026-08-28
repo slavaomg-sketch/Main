@@ -14,6 +14,7 @@
 
 html, body {
   margin: 0;
+  padding: 0;
   height: 100%;
   background: var(--bg);
   color: var(--text);
@@ -22,7 +23,8 @@ html, body {
 }
 
 #app {
-  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -62,6 +64,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 /* ---------- сцена ---------- */
 #stage {
   position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -157,39 +163,74 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 /* ---------- экранное управление ---------- */
 #pad {
   display: none;
-  flex: 0 0 auto;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 18px 16px;
-  background: #080c16;
+  align-items: flex-end;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
   gap: 16px;
+  z-index: 3;
+  pointer-events: none;
 }
+#pad > * { pointer-events: auto; }
 .pad-cluster {
   position: relative;
-  width: 168px;
-  height: 116px;
+  width: 180px;
+  height: 124px;
+  opacity: .92;
 }
 .pad-btn {
   position: absolute;
-  background: var(--panel-2);
+  background: rgba(24, 32, 54, .82);
   border: 1px solid var(--line);
   color: var(--text);
-  border-radius: 12px;
+  border-radius: 14px;
   font: inherit;
-  width: 54px;
-  height: 54px;
+  width: 58px;
+  height: 58px;
   touch-action: none;
   user-select: none;
+  backdrop-filter: blur(2px);
 }
 .pad-btn.active { background: #2c3a5e; border-color: #5a6ea8; }
-.pad-btn.up { left: 57px; top: 0; }
-.pad-btn.left { left: 0; top: 57px; }
-.pad-btn.right { left: 114px; top: 57px; }
-.pad-btn.down { left: 57px; top: 57px; }
-.pad-btn.snap { position: static; width: 96px; height: 62px; font-size: 13px; letter-spacing: .08em; }
+.pad-btn.up { left: 61px; top: 0; }
+.pad-btn.left { left: 0; top: 62px; }
+.pad-btn.right { left: 122px; top: 62px; }
+.pad-btn.down { left: 61px; top: 62px; }
+.pad-btn.snap {
+  position: static;
+  width: 92px;
+  height: 66px;
+  font-size: 13px;
+  letter-spacing: .08em;
+  opacity: .92;
+}
 
-@media (pointer: coarse) { #pad { display: flex; } }
+/* режимы отображения подсказок */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  #pad { display: flex; }
+  #stage { padding-bottom: 128px; }
+  .desktop-only { display: none; }
+  .touch-only { display: block; }
+  #hint { display: none; }
+  .wide-only { display: none; }
+  #btn-full { display: none; }         /* на iOS всё равно не работает, не мозолим глаза */
+}
 @media (max-width: 620px) {
   #hud { font-size: 13px; gap: 6px; padding: 6px 8px; }
   .stat { font-size: 12px; }
+  .hud-title { font-size: 13px; }
+  .panel { padding: 16px 14px; }
+  .panel h1 { font-size: 24px; }
+  #level-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); max-height: 44vh; }
+}
+/* в ландшафте по высоте тесно: крестовина ложится поверх поля по углам */
+@media (max-height: 560px) and (pointer: coarse) {
+  #stage { padding-bottom: 0; }
+  .pad-cluster { transform: scale(.8); transform-origin: left bottom; }
+  .pad-btn.snap { transform: scale(.8); transform-origin: right bottom; }
+  #pad { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
 }

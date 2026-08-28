@@ -5,7 +5,12 @@
   var PORT_INDEX = {};
   PORT_INDEX[T.PORT_U] = 0; PORT_INDEX[T.PORT_R] = 1; PORT_INDEX[T.PORT_D] = 2; PORT_INDEX[T.PORT_L] = 3;
 
-  var MIN_TILE = 16, MAX_TILE = 46;
+  var MAX_TILE = 46;
+  // На узком экране лучше приблизить и дать камере скроллить, чем показать
+  // весь уровень нечитаемыми точками: держим в кадре не меньше ~12 клеток.
+  function minTile(viewW) {
+    return Math.max(18, Math.min(30, Math.floor(viewW / 12)));
+  }
 
   function Renderer(canvas) {
     this.canvas = canvas;
@@ -17,10 +22,14 @@
   }
 
   Renderer.prototype.resize = function (engine) {
-    var box = this.canvas.parentNode.getBoundingClientRect();
+    var host = this.canvas.parentNode;
+    var box = host.getBoundingClientRect();
+    // на телефоне снизу лежит крестовина — вычитаем её полосу, чтобы поле не пряталось под пальцами
+    var cs = global.getComputedStyle ? global.getComputedStyle(host) : null;
+    var padY = cs ? (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) : 0;
     var dpr = Math.min(global.devicePixelRatio || 1, 2);
     var w = Math.max(240, Math.floor(box.width));
-    var h = Math.max(200, Math.floor(box.height));
+    var h = Math.max(200, Math.floor(box.height - padY));
     this.canvas.style.width = w + 'px';
     this.canvas.style.height = h + 'px';
     this.canvas.width = Math.floor(w * dpr);
@@ -30,7 +39,7 @@
     this.viewH = h;
 
     var fit = Math.floor(Math.min(w / engine.w, h / engine.h));
-    var tile = Math.max(MIN_TILE, Math.min(MAX_TILE, fit));
+    var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
     if (!this.pack || this.pack.size !== tile) this.pack = SP.Sprites.build(tile);
     this.tile = tile;
   };

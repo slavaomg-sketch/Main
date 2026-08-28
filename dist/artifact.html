@@ -1,0 +1,1753 @@
+<title>ИНФОТРОН</title>
+<style>
+:root {
+  --bg: #05070d;
+  --panel: #111726;
+  --panel-2: #182036;
+  --line: #2a3552;
+  --text: #dbe4f7;
+  --dim: #8b97b5;
+  --accent: #ffb02e;
+  --good: #4dff9f;
+  --bad: #ff5f6d;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100dvh;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #121a2c, #0b1020);
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.hud-left, .hud-right { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hud-title { font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat { color: var(--dim); white-space: nowrap; }
+body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
+.stat b { color: var(--text); }
+.stat i { font-style: normal; color: var(--dim); }
+#hud-info { color: var(--accent); }
+
+.chip {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.chip:hover { border-color: #40507c; background: #1e2842; }
+.chip:active { transform: translateY(1px); }
+
+/* ---------- сцена ---------- */
+#stage {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #101728 0%, #05070d 70%);
+}
+#screen { display: block; image-rendering: auto; }
+
+/* ---------- панели поверх ---------- */
+#overlay, #menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 12, .82);
+  backdrop-filter: blur(3px);
+  padding: 16px;
+  z-index: 5;
+}
+.hidden { display: none !important; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+  max-width: min(560px, 92vw);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+}
+.panel.wide { max-width: min(760px, 94vw); }
+.panel h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: .22em; color: var(--accent); }
+.panel h2 { margin: 0 0 8px; font-size: 21px; }
+.panel p { margin: 0 0 14px; color: var(--dim); }
+.panel .sub { margin-bottom: 18px; }
+
+#ov-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+#ov-buttons button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 16px;
+  font: inherit;
+  cursor: pointer;
+}
+#ov-buttons button.primary { background: #1d4d38; border-color: #2f7d5b; color: #d6ffe8; }
+#ov-buttons button:hover { border-color: #46578a; }
+
+/* ---------- выбор уровня ---------- */
+#level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: min(46vh, 380px);
+  overflow: auto;
+}
+.lv {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.lv:hover:not(:disabled) { border-color: #4a5c92; background: #1f2a45; }
+.lv .n { color: var(--dim); font-size: 12px; }
+.lv .t { display: block; font-weight: 700; }
+.lv.done { border-color: #2f7d5b; }
+.lv.done .n::after { content: " ✓"; color: var(--good); }
+.lv:disabled { opacity: .38; cursor: not-allowed; }
+
+.legend { font-size: 12.5px; color: var(--dim); margin: 0; }
+
+/* ---------- подсказка уровня ---------- */
+#hint {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  background: #080c16;
+  min-height: 32px;
+}
+
+/* ---------- экранное управление ---------- */
+#pad {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+  gap: 16px;
+  z-index: 3;
+  pointer-events: none;
+}
+#pad > * { pointer-events: auto; }
+.pad-cluster {
+  position: relative;
+  width: 180px;
+  height: 124px;
+  opacity: .92;
+}
+.pad-btn {
+  position: absolute;
+  background: rgba(24, 32, 54, .82);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 14px;
+  font: inherit;
+  width: 58px;
+  height: 58px;
+  touch-action: none;
+  user-select: none;
+  backdrop-filter: blur(2px);
+}
+.pad-btn.active { background: #2c3a5e; border-color: #5a6ea8; }
+.pad-btn.up { left: 61px; top: 0; }
+.pad-btn.left { left: 0; top: 62px; }
+.pad-btn.right { left: 122px; top: 62px; }
+.pad-btn.down { left: 61px; top: 62px; }
+.pad-btn.snap {
+  position: static;
+  width: 92px;
+  height: 66px;
+  font-size: 13px;
+  letter-spacing: .08em;
+  opacity: .92;
+}
+
+/* режимы отображения подсказок */
+.touch-only { display: none; }
+@media (pointer: coarse) {
+  #pad { display: flex; }
+  #stage { padding-bottom: 128px; }
+  .desktop-only { display: none; }
+  .touch-only { display: block; }
+  #hint { display: none; }
+  .wide-only { display: none; }
+  #btn-full { display: none; }         /* на iOS всё равно не работает, не мозолим глаза */
+}
+@media (max-width: 620px) {
+  #hud { font-size: 13px; gap: 6px; padding: 6px 8px; }
+  .stat { font-size: 12px; }
+  .hud-title { font-size: 13px; }
+  .panel { padding: 16px 14px; }
+  .panel h1 { font-size: 24px; }
+  #level-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); max-height: 44vh; }
+}
+/* в ландшафте по высоте тесно: крестовина ложится поверх поля по углам */
+@media (max-height: 560px) and (pointer: coarse) {
+  #stage { padding-bottom: 0; }
+  .pad-cluster { transform: scale(.8); transform-origin: left bottom; }
+  .pad-btn.snap { transform: scale(.8); transform-origin: right bottom; }
+  #pad { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+}
+</style>
+<div id="app">
+  <header id="hud">
+    <div class="hud-left">
+      <button id="btn-menu" class="chip" title="К списку уровней (Esc)">☰<span class="wide-only"> Уровни</span></button>
+      <span id="hud-level" class="hud-title">—</span>
+    </div>
+    <div class="hud-right">
+      <span class="stat" title="Собрано инфотронов"><b id="hud-info">0</b><i>/</i><span id="hud-need">0</span> ⬤</span>
+      <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
+      <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
+      <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
+      <button id="btn-full" class="chip" title="Во весь экран">⛶</button>
+    </div>
+  </header>
+
+  <div id="stage">
+    <canvas id="screen"></canvas>
+
+    <div id="pad">
+      <div class="pad-cluster">
+        <button data-dir="0" class="pad-btn up">▲</button>
+        <button data-dir="3" class="pad-btn left">◀</button>
+        <button data-dir="1" class="pad-btn right">▶</button>
+        <button data-dir="2" class="pad-btn down">▼</button>
+      </div>
+      <button data-act="snap" class="pad-btn snap">СНАП</button>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div class="panel">
+        <h2 id="ov-title"></h2>
+        <p id="ov-text"></p>
+        <div id="ov-buttons"></div>
+      </div>
+    </div>
+
+    <div id="menu" class="hidden">
+      <div class="panel wide">
+        <h1>ИНФОТРОН</h1>
+        <p class="sub">Прогрызай грунт, собирай инфотроны, не попадайся под зонк.</p>
+        <div id="level-grid"></div>
+        <p class="legend desktop-only">
+          <b>Стрелки</b> или <b>WASD</b> — идти &nbsp;·&nbsp;
+          <b>Space + направление</b> — выесть клетку, не сходя с места («снап») &nbsp;·&nbsp;
+          <b>R</b> — заново &nbsp;·&nbsp; <b>Esc</b> — пауза
+        </p>
+        <p class="legend touch-only">
+          Веди пальцем по полю — Мёрфи идёт следом. Крестовина внизу — для точных шагов,
+          <b>СНАП</b> + направление — выесть клетку, не сходя с места.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div id="hint"></div>
+</div>
+
+<script>
+/*
+ * Tiles — базовый словарь элементов мира.
+ * Файл работает и в браузере (global SP), и в Node (module.exports).
+ */
+(function (global) {
+  'use strict';
+
+  var Tiles = {
+    EMPTY: 0,
+    BASE: 1,        // грунт, который Мёрфи прогрызает
+    MURPHY: 2,
+    INFOTRON: 3,    // то, что собираем
+    ZONK: 4,        // валун
+    WALL: 5,        // hardware — неразрушим
+    CHIP: 6,        // чип — разрушается взрывом, зонки с него скатываются
+    EXIT: 7,
+    SNIKSNAK: 8,    // монстр, идёт вдоль стен левой рукой
+    ELECTRON: 9,    // монстр, идёт правой рукой, взрывается инфотронами
+    ORANGE: 10,     // оранжевый диск: падает как зонк и детонирует при ударе
+    PORT_U: 11,     // порт пропускает только в свою сторону
+    PORT_R: 12,
+    PORT_D: 13,
+    PORT_L: 14,
+    EXPLOSION: 15,
+    EXPLOSION_INFO: 16
+  };
+
+  var NAMES = {};
+  Object.keys(Tiles).forEach(function (k) { NAMES[Tiles[k]] = k; });
+
+  // Символы для текстовых карт уровней.
+  var CHARS = {
+    ' ': Tiles.EMPTY,
+    '.': Tiles.BASE,
+    '#': Tiles.WALL,
+    '=': Tiles.CHIP,
+    'O': Tiles.ZONK,
+    '*': Tiles.INFOTRON,
+    'M': Tiles.MURPHY,
+    'E': Tiles.EXIT,
+    'S': Tiles.SNIKSNAK,
+    'e': Tiles.ELECTRON,
+    'o': Tiles.ORANGE,
+    '^': Tiles.PORT_U,
+    '>': Tiles.PORT_R,
+    'v': Tiles.PORT_D,
+    '<': Tiles.PORT_L
+  };
+
+  var TO_CHAR = {};
+  Object.keys(CHARS).forEach(function (c) { if (TO_CHAR[CHARS[c]] === undefined) TO_CHAR[CHARS[c]] = c; });
+  TO_CHAR[Tiles.EXPLOSION] = '!';
+  TO_CHAR[Tiles.EXPLOSION_INFO] = '!';
+
+  // Направления: 0 вверх, 1 вправо, 2 вниз, 3 влево.
+  var DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+  var PORT_DIR = {};
+  PORT_DIR[Tiles.PORT_U] = 0;
+  PORT_DIR[Tiles.PORT_R] = 1;
+  PORT_DIR[Tiles.PORT_D] = 2;
+  PORT_DIR[Tiles.PORT_L] = 3;
+
+  var api = { Tiles: Tiles, NAMES: NAMES, CHARS: CHARS, TO_CHAR: TO_CHAR, DIRS: DIRS, PORT_DIR: PORT_DIR };
+
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else global.SP = Object.assign(global.SP || {}, api);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* СГЕНЕРИРОВАНО tools/build-levels.js из levels/*.txt — правь .txt, а не этот файл. */
+(function (global) {
+  'use strict';
+  var LEVELS = [
+    {
+      id: 1,
+      name: "Первый контакт",
+      hint: "Стрелки — идти. Грызи грунт, собери все инфотроны, потом иди в выход.",
+      needed: 3,
+      map: [
+        "####################",
+        "#..................#",
+        "#..M...............#",
+        "#..................#",
+        "#......*...........#",
+        "#..................#",
+        "#....####..........#",
+        "#.......#....*.....#",
+        "#.......#..........#",
+        "#..................#",
+        "#....*........E....#",
+        "#..................#",
+        "####################"
+      ]
+    },
+    {
+      id: 2,
+      name: "Под камнями",
+      hint: "Зонк лежит на грунте. Уберёшь опору — полетит вниз. Стоять под ним не страшно, страшно уйти.",
+      needed: 6,
+      map: [
+        "######################",
+        "#M...................#",
+        "#....................#",
+        "#..#O#.#O#.#O#.#O#...#",
+        "#..#.#.#.#.#.#.#.#...#",
+        "#..#*#.#*#.#*#.#*#...#",
+        "#..#.#.#.#.#.#.#.#...#",
+        "#....................#",
+        "#....................#",
+        "#...*.......*........#",
+        "#....................#",
+        "#.........E..........#",
+        "######################"
+      ]
+    },
+    {
+      id: 3,
+      name: "Пирамида",
+      hint: "Зонк скатывается с круглого бока. Подкапывать пирамиду снизу — плохая идея.",
+      needed: 3,
+      map: [
+        "######################",
+        "#....................#",
+        "#.M..................#",
+        "#.........O..........#",
+        "#........OOO.........#",
+        "#.......OOOOO........#",
+        "#......OOOOOOO.......#",
+        "#....................#",
+        "#...*....*....*......#",
+        "#....................#",
+        "#..####.####.####....#",
+        "#..................E.#",
+        "######################"
+      ]
+    },
+    {
+      id: 4,
+      name: "Толкач",
+      hint: "Зонк толкается вбок только в пустоту. Дотолкай его до дыры в полу — и он провалится.",
+      needed: 4,
+      map: [
+        "########################",
+        "#M.....................#",
+        "#.####################.#",
+        "#.  O        *       #.#",
+        "#.####### ############.#",
+        "#.######   ###########.#",
+        "#.####################.#",
+        "#....*............*....#",
+        "#.####################.#",
+        "#.#       *        O  .#",
+        "#.############ #######.#",
+        "#.###########   ######.#",
+        "#.####################.#",
+        "#.....................E#",
+        "########################"
+      ]
+    },
+    {
+      id: 5,
+      name: "Односторонние",
+      hint: "В порт входят только по стрелке — назад дороги нет. Обчисти этаж прежде чем спускаться.",
+      needed: 6,
+      map: [
+        "########################",
+        "#M.....................#",
+        "#......................#",
+        "##########v#############",
+        "#......................#",
+        "#..*...O.......O...*...#",
+        "#......................#",
+        "#####v##################",
+        "#......................#",
+        "#...O....*....*....O...#",
+        "#......................#",
+        "################v#######",
+        "#......................#",
+        "#...*..........*...E...#",
+        "#......................#",
+        "########################"
+      ]
+    },
+    {
+      id: 6,
+      name: "Патруль",
+      hint: "Снипснак ходит вдоль стен и в середину зала не суётся. Порты его не выпускают — а тебя пропускают.",
+      needed: 6,
+      map: [
+        "########################",
+        "#M.....................#",
+        "####v######v######v###.#",
+        "##S    ##S    ##S    #.#",
+        "##     ##     ##     #.#",
+        "##  *  ##  *  ##  *  #.#",
+        "##  #  ##  #  ##  #  #.#",
+        "##     ##     ##     #.#",
+        "###v######v######v####.#",
+        "#......................#",
+        "#...*......*......*....#",
+        "#......................#",
+        "#..........E...........#",
+        "########################"
+      ]
+    },
+    {
+      id: 7,
+      name: "Электроны",
+      hint: "Инфотронов не хватает. Пробей грунт «снапом» (Space+стрелка), не подходя к электрону вплотную, — зонк сделает остальное. И сразу беги.",
+      needed: 10,
+      map: [
+        "########################",
+        "#M.....................#",
+        "#......................#",
+        "#.......O......O.......#",
+        "#......................#",
+        "#.......e......e.......#",
+        "#......................#",
+        "#...*.......*.......*..#",
+        "#......................#",
+        "#......................#",
+        "#..........E...........#",
+        "########################"
+      ]
+    },
+    {
+      id: 8,
+      name: "Взрывное дело",
+      hint: "Оранжевый диск взрывается, когда падает на что-то твёрдое. Взрыв дробит чипы, но не стены.",
+      needed: 5,
+      map: [
+        "########################",
+        "#M.....................#",
+        "#.####################.#",
+        "#.  o                 .#",
+        "#.########## #########.#",
+        "#.########## #########.#",
+        "#.#########===########.#",
+        "#.###  *   *   *   ###.#",
+        "#.###   *     *    ###.#",
+        "#.###              ###.#",
+        "#.####################.#",
+        "#......................#",
+        "#..........E...........#",
+        "########################"
+      ]
+    },
+    {
+      id: 9,
+      name: "Шахта",
+      hint: "Копай вниз — и зонк поедет следом. Замер на месте под падающим зонком означает одно.",
+      needed: 5,
+      map: [
+        "####################",
+        "#M.................#",
+        "#..................#",
+        "#....OOO...OOO.....#",
+        "#..................#",
+        "####.####.####.#####",
+        "#..................#",
+        "#...*....O....*....#",
+        "#..................#",
+        "##.####.####.####.##",
+        "#..................#",
+        "#....O.......O.....#",
+        "#........*.........#",
+        "#..................#",
+        "####.#####.####.####",
+        "#..................#",
+        "#..*....OO....*....#",
+        "#..................#",
+        "#.####.#####.#####.#",
+        "#..................#",
+        "#........E.........#",
+        "####################"
+      ]
+    },
+    {
+      id: 10,
+      name: "Лабиринт",
+      hint: "Инфотроны прячутся в тупиках. Зал в центре заперт портами: войти сверху, выйти снизу, патруль остаётся внутри.",
+      needed: 5,
+      map: [
+        "#######################",
+        "#M#.......#...#...#...#",
+        "#.#.#.###.#.#.#.#.#.#.#",
+        "#.#*#...#...#...#.#.#.#",
+        "#.#####.###v#####.#.#.#",
+        "#.....#.#S    #.#.#.#.#",
+        "#####.#.#     #.#.#.#.#",
+        "#*#...#.#  *  #.#...#.#",
+        "#.#.###.#  #  #.#####.#",
+        "#.#.#...#    S#..*#...#",
+        "#.#.###.###v###.###.###",
+        "#.#.#...#...#...#...#E#",
+        "#.#.#.###.###.#.#.###.#",
+        "#.....#*......#.......#",
+        "#######################"
+      ]
+    },
+    {
+      id: 11,
+      name: "Цепная реакция",
+      hint: "Оранжевый диск подрывает соседей. Один зонк в шахту — и вся линия уходит разом.",
+      needed: 6,
+      map: [
+        "########################",
+        "#M.....................#",
+        "#......................#",
+        "#.........O............#",
+        "#......................#",
+        "########## #############",
+        "########## #############",
+        "########## #############",
+        "######ooooooooo#########",
+        "#####===========########",
+        "#                      #",
+        "#  *  *  *  *  *  *   E#",
+        "########################"
+      ]
+    },
+    {
+      id: 12,
+      name: "Финал",
+      hint: "Всё сразу: камни, патруль под портами, тупик, который надо расчистить. Не спеши.",
+      needed: 10,
+      map: [
+        "############################",
+        "#M.........................#",
+        "#..........................#",
+        "#..O...O...*....O...*...O..#",
+        "#..........................#",
+        "#.*...O....O.....O....O...*#",
+        "#.........###v###..........#",
+        "#.........#S    #..........#",
+        "#.........#     #..........#",
+        "#.........#  *  #..........#",
+        "#.........#  #  #..........#",
+        "#.........#    S#..........#",
+        "#.........###v###..........#",
+        "#...*.................*....#",
+        "#.  O             *  #.....#",
+        "#.####### ###########......#",
+        "#.######   ##########......#",
+        "#S                        S#",
+        "#...*........E........*....#",
+        "############################"
+      ]
+    }
+  ];
+  var api = { LEVELS: LEVELS };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else global.SP = Object.assign(global.SP || {}, api);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/*
+ * Engine — вся логика мира. Никакого DOM: этот же файл гоняется в Node
+ * решателем и верификатором уровней (tools/solve.js, tools/verify.js).
+ *
+ * Мир пошаговый: один step() = один "тик". Всё двигается ровно на клетку,
+ * а отрисовка интерполирует переход по fx/fy.
+ */
+(function (global) {
+  'use strict';
+
+  var base = (typeof module === 'object' && module.exports) ? require('./tiles.js') : global.SP;
+  var T = base.Tiles, DIRS = base.DIRS, CHARS = base.CHARS, PORT_DIR = base.PORT_DIR;
+
+  var EXPLOSION_TICKS = 5;
+  var DEATH_TICKS = 14;
+
+  function isRounded(t) {
+    return t === T.ZONK || t === T.INFOTRON || t === T.CHIP || t === T.ORANGE;
+  }
+  function isFaller(t) {
+    return t === T.ZONK || t === T.INFOTRON || t === T.ORANGE;
+  }
+  function isMonster(t) {
+    return t === T.SNIKSNAK || t === T.ELECTRON;
+  }
+  function isBlast(t) {
+    return t === T.EXPLOSION || t === T.EXPLOSION_INFO;
+  }
+
+  function Engine(level) {
+    this.level = level;
+    this.reset();
+  }
+
+  Engine.prototype.reset = function () {
+    var rows = this.level.map;
+    var w = 0;
+    for (var r = 0; r < rows.length; r++) w = Math.max(w, rows[r].length);
+    this.w = w;
+    this.h = rows.length;
+    var n = this.w * this.h;
+
+    this.tiles = new Uint8Array(n);
+    this.falling = new Uint8Array(n);
+    this.dir = new Uint8Array(n);
+    this.timer = new Uint8Array(n);
+    this.moved = new Uint8Array(n);
+    this.fx = new Int8Array(n);
+    this.fy = new Int8Array(n);
+
+    var total = 0;
+    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0 };
+    for (var y = 0; y < this.h; y++) {
+      var line = rows[y];
+      for (var x = 0; x < this.w; x++) {
+        var ch = x < line.length ? line[x] : ' ';
+        var t = CHARS[ch];
+        if (t === undefined) throw new Error('Неизвестный символ карты: "' + ch + '" в строке ' + (y + 1));
+        var i = y * this.w + x;
+        this.tiles[i] = t;
+        if (t === T.INFOTRON) total++;
+        if (t === T.MURPHY) { this.murphy.x = x; this.murphy.y = y; }
+        if (t === T.SNIKSNAK) this.dir[i] = 1;
+        if (t === T.ELECTRON) this.dir[i] = 3;
+      }
+    }
+
+    this.totalInfotrons = total;
+    // needed может быть больше, чем инфотронов на карте: недостающие
+    // добываются взрывами электронов.
+    this.needed = (this.level.needed === undefined || this.level.needed === null)
+      ? total : this.level.needed;
+    this.collected = 0;
+    this.status = 'playing';   // playing | dying | dead | won
+    this.deathTimer = 0;
+    this.ticks = 0;
+    this.moves = 0;
+    return this;
+  };
+
+  Engine.prototype.idx = function (x, y) { return y * this.w + x; };
+
+  Engine.prototype.get = function (x, y) {
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return T.WALL;
+    return this.tiles[y * this.w + x];
+  };
+
+  Engine.prototype.set = function (x, y, t) {
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    var i = y * this.w + x;
+    this.tiles[i] = t;
+    this.falling[i] = 0;
+  };
+
+  Engine.prototype.exitOpen = function () { return this.collected >= this.needed; };
+
+  Engine.prototype.clone = function () {
+    var e = Object.create(Engine.prototype);
+    e.level = this.level;
+    e.w = this.w; e.h = this.h;
+    e.tiles = this.tiles.slice();
+    e.falling = this.falling.slice();
+    e.dir = this.dir.slice();
+    e.timer = this.timer.slice();
+    e.moved = this.moved.slice();
+    e.fx = this.fx.slice();
+    e.fy = this.fy.slice();
+    e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
+                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging };
+    e.totalInfotrons = this.totalInfotrons;
+    e.needed = this.needed;
+    e.collected = this.collected;
+    e.status = this.status;
+    e.deathTimer = this.deathTimer;
+    e.ticks = this.ticks;
+    e.moves = this.moves;
+    return e;
+  };
+
+  // Компактный ключ состояния — для поиска решения и детекции зацикливания.
+  Engine.prototype.key = function () {
+    var s = '';
+    for (var i = 0; i < this.tiles.length; i++) {
+      s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0));
+    }
+    return s + '|' + this.collected + '|' + this.status;
+  };
+
+  Engine.prototype.moveObj = function (x, y, nx, ny) {
+    var i = this.idx(x, y), j = this.idx(nx, ny);
+    this.tiles[j] = this.tiles[i];
+    this.falling[j] = this.falling[i];
+    this.dir[j] = this.dir[i];
+    this.tiles[i] = T.EMPTY;
+    this.falling[i] = 0;
+    this.dir[i] = 0;
+    this.fx[j] = x - nx;
+    this.fy[j] = y - ny;
+    this.fx[i] = 0;
+    this.fy[i] = 0;
+    this.moved[j] = 1;
+  };
+
+  Engine.prototype.explodeAt = function (cx, cy, kind) {
+    var blast = kind === 'info' ? T.EXPLOSION_INFO : T.EXPLOSION;
+    var chain = [];
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var x = cx + dx, y = cy + dy;
+        if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+        var i = this.idx(x, y);
+        var t = this.tiles[i];
+        if (t === T.WALL || t === T.EXIT || isBlast(t)) continue;
+        if (t === T.ORANGE) chain.push([x, y, 'normal']);
+        if (t === T.ELECTRON) chain.push([x, y, 'info']);
+        if (t === T.MURPHY) this.killMurphy(true);
+        this.tiles[i] = blast;
+        this.falling[i] = 0;
+        this.dir[i] = 0;
+        this.timer[i] = EXPLOSION_TICKS;
+        this.fx[i] = 0;
+        this.fy[i] = 0;
+        this.moved[i] = 1;
+      }
+    }
+    for (var k = 0; k < chain.length; k++) {
+      this.explodeAt(chain[k][0], chain[k][1], chain[k][2]);
+    }
+  };
+
+  Engine.prototype.killMurphy = function (alreadyInBlast) {
+    if (!this.murphy.alive) return;
+    this.murphy.alive = false;
+    this.status = 'dying';
+    this.deathTimer = DEATH_TICKS;
+    if (!alreadyInBlast) this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+  };
+
+  Engine.prototype.updateExplosions = function () {
+    for (var i = 0; i < this.tiles.length; i++) {
+      if (!isBlast(this.tiles[i])) continue;
+      if (this.timer[i] > 0) this.timer[i]--;
+      if (this.timer[i] === 0) {
+        this.tiles[i] = this.tiles[i] === T.EXPLOSION_INFO ? T.INFOTRON : T.EMPTY;
+        this.moved[i] = 1;
+      }
+    }
+  };
+
+  // enterable — куда Мёрфи может шагнуть "просто так"
+  Engine.prototype.enterable = function (t) {
+    return t === T.EMPTY || t === T.BASE || t === T.INFOTRON;
+  };
+
+  Engine.prototype.updateMurphy = function (input) {
+    var m = this.murphy;
+    m.pushing = 0;
+    m.digging = 0;
+    var d = input && input.dir !== undefined ? input.dir : -1;
+    if (d < 0 || d > 3) return;
+    m.facing = d;
+
+    var dx = DIRS[d][0], dy = DIRS[d][1];
+    var nx = m.x + dx, ny = m.y + dy;
+    var t = this.get(nx, ny);
+
+    // "Снап": Space + направление — выесть грунт/инфотрон, не сходя с места.
+    if (input.snap) {
+      if (t === T.BASE) { this.set(nx, ny, T.EMPTY); m.digging = 1; }
+      else if (t === T.INFOTRON) { this.set(nx, ny, T.EMPTY); this.collected++; m.digging = 1; }
+      return;
+    }
+
+    if (t === T.BASE) { m.digging = 1; this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.EMPTY) { this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.INFOTRON) { this.collected++; this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.EXIT) {
+      if (this.exitOpen()) {
+        this.set(m.x, m.y, T.EMPTY);
+        m.x = nx; m.y = ny;
+        this.status = 'won';
+        this.moves++;
+      }
+      return;
+    }
+    if (isMonster(t)) { this.killMurphy(); return; }
+    if ((t === T.ZONK || t === T.ORANGE) && dy === 0) {
+      var bi = this.idx(nx, ny);
+      if (this.falling[bi]) return;                    // падающий зонк не толкнуть
+      if (this.get(nx + dx, ny) !== T.EMPTY) return;
+      this.moveObj(nx, ny, nx + dx, ny);
+      m.pushing = 1;
+      this.stepMurphyTo(nx, ny);
+      this.moves++;
+      return;
+    }
+    if (PORT_DIR[t] !== undefined) {
+      if (PORT_DIR[t] !== d) return;                   // порт односторонний
+      var fx2 = nx + dx, fy2 = ny + dy;
+      var ft = this.get(fx2, fy2);
+      if (!this.enterable(ft)) return;
+      if (ft === T.INFOTRON) this.collected++;
+      this.set(m.x, m.y, T.EMPTY);
+      var j = this.idx(fx2, fy2);
+      this.tiles[j] = T.MURPHY;
+      this.falling[j] = 0;
+      this.fx[j] = m.x - fx2;
+      this.fy[j] = m.y - fy2;
+      this.moved[j] = 1;
+      m.x = fx2; m.y = fy2;
+      this.moves++;
+      return;
+    }
+  };
+
+  Engine.prototype.stepMurphyTo = function (nx, ny) {
+    var m = this.murphy;
+    var i = this.idx(m.x, m.y), j = this.idx(nx, ny);
+    this.tiles[i] = T.EMPTY;
+    this.falling[i] = 0;
+    this.tiles[j] = T.MURPHY;
+    this.falling[j] = 0;
+    this.dir[j] = 0;
+    this.fx[j] = m.x - nx;
+    this.fy[j] = m.y - ny;
+    this.fx[i] = 0;
+    this.fy[i] = 0;
+    this.moved[j] = 1;
+    m.x = nx; m.y = ny;
+  };
+
+  Engine.prototype.updateGravity = function () {
+    // Флаг "уже двигался" — свой для каждой фазы: толкнутый Мёрфи зонк
+    // обязан в этот же тик провалиться, если под ним оказалась пустота.
+    this.moved.fill(0);
+    for (var y = this.h - 2; y >= 0; y--) {
+      for (var x = 0; x < this.w; x++) {
+        var i = this.idx(x, y);
+        var t = this.tiles[i];
+        if (!isFaller(t) || this.moved[i]) continue;
+
+        var b = this.get(x, y + 1);
+        if (b === T.EMPTY) {
+          this.moveObj(x, y, x, y + 1);
+          this.falling[this.idx(x, y + 1)] = 1;
+          continue;
+        }
+        if (this.falling[i]) {
+          if (b === T.MURPHY) { this.killMurphy(); continue; }
+          if (isMonster(b)) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
+          if (b === T.ORANGE) { this.explodeAt(x, y + 1, 'normal'); continue; }
+          if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
+        }
+        if (isRounded(b)) {
+          if (this.get(x - 1, y) === T.EMPTY && this.get(x - 1, y + 1) === T.EMPTY) {
+            this.moveObj(x, y, x - 1, y);
+            this.falling[this.idx(x - 1, y)] = 1;
+            continue;
+          }
+          if (this.get(x + 1, y) === T.EMPTY && this.get(x + 1, y + 1) === T.EMPTY) {
+            this.moveObj(x, y, x + 1, y);
+            this.falling[this.idx(x + 1, y)] = 1;
+            continue;
+          }
+        }
+        this.falling[i] = 0;
+      }
+    }
+  };
+
+  Engine.prototype.updateMonsters = function () {
+    this.moved.fill(0);
+    for (var y = 0; y < this.h; y++) {
+      for (var x = 0; x < this.w; x++) {
+        var i = this.idx(x, y);
+        var t = this.tiles[i];
+        if (!isMonster(t) || this.moved[i]) continue;
+
+        var hand = t === T.SNIKSNAK ? 3 : 1;     // снипснак ведёт левой рукой, электрон правой
+        var d = this.dir[i];
+        var order = [(d + hand) % 4, d, (d + hand * 3) % 4, (d + 2) % 4];
+        for (var k = 0; k < order.length; k++) {
+          var nd = order[k];
+          var nx = x + DIRS[nd][0], ny = y + DIRS[nd][1];
+          var tt = this.get(nx, ny);
+          if (tt === T.MURPHY) { this.dir[i] = nd; this.killMurphy(); k = 99; break; }
+          if (tt === T.EMPTY) {
+            this.dir[i] = nd;
+            this.moveObj(x, y, nx, ny);
+            this.dir[this.idx(nx, ny)] = nd;
+            break;
+          }
+        }
+        if (this.status === 'dying') return;
+      }
+    }
+  };
+
+  /**
+   * Один шаг мира.
+   * input: { dir: -1..3, snap: bool }
+   */
+  Engine.prototype.step = function (input) {
+    if (this.status === 'won' || this.status === 'dead') return this.status;
+    this.moved.fill(0);
+    this.fx.fill(0);
+    this.fy.fill(0);
+    this.ticks++;
+
+    this.updateExplosions();
+    if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    this.updateGravity();
+    this.updateMonsters();
+
+    if (this.status === 'dying') {
+      this.deathTimer--;
+      if (this.deathTimer <= 0) this.status = 'dead';
+    }
+    return this.status;
+  };
+
+  Engine.prototype.toText = function () {
+    var TO_CHAR = base.TO_CHAR, out = [];
+    for (var y = 0; y < this.h; y++) {
+      var s = '';
+      for (var x = 0; x < this.w; x++) s += TO_CHAR[this.tiles[this.idx(x, y)]] || '?';
+      out.push(s);
+    }
+    return out.join('\n');
+  };
+
+  var api = { Engine: Engine, isRounded: isRounded, isFaller: isFaller, isMonster: isMonster, isBlast: isBlast };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else global.SP = Object.assign(global.SP || {}, api);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/*
+ * Спрайты рисуются процедурно в offscreen-канвасы — никаких внешних картинок,
+ * игра остаётся одним самодостаточным набором файлов.
+ */
+(function (global) {
+  'use strict';
+  var T = global.SP.Tiles;
+
+  function cv(size) {
+    var c = document.createElement('canvas');
+    c.width = c.height = size;
+    return c;
+  }
+  function rr(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  // предсказуемый «шум» для крапа на грунте
+  function noise(i) {
+    var x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  function drawBase(g, s) {
+    var grad = g.createLinearGradient(0, 0, 0, s);
+    grad.addColorStop(0, '#6b5238');
+    grad.addColorStop(1, '#4a3626');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, s, s);
+    for (var i = 0; i < 26; i++) {
+      var x = noise(i) * s, y = noise(i + 50) * s, r = 0.02 * s + noise(i + 90) * 0.035 * s;
+      g.fillStyle = noise(i + 7) > 0.5 ? 'rgba(255,225,190,0.18)' : 'rgba(30,18,10,0.30)';
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
+    g.strokeStyle = 'rgba(0,0,0,0.35)';
+    g.lineWidth = Math.max(1, s * 0.03);
+    g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, s - g.lineWidth, s - g.lineWidth);
+  }
+
+  function drawWall(g, s) {
+    g.fillStyle = '#20293f';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.09;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.13);
+    var grad = g.createLinearGradient(0, 0, 0, s);
+    grad.addColorStop(0, '#46557e');
+    grad.addColorStop(0.5, '#334062');
+    grad.addColorStop(1, '#232c45');
+    g.fillStyle = grad;
+    g.fill();
+    g.strokeStyle = 'rgba(150,180,255,0.22)';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.stroke();
+  }
+
+  function drawChip(g, s) {
+    g.fillStyle = '#0d2a1c';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.1;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.08);
+    g.fillStyle = '#1d6b45';
+    g.fill();
+    g.strokeStyle = '#4ee39a';
+    g.lineWidth = Math.max(1, s * 0.04);
+    g.stroke();
+    g.strokeStyle = 'rgba(120,255,190,0.55)';
+    g.lineWidth = Math.max(1, s * 0.045);
+    for (var i = 0; i < 3; i++) {
+      var y = s * (0.32 + i * 0.18);
+      g.beginPath(); g.moveTo(s * 0.24, y); g.lineTo(s * 0.5, y); g.lineTo(s * 0.5, y + s * 0.1); g.lineTo(s * 0.76, y + s * 0.1);
+      g.stroke();
+    }
+  }
+
+  function sphere(g, s, cx, cy, r, c1, c2, c3) {
+    var grad = g.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(0.55, c2);
+    grad.addColorStop(1, c3);
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+  }
+
+  function drawZonk(g, s) {
+    var r = s * 0.44;
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.beginPath(); g.ellipse(s / 2, s * 0.86, r * 0.8, r * 0.18, 0, 0, 6.2832); g.fill();
+    sphere(g, s, s / 2, s / 2, r, '#cfd8e6', '#8792a6', '#3b4457');
+    g.strokeStyle = 'rgba(255,255,255,0.35)';
+    g.lineWidth = Math.max(1, s * 0.03);
+    g.beginPath(); g.arc(s / 2, s / 2, r * 0.98, Math.PI * 1.15, Math.PI * 1.75); g.stroke();
+  }
+
+  function drawInfotron(g, s) {
+    var r = s * 0.4;
+    g.save();
+    g.shadowColor = 'rgba(255,170,40,0.9)';
+    g.shadowBlur = s * 0.35;
+    sphere(g, s, s / 2, s / 2, r, '#fff0c0', '#ffb02e', '#a04a00');
+    g.restore();
+    g.strokeStyle = 'rgba(255,240,200,0.85)';
+    g.lineWidth = Math.max(1, s * 0.055);
+    g.beginPath(); g.arc(s / 2, s / 2, r * 0.55, 0, 6.2832); g.stroke();
+  }
+
+  function drawOrange(g, s) {
+    var r = s * 0.42;
+    sphere(g, s, s / 2, s / 2, r, '#ffd9a0', '#ff7a18', '#7a2b00');
+    g.strokeStyle = 'rgba(60,20,0,0.75)';
+    g.lineWidth = Math.max(1, s * 0.07);
+    g.beginPath(); g.moveTo(s / 2 - r * 0.75, s / 2 - r * 0.25); g.lineTo(s / 2 + r * 0.75, s / 2 - r * 0.25); g.stroke();
+    g.beginPath(); g.moveTo(s / 2 - r * 0.75, s / 2 + r * 0.3); g.lineTo(s / 2 + r * 0.75, s / 2 + r * 0.3); g.stroke();
+  }
+
+  function drawExit(g, s, open) {
+    g.fillStyle = '#0a0d14';
+    g.fillRect(0, 0, s, s);
+    var cx = s / 2, cy = s / 2, r = s * 0.4;
+    // корпус шлюза
+    var grad = g.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    grad.addColorStop(0, open ? '#0e5c3c' : '#161b28');
+    grad.addColorStop(1, open ? '#04160f' : '#0b0e17');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+    // внешнее кольцо с болтами
+    g.strokeStyle = open ? '#4dff9f' : '#5b6478';
+    g.lineWidth = Math.max(2, s * 0.09);
+    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.stroke();
+    g.fillStyle = open ? '#a9ffd2' : '#7d88a8';
+    for (var i = 0; i < 8; i++) {
+      var a = i * Math.PI / 4 + Math.PI / 8;
+      g.beginPath(); g.arc(cx + Math.cos(a) * r * 0.99, cy + Math.sin(a) * r * 0.99, s * 0.035, 0, 6.2832); g.fill();
+    }
+    // створки
+    g.strokeStyle = open ? 'rgba(169,255,210,0.85)' : 'rgba(125,136,168,0.7)';
+    g.lineWidth = Math.max(1, s * 0.06);
+    g.beginPath();
+    g.moveTo(cx - r * 0.55, cy); g.lineTo(cx + r * 0.55, cy);
+    g.moveTo(cx, cy - r * 0.55); g.lineTo(cx, cy + r * 0.55);
+    g.stroke();
+    if (open) {
+      g.save();
+      g.globalAlpha = 0.5;
+      g.fillStyle = '#4dff9f';
+      g.beginPath(); g.arc(cx, cy, r * 0.42, 0, 6.2832); g.fill();
+      g.restore();
+    }
+  }
+
+  function drawPort(g, s, dir) {
+    g.fillStyle = '#0c1120';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.12;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.1);
+    g.fillStyle = '#141c33';
+    g.fill();
+    g.strokeStyle = '#3d63c9';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.stroke();
+    g.save();
+    g.translate(s / 2, s / 2);
+    g.rotate([Math.PI, -Math.PI / 2, 0, Math.PI / 2][dir]);   // стрелка по направлению прохода
+    g.strokeStyle = '#8fb4ff';
+    g.lineWidth = Math.max(1, s * 0.1);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.beginPath();
+    g.moveTo(0, -s * 0.2); g.lineTo(0, s * 0.2);
+    g.moveTo(-s * 0.15, s * 0.05); g.lineTo(0, s * 0.2); g.lineTo(s * 0.15, s * 0.05);
+    g.stroke();
+    g.restore();
+  }
+
+  function drawMurphy(g, s, facing) {
+    var r = s * 0.42;
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.beginPath(); g.ellipse(s / 2, s * 0.9, r * 0.75, r * 0.15, 0, 0, 6.2832); g.fill();
+    sphere(g, s, s / 2, s / 2, r, '#d8ffe9', '#37d18a', '#0d6b46');
+    var dx = [0, 0.1, 0, -0.1][facing] * s;
+    var dy = [-0.09, 0, 0.09, 0][facing] * s;
+    g.fillStyle = '#07231a';
+    g.beginPath(); g.arc(s / 2 - s * 0.13 + dx, s / 2 - s * 0.05 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(s / 2 + s * 0.13 + dx, s / 2 - s * 0.05 + dy, s * 0.075, 0, 6.2832); g.fill();
+    g.strokeStyle = '#07231a';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(s / 2 + dx * 0.5, s / 2 + s * 0.1 + dy * 0.5, s * 0.16, 0.25 * Math.PI, 0.75 * Math.PI);
+    g.stroke();
+  }
+
+  function drawSnik(g, s) {
+    var b = s * 0.14;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.22);
+    var grad = g.createLinearGradient(0, 0, 0, s);
+    grad.addColorStop(0, '#e05bff');
+    grad.addColorStop(1, '#6c1a8c');
+    g.fillStyle = grad;
+    g.fill();
+    g.strokeStyle = '#ffd0ff';
+    g.lineWidth = Math.max(1, s * 0.04);
+    g.stroke();
+    g.fillStyle = '#1b0620';
+    g.beginPath(); g.arc(s * 0.37, s * 0.42, s * 0.07, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(s * 0.63, s * 0.42, s * 0.07, 0, 6.2832); g.fill();
+    g.fillStyle = '#fff';
+    g.beginPath();
+    for (var i = 0; i < 4; i++) {
+      var x = s * (0.3 + i * 0.14);
+      g.moveTo(x, s * 0.62); g.lineTo(x + s * 0.07, s * 0.74); g.lineTo(x + s * 0.14, s * 0.62);
+    }
+    g.fill();
+  }
+
+  function drawElectron(g, s, phase) {
+    var r = s * 0.34;
+    g.save();
+    g.shadowColor = 'rgba(120,220,255,0.9)';
+    g.shadowBlur = s * 0.4;
+    sphere(g, s, s / 2, s / 2, r, '#ffffff', '#66d9ff', '#0b4a7a');
+    g.restore();
+    g.strokeStyle = 'rgba(180,240,255,0.9)';
+    g.lineWidth = Math.max(1, s * 0.04);
+    g.save();
+    g.translate(s / 2, s / 2);
+    g.rotate(phase);
+    g.beginPath(); g.ellipse(0, 0, r * 1.35, r * 0.45, 0, 0, 6.2832); g.stroke();
+    g.rotate(2.1);
+    g.beginPath(); g.ellipse(0, 0, r * 1.35, r * 0.45, 0, 0, 6.2832); g.stroke();
+    g.restore();
+  }
+
+  function drawBlast(g, s, k, info) {
+    var r = s * (0.2 + 0.32 * k);
+    var grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.4, info ? '#ffd166' : '#ffb02e');
+    grad.addColorStop(1, info ? 'rgba(255,140,0,0)' : 'rgba(255,60,0,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(s / 2, s / 2, r, 0, 6.2832); g.fill();
+  }
+
+  /** Готовит статические спрайты под текущий размер клетки. */
+  function build(size) {
+    var pack = { size: size, tile: {}, murphy: [], port: [], exitOpen: null };
+    function make(fn) {
+      var c = cv(size);
+      fn(c.getContext('2d'), size);
+      return c;
+    }
+    pack.tile[T.BASE] = make(drawBase);
+    pack.tile[T.WALL] = make(drawWall);
+    pack.tile[T.CHIP] = make(drawChip);
+    pack.tile[T.ZONK] = make(drawZonk);
+    pack.tile[T.INFOTRON] = make(drawInfotron);
+    pack.tile[T.ORANGE] = make(drawOrange);
+    pack.tile[T.SNIKSNAK] = make(drawSnik);
+    pack.tile[T.EXIT] = make(function (g, s) { drawExit(g, s, false); });
+    pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
+    for (var d = 0; d < 4; d++) {
+      (function (dd) {
+        pack.murphy[dd] = make(function (g, s) { drawMurphy(g, s, dd); });
+        pack.port[dd] = make(function (g, s) { drawPort(g, s, dd); });
+      })(d);
+    }
+    return pack;
+  }
+
+  global.SP = Object.assign(global.SP, {
+    Sprites: { build: build, drawElectron: drawElectron, drawBlast: drawBlast }
+  });
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* Отрисовка: камера, интерполяция движения между тиками, свечение. */
+(function (global) {
+  'use strict';
+  var SP = global.SP, T = SP.Tiles;
+  var PORT_INDEX = {};
+  PORT_INDEX[T.PORT_U] = 0; PORT_INDEX[T.PORT_R] = 1; PORT_INDEX[T.PORT_D] = 2; PORT_INDEX[T.PORT_L] = 3;
+
+  var MAX_TILE = 46;
+  // На узком экране лучше приблизить и дать камере скроллить, чем показать
+  // весь уровень нечитаемыми точками: держим в кадре не меньше ~12 клеток.
+  function minTile(viewW) {
+    return Math.max(18, Math.min(30, Math.floor(viewW / 12)));
+  }
+
+  function Renderer(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.pack = null;
+    this.tile = 32;
+    this.camX = 0;
+    this.camY = 0;
+  }
+
+  Renderer.prototype.resize = function (engine) {
+    var host = this.canvas.parentNode;
+    var box = host.getBoundingClientRect();
+    // на телефоне снизу лежит крестовина — вычитаем её полосу, чтобы поле не пряталось под пальцами
+    var cs = global.getComputedStyle ? global.getComputedStyle(host) : null;
+    var padY = cs ? (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) : 0;
+    var dpr = Math.min(global.devicePixelRatio || 1, 2);
+    var w = Math.max(240, Math.floor(box.width));
+    var h = Math.max(200, Math.floor(box.height - padY));
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.viewW = w;
+    this.viewH = h;
+
+    var fit = Math.floor(Math.min(w / engine.w, h / engine.h));
+    var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
+    if (!this.pack || this.pack.size !== tile) this.pack = SP.Sprites.build(tile);
+    this.tile = tile;
+  };
+
+  Renderer.prototype.camera = function (engine, alpha) {
+    var s = this.tile;
+    var mx = (engine.murphy.x + engine.fx[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
+    var my = (engine.murphy.y + engine.fy[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
+    var fullW = engine.w * s, fullH = engine.h * s;
+    this.camX = fullW <= this.viewW ? (fullW - this.viewW) / 2 : Math.max(0, Math.min(fullW - this.viewW, mx - this.viewW / 2));
+    this.camY = fullH <= this.viewH ? (fullH - this.viewH) / 2 : Math.max(0, Math.min(fullH - this.viewH, my - this.viewH / 2));
+  };
+
+  Renderer.prototype.draw = function (engine, alpha, timeMs) {
+    var g = this.ctx, s = this.tile, pack = this.pack;
+    g.fillStyle = '#070910';
+    g.fillRect(0, 0, this.viewW, this.viewH);
+    this.camera(engine, alpha);
+
+    var x0 = Math.max(0, Math.floor(this.camX / s) - 1);
+    var y0 = Math.max(0, Math.floor(this.camY / s) - 1);
+    var x1 = Math.min(engine.w - 1, Math.ceil((this.camX + this.viewW) / s) + 1);
+    var y1 = Math.min(engine.h - 1, Math.ceil((this.camY + this.viewH) / s) + 1);
+    var open = engine.exitOpen();
+
+    // «пол» пещеры под пустыми клетками
+    var fw = engine.w * s, fh = engine.h * s;
+    g.fillStyle = '#0d111c';
+    g.fillRect(-this.camX, -this.camY, fw, fh);
+    g.save();
+    g.globalAlpha = 0.5;
+    g.strokeStyle = '#05070d';
+    g.lineWidth = 1;
+    for (var gx = 0; gx <= engine.w; gx++) {
+      g.beginPath(); g.moveTo(gx * s - this.camX, -this.camY); g.lineTo(gx * s - this.camX, fh - this.camY); g.stroke();
+    }
+    for (var gy = 0; gy <= engine.h; gy++) {
+      g.beginPath(); g.moveTo(-this.camX, gy * s - this.camY); g.lineTo(fw - this.camX, gy * s - this.camY); g.stroke();
+    }
+    g.restore();
+
+    for (var y = y0; y <= y1; y++) {
+      for (var x = x0; x <= x1; x++) {
+        var i = engine.idx(x, y);
+        var t = engine.tiles[i];
+        if (t === T.EMPTY) continue;
+        var px = (x + engine.fx[i] * (1 - alpha)) * s - this.camX;
+        var py = (y + engine.fy[i] * (1 - alpha)) * s - this.camY;
+
+        if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
+        if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
+        if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.ELECTRON) {
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawElectron(g, s, timeMs / 260 + x);
+          g.restore();
+          continue;
+        }
+        if (t === T.EXPLOSION || t === T.EXPLOSION_INFO) {
+          var k = 1 - engine.timer[i] / 5;
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawBlast(g, s, k, t === T.EXPLOSION_INFO);
+          g.restore();
+          continue;
+        }
+        var sprite = pack.tile[t];
+        if (sprite) g.drawImage(sprite, px, py, s, s);
+      }
+    }
+
+    if (open) {   // подсветка открытого выхода
+      var pulse = 0.35 + 0.25 * Math.sin(timeMs / 300);
+      for (var j = 0; j < engine.tiles.length; j++) {
+        if (engine.tiles[j] !== T.EXIT) continue;
+        var ex = (j % engine.w) * s - this.camX, ey = Math.floor(j / engine.w) * s - this.camY;
+        g.save();
+        g.globalAlpha = pulse;
+        g.strokeStyle = '#7dffc0';
+        g.lineWidth = Math.max(2, s * 0.08);
+        g.strokeRect(ex + s * 0.06, ey + s * 0.06, s * 0.88, s * 0.88);
+        g.restore();
+      }
+    }
+  };
+
+  global.SP = Object.assign(global.SP, { Renderer: Renderer });
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* Ввод: клавиатура + экранный крестовина для тача. */
+(function (global) {
+  'use strict';
+
+  var KEYS = {
+    ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3,
+    KeyW: 0, KeyD: 1, KeyS: 2, KeyA: 3
+  };
+
+  function Input(target) {
+    var self = this;
+    this.held = [];         // очередь зажатых направлений: последнее нажатие важнее
+    this.snap = false;
+    this.onCommand = function () {};
+
+    function press(dir) {
+      if (self.held.indexOf(dir) < 0) self.held.push(dir);
+    }
+    function release(dir) {
+      var i = self.held.indexOf(dir);
+      if (i >= 0) self.held.splice(i, 1);
+    }
+    this.press = press;
+    this.release = release;
+
+    target.addEventListener('keydown', function (e) {
+      if (e.code === 'Space') { self.snap = true; e.preventDefault(); return; }
+      var d = KEYS[e.code];
+      if (d !== undefined) { press(d); e.preventDefault(); return; }
+      if (e.code === 'KeyR') self.onCommand('restart');
+      else if (e.code === 'KeyP' || e.code === 'Escape') self.onCommand('pause');
+      else if (e.code === 'Enter') self.onCommand('enter');
+    });
+    target.addEventListener('keyup', function (e) {
+      if (e.code === 'Space') { self.snap = false; return; }
+      var d = KEYS[e.code];
+      if (d !== undefined) release(d);
+    });
+    global.addEventListener('blur', function () { self.held.length = 0; self.snap = false; });
+  }
+
+  Input.prototype.current = function () {
+    return { dir: this.held.length ? this.held[this.held.length - 1] : -1, snap: this.snap };
+  };
+
+  /** Привязывает экранные кнопки: data-dir="0..3" и data-act="snap". */
+  Input.prototype.bindTouch = function (root) {
+    var self = this;
+    Array.prototype.forEach.call(root.querySelectorAll('[data-dir]'), function (el) {
+      var dir = parseInt(el.getAttribute('data-dir'), 10);
+      var down = function (e) { e.preventDefault(); self.press(dir); el.classList.add('active'); };
+      var up = function (e) { e.preventDefault(); self.release(dir); el.classList.remove('active'); };
+      el.addEventListener('pointerdown', down);
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+      el.addEventListener('pointerleave', up);
+    });
+    var snapEl = root.querySelector('[data-act="snap"]');
+    if (snapEl) {
+      snapEl.addEventListener('pointerdown', function (e) { e.preventDefault(); self.snap = true; snapEl.classList.add('active'); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        snapEl.addEventListener(ev, function () { self.snap = false; snapEl.classList.remove('active'); });
+      });
+    }
+  };
+
+  /**
+   * Джойстик по всему полю: палец ведёт в сторону — Мёрфи идёт туда,
+   * пока палец не отпущен. Удобнее крестовины и не закрывает экран.
+   */
+  Input.prototype.bindJoystick = function (el) {
+    var self = this, origin = null, cur = -1;
+    var DEAD = 16;
+
+    function set(dir) {
+      if (dir === cur) return;
+      if (cur >= 0) self.release(cur);
+      cur = dir;
+      if (cur >= 0) self.press(cur);
+    }
+    el.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse') return;
+      origin = { x: e.clientX, y: e.clientY };
+      el.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!origin) return;
+      var dx = e.clientX - origin.x, dy = e.clientY - origin.y;
+      if (Math.abs(dx) < DEAD && Math.abs(dy) < DEAD) { set(-1); return; }
+      if (Math.abs(dx) > Math.abs(dy)) set(dx > 0 ? 1 : 3);
+      else set(dy > 0 ? 2 : 0);
+      // палец «переносим» следом, чтобы смена направления была лёгкой
+      var far = 44;
+      if (dx > far) origin.x = e.clientX - far; else if (dx < -far) origin.x = e.clientX + far;
+      if (dy > far) origin.y = e.clientY - far; else if (dy < -far) origin.y = e.clientY + far;
+      e.preventDefault();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      el.addEventListener(ev, function () { set(-1); origin = null; });
+    });
+  };
+
+  global.SP = Object.assign(global.SP, { Input: Input });
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/* Склейка: игровой цикл, экраны, прогресс. */
+(function (global) {
+  'use strict';
+  var SP = global.SP;
+  var TICK_MS = 125;
+  var STORE_KEY = 'infotron.progress.v1';
+
+  var el = {};
+  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
+   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full'
+  ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+  var renderer = new SP.Renderer(el.screen);
+  var input = new SP.Input(global);
+  input.bindTouch(document.getElementById('pad'));
+  input.bindJoystick(document.getElementById('stage'));
+
+  var engine = null;
+  var levelIndex = 0;
+  var state = 'menu';        // menu | playing | paused | won | dead
+  var acc = 0;
+  var last = 0;
+
+  /* ---------- прогресс ---------- */
+  function loadProgress() {
+    try {
+      var raw = global.localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : { done: {} };
+    } catch (e) { return { done: {} }; }
+  }
+  function saveProgress(p) {
+    try { global.localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* приватный режим — переживём */ }
+  }
+  var progress = loadProgress();
+
+  function unlockedUpTo() {
+    var n = 1;
+    for (var i = 0; i < SP.LEVELS.length; i++) {
+      if (progress.done[SP.LEVELS[i].id]) n = Math.max(n, i + 2);
+    }
+    return Math.min(n, SP.LEVELS.length);
+  }
+
+  /* ---------- экраны ---------- */
+  function showMenu() {
+    state = 'menu';
+    el.menu.classList.remove('hidden');
+    el.overlay.classList.add('hidden');
+    document.body.classList.add('in-menu');
+    el.hint.textContent = 'Выбери уровень.';
+    el['hud-level'].textContent = '—';
+    renderGrid();
+  }
+
+  function renderGrid() {
+    var limit = unlockedUpTo();
+    el['level-grid'].innerHTML = '';
+    SP.LEVELS.forEach(function (lv, i) {
+      var b = document.createElement('button');
+      b.className = 'lv' + (progress.done[lv.id] ? ' done' : '');
+      b.disabled = i + 1 > limit;
+      b.innerHTML = '<span class="n">Уровень ' + lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
+        '<span class="t">' + lv.name + '</span>';
+      b.addEventListener('click', function () { startLevel(i); });
+      el['level-grid'].appendChild(b);
+    });
+  }
+
+  function overlay(title, text, buttons) {
+    el['ov-title'].textContent = title;
+    el['ov-text'].innerHTML = text;
+    el['ov-buttons'].innerHTML = '';
+    buttons.forEach(function (b) {
+      var node = document.createElement('button');
+      node.textContent = b.label;
+      if (b.primary) node.className = 'primary';
+      node.addEventListener('click', b.action);
+      el['ov-buttons'].appendChild(node);
+    });
+    el.overlay.classList.remove('hidden');
+  }
+
+  /* ---------- игра ---------- */
+  function startLevel(i) {
+    levelIndex = Math.max(0, Math.min(SP.LEVELS.length - 1, i));
+    var lv = SP.LEVELS[levelIndex];
+    engine = new SP.Engine(lv);
+    renderer.resize(engine);
+    acc = 0;
+    state = 'playing';
+    input.held.length = 0;
+    el.menu.classList.add('hidden');
+    el.overlay.classList.add('hidden');
+    document.body.classList.remove('in-menu');
+    el['hud-level'].textContent = '#' + lv.id + ' ' + lv.name;
+    el.hint.textContent = lv.hint || '';
+    updateHud();
+  }
+
+  function updateHud() {
+    if (!engine) return;
+    el['hud-info'].textContent = engine.collected;
+    el['hud-need'].textContent = engine.needed;
+    el['hud-moves'].textContent = engine.moves;
+    el['hud-time'].textContent = (engine.ticks * TICK_MS / 1000).toFixed(1);
+  }
+
+  function onWin() {
+    state = 'won';
+    var lv = SP.LEVELS[levelIndex];
+    var prev = progress.done[lv.id];
+    var rec = { moves: engine.moves, ticks: engine.ticks };
+    if (!prev || rec.moves < prev.moves) progress.done[lv.id] = rec;
+    else progress.done[lv.id] = prev;
+    saveProgress(progress);
+
+    var best = progress.done[lv.id];
+    var isLast = levelIndex >= SP.LEVELS.length - 1;
+    overlay(isLast ? 'Игра пройдена!' : 'Уровень пройден',
+      'Ходов: <b>' + engine.moves + '</b> · время: <b>' + (engine.ticks * TICK_MS / 1000).toFixed(1) + ' с</b>' +
+      (best && best.moves < engine.moves ? '<br>Лучший результат: ' + best.moves + ' ходов' : '') +
+      (isLast ? '<br><br>Все двенадцать уровней позади. Мёрфи благодарит.' : ''),
+      isLast
+        ? [{ label: 'К списку уровней', primary: true, action: showMenu }]
+        : [{ label: 'Следующий уровень →', primary: true, action: function () { startLevel(levelIndex + 1); } },
+           { label: 'Заново', action: function () { startLevel(levelIndex); } },
+           { label: 'К списку', action: showMenu }]);
+  }
+
+  function onDead() {
+    state = 'dead';
+    overlay('Мёрфи погиб', 'Зонк, монстр или взрыв — но результат один.',
+      [{ label: 'Заново (R)', primary: true, action: function () { startLevel(levelIndex); } },
+       { label: 'К списку', action: showMenu }]);
+  }
+
+  function togglePause() {
+    if (state === 'playing') {
+      state = 'paused';
+      overlay('Пауза', SP.LEVELS[levelIndex].hint || '',
+        [{ label: 'Продолжить', primary: true, action: resume },
+         { label: 'Заново', action: function () { startLevel(levelIndex); } },
+         { label: 'К списку уровней', action: showMenu }]);
+    } else if (state === 'paused') {
+      resume();
+    }
+  }
+  function resume() {
+    state = 'playing';
+    acc = 0;
+    el.overlay.classList.add('hidden');
+  }
+
+  input.onCommand = function (cmd) {
+    if (cmd === 'restart' && (state === 'playing' || state === 'dead' || state === 'paused')) startLevel(levelIndex);
+    else if (cmd === 'pause') {
+      if (state === 'menu') return;
+      if (state === 'won' || state === 'dead') showMenu();
+      else togglePause();
+    } else if (cmd === 'enter') {
+      if (state === 'won' && levelIndex < SP.LEVELS.length - 1) startLevel(levelIndex + 1);
+      else if (state === 'dead') startLevel(levelIndex);
+    }
+  };
+
+  el['btn-menu'].addEventListener('click', showMenu);
+  if (el['btn-full'] && !document.fullscreenEnabled) el['btn-full'].style.display = 'none';
+  if (el['btn-full']) el['btn-full'].addEventListener('click', function () {
+    var root = document.documentElement;
+    if (document.fullscreenElement) (document.exitFullscreen || function () {}).call(document);
+    else if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
+  });
+  el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
+  global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
+
+  /* ---------- цикл ---------- */
+  function frame(ts) {
+    global.requestAnimationFrame(frame);
+    if (!engine) return;
+    var dt = Math.min(250, ts - (last || ts));
+    last = ts;
+
+    if (state === 'playing') {
+      acc += dt;
+      var guard = 0;
+      while (acc >= TICK_MS && guard++ < 8) {
+        acc -= TICK_MS;
+        var status = engine.step(input.current());
+        updateHud();
+        if (status === 'won') { onWin(); break; }
+        if (status === 'dead') { onDead(); break; }
+      }
+    }
+    renderer.draw(engine, state === 'playing' ? Math.min(1, acc / TICK_MS) : 1, ts);
+  }
+
+  // отладочный вход: SP.game.start(индекс) — удобно смотреть уровни без прохождения
+  SP.game = { start: startLevel, get engine() { return engine; } };
+
+  // старт
+  startLevel(0);
+  showMenu();
+  global.requestAnimationFrame(frame);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>

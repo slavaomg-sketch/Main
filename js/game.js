@@ -7,12 +7,13 @@
 
   var el = {};
   ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
-   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint'
+   'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
+  input.bindJoystick(document.getElementById('stage'));
 
   var engine = null;
   var levelIndex = 0;
@@ -163,6 +164,12 @@
   };
 
   el['btn-menu'].addEventListener('click', showMenu);
+  if (el['btn-full'] && !document.fullscreenEnabled) el['btn-full'].style.display = 'none';
+  if (el['btn-full']) el['btn-full'].addEventListener('click', function () {
+    var root = document.documentElement;
+    if (document.fullscreenElement) (document.exitFullscreen || function () {}).call(document);
+    else if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
+  });
   el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
   global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
 
