@@ -7,6 +7,16 @@
 `supplier/stocks` Wildberries отключил, вместо него теперь
 `POST /api/analytics/v1/stocks-report/wb-warehouses`.
 
+Глубина у этих источников разная, и это определяет устройство отчёта:
+
+* **Статистика** отвечает быстро и в реальном времени, но хранится около
+  полугода. Из неё берутся свежие дни: сегодня, вчера, неделя, месяц.
+* **Отчёт реализации** (`finance-api.wildberries.ru`) хранится с 29 января
+  2024 года — именно из него приложение Wildberries показывает год. Он же
+  даёт точную сумму «К перечислению». Взамен площадка пускает к нему раз в
+  минуту, поэтому он качается только в фоне и только на ту глубину, до
+  которой статистика уже не достаёт.
+
 Токен передаётся заголовком `Authorization`. Для остатков в токене нужна
 категория «Аналитика» — если её нет, площадка ответит 401/403, и панель
 покажет это отдельным предупреждением, не теряя продажи и заказы.
@@ -51,10 +61,12 @@ FALLBACK_LOGISTICS = 0.065
 
 STATISTICS_URL = "https://statistics-api.wildberries.ru"
 ANALYTICS_URL = "https://seller-analytics-api.wildberries.ru"
+FINANCE_URL = "https://finance-api.wildberries.ru"
 
 SALES_PATH = "/api/v1/supplier/sales"
 ORDERS_PATH = "/api/v1/supplier/orders"
 STOCKS_PATH = "/api/analytics/v1/stocks-report/wb-warehouses"
+FINANCE_PATH = "/api/finance/v1/sales-reports/detailed"
 
 # Пауза между обращениями к одному методу одним токеном.
 STATISTICS_INTERVAL = 20.0
@@ -70,6 +82,37 @@ PATIENCE_INTERACTIVE = 10.0
 PATIENCE_BACKGROUND = 120.0
 
 STOCKS_PAGE = 100_000
+
+# Отчёт реализации: площадка пускает к нему раз в минуту на аккаунт,
+# поэтому пауза и терпение здесь свои, гораздо большие.
+FINANCE_INTERVAL = 65.0
+FINANCE_PATIENCE = 200.0
+FINANCE_PAGE = 50_000
+# Страница отчёта за несколько месяцев весит десятки мегабайт — обычного
+# таймаута панели на неё не хватает.
+FINANCE_TIMEOUT = 300.0
+# Предохранитель: сколько страниц готовы выкачать за один заход. Если
+# истории оказалось больше, следующая выгрузка продолжит с того же места.
+FINANCE_PAGES = 12
+
+# Раньше этой даты Wildberries детализацию отчётов реализации не отдаёт.
+FINANCE_SINCE = date(2024, 1, 29)
+
+# Просим только нужные колонки: полная строка отчёта — это под сотню полей,
+# а строк за год набегают сотни тысяч.
+FINANCE_FIELDS = (
+    "rrdId",
+    "rrDate",
+    "saleDt",
+    "docTypeName",
+    "quantity",
+    "retailAmount",
+    "forPay",
+    "nmId",
+    "vendorCode",
+    "subjectName",
+    "brandName",
+)
 
 # Ответ статистики: (дата начала выборки, когда получен, строки)
 _responses: dict[tuple[str, str], tuple[date, float, list[dict[str, Any]]]] = {}
@@ -155,6 +198,62 @@ class WildberriesConnector(HttpConnector):
         response.raise_for_status()
         return self.as_list(response.json(), "items", "data", "result")
 
+    async def finance(
+        self,
+        date_from: date,
+        date_to: date,
+        max_wait: float = FINANCE_PATIENCE,
+    ) -> list[dict[str, Any]]:
+        """Детализация отчёта реализации за период, постранично.
+
+        Строки отдаются порциями: в следующем запросе передаём `rrdId`
+        последней полученной строки и повторяем, пока площадка не ответит
+        `204` («больше нет») или не пришлёт неполную страницу.
+        """
+        if date_from < FINANCE_SINCE:
+            date_from = FINANCE_SINCE
+        if date_to < date_from:
+            return []
+
+        key = _token_key(self.credentials.get("token"))
+        rows: list[dict[str, Any]] = []
+        rrd_id = 0
+
+        for _ in range(FINANCE_PAGES):
+            body = {
+                "dateFrom": date_from.isoformat(),
+                "dateTo": date_to.isoformat(),
+                "limit": FINANCE_PAGE,
+                "rrdId": rrd_id,
+                "period": "daily",
+                "fields": list(FINANCE_FIELDS),
+            }
+
+            async def call(payload: dict[str, Any] = body) -> httpx.Response:
+                async with self.client(FINANCE_URL) as client:
+                    return await client.post(
+                        FINANCE_PATH, json=payload, timeout=FINANCE_TIMEOUT
+                    )
+
+            response = await Throttle.run(
+                f"wb:{key}:finance", FINANCE_INTERVAL, call, max_wait=max_wait
+            )
+            if response.status_code == 204:
+                break
+            response.raise_for_status()
+
+            page = self.as_list(response.json(), "data", "result")
+            if not page:
+                break
+            rows.extend(page)
+
+            last = self.to_int(page[-1].get("rrdId"))
+            if not last or len(page) < FINANCE_PAGE:
+                break
+            rrd_id = last
+
+        return rows
+
     # --- сборка отчёта -------------------------------------------------------
 
     async def collect_raw(
@@ -188,6 +287,23 @@ class WildberriesConnector(HttpConnector):
             },
         }
 
+    async def collect_finance(
+        self,
+        date_from: date,
+        date_to: date,
+        max_wait: float = FINANCE_PATIENCE,
+    ) -> dict[str, Any]:
+        """Скачать детализацию отчёта реализации за отрезок дат.
+
+        Отдельно от `collect_raw`: у отчёта реализации свой темп (раз в
+        минуту) и своя глубина, поэтому и выгружается он своим заходом.
+        """
+        rows, error = await self._try(
+            self.finance(date_from, date_to, max_wait),
+            denied_hint="в токене Wildberries нужна категория «Статистика»",
+        )
+        return {"finance": rows, "errors": {"finance": error}}
+
     def build(
         self,
         rows: dict[str, Any],
@@ -211,12 +327,25 @@ class WildberriesConnector(HttpConnector):
         self._articles = {}
         self._apply_sales(report, rows.get("sales") or [], period)
         self._apply_orders(report, rows.get("orders") or [], period)
+        self._apply_finance(
+            report,
+            rows.get("finance") or [],
+            period,
+            rows.get("statisticsFrom"),
+        )
         self._apply_stocks(report, rows.get("stocks") or [], period)
+
+        # Ставки считаются в последнюю очередь: к этому моменту выручка уже
+        # собрана из обоих источников.
+        if not report.commission:
+            report.commission = report.revenue * FALLBACK_COMMISSION
+        report.logistics = report.revenue * FALLBACK_LOGISTICS
 
         for source, human in (
             ("sales", "продажи"),
             ("orders", "заказы"),
             ("stocks", "остатки"),
+            ("finance", "отчёт реализации"),
         ):
             if errors.get(source):
                 report.warnings.append(f"{human} не получены — {errors[source]}")
@@ -332,10 +461,6 @@ class WildberriesConnector(HttpConnector):
             reverse=True,
         )
 
-        if not report.commission:
-            report.commission = report.revenue * FALLBACK_COMMISSION
-        report.logistics = report.revenue * FALLBACK_LOGISTICS
-
     # --- заказы: количество, отмены, воронка --------------------------------
 
     def _apply_orders(
@@ -358,6 +483,124 @@ class WildberriesConnector(HttpConnector):
             point.orders = orders_by_day.get(point.day, 0)
 
         report.funnel = Funnel(orders=report.orders, buyouts=report.buyouts)
+
+    # --- отчёт реализации: глубина за пределами статистики --------------------
+
+    def _apply_finance(
+        self,
+        report: MarketplaceReport,
+        rows: list[dict[str, Any]],
+        period: Period,
+        statistics_from: date | None,
+    ) -> None:
+        """Добрать дни, до которых статистика Wildberries уже не достаёт.
+
+        Статистика хранится около полугода, отчёт реализации — с 2024 года.
+        Поэтому квартал, полугодие и год складываются из двух источников:
+        свежие дни — из статистики, всё, что раньше `statistics_from`, — из
+        финансового отчёта. Шов проходит там, где статистики просто нет,
+        поэтому цифры за уже показанные периоды не меняются.
+
+        Заказов финансовый отчёт не содержит: в нём только то, что дошло до
+        расчётов. Поэтому за глубокие дни заказы приравниваются к выкупам,
+        и панель говорит об этом вслух.
+        """
+        if not rows:
+            return
+
+        edge = statistics_from
+        by_day: dict[date, DayPoint] = {}
+        by_sku: dict[str, Product] = {}
+        earliest: date | None = None
+
+        for row in rows:
+            moment = parse_moment(row.get("rrDate") or row.get("saleDt"))
+            if not moment or not period.covers(moment):
+                continue
+            day = moment.date()
+            if edge is not None and day >= edge:
+                continue  # этот день уже посчитан по статистике
+
+            doc = str(row.get("docTypeName") or "")
+            if "озврат" in doc:
+                sign = -1
+            elif "родаж" in doc:
+                sign = 1
+            else:
+                continue  # логистика, хранение, штрафы — это не продажа
+
+            quantity = max(self.to_int(row.get("quantity"), 1), 1)
+            amount = abs(self.to_float(row.get("retailAmount")))
+            for_pay = abs(self.to_float(row.get("forPay")))
+
+            earliest = day if earliest is None else min(earliest, day)
+
+            point = by_day.setdefault(day, DayPoint(day=day))
+            point.revenue += sign * amount
+            point.units += sign * quantity
+            point.orders += quantity if sign > 0 else 0
+            if sign < 0:
+                point.returns += quantity
+
+            report.revenue += sign * amount
+            report.units += sign * quantity
+            report.payout += sign * for_pay
+            if for_pay:
+                report.commission += sign * max(amount - for_pay, 0.0)
+            if sign > 0:
+                report.buyouts += quantity
+                report.orders += quantity
+            else:
+                report.returns += quantity
+
+            sku = str(row.get("vendorCode") or row.get("nmId") or "—")
+            product = by_sku.setdefault(
+                sku,
+                Product(
+                    sku=sku,
+                    name=str(row.get("subjectName") or row.get("brandName") or sku),
+                    marketplace=self.code,
+                ),
+            )
+            product.revenue += sign * amount
+            product.units += sign * quantity
+            if sign < 0:
+                product.returns += quantity
+
+        if not by_day:
+            return
+
+        for point in report.series:
+            filled = by_day.get(point.day)
+            if filled:
+                point.revenue += filled.revenue
+                point.units += filled.units
+                point.orders += filled.orders
+                point.returns += filled.returns
+
+        merged = {product.sku: product for product in report.products}
+        for sku, product in by_sku.items():
+            known = merged.get(sku)
+            if known:
+                known.revenue += product.revenue
+                known.units += product.units
+                known.returns += product.returns
+            else:
+                merged[sku] = product
+        report.products = sorted(
+            (product for product in merged.values() if product.revenue > 0),
+            key=lambda item: item.revenue,
+            reverse=True,
+        )[:20]
+
+        report.funnel = Funnel(orders=report.orders, buyouts=report.buyouts)
+
+        border = edge or period.date_to
+        report.warnings.append(
+            f"до {border.strftime('%d.%m.%Y')} цифры взяты из финансового отчёта "
+            f"Wildberries: выручка и «К перечислению» точные, заказы посчитаны "
+            f"по выкупам — статистику заказов площадка глубже не хранит"
+        )
 
     # --- остатки -------------------------------------------------------------
 

@@ -303,6 +303,8 @@ def test_connection_test_does_not_double_the_requests(client, monkeypatch):
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request.url.path)
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path or "orders" in request.url.path:
             return httpx.Response(200, json=[])
         return httpx.Response(200, json={"items": []})

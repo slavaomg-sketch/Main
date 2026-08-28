@@ -50,8 +50,21 @@ def mock_wb(monkeypatch, handler):
     monkeypatch.setattr(WildberriesConnector, "client", client)
 
 
-def wb_handler(sales, orders, stocks=None):
+def finance(day: date, rrd_id: int, price: float = 1000.0, doc: str = "Продажа") -> dict:
+    """Строка детализации отчёта реализации — так её отдаёт Wildberries."""
+    return {
+        "rrdId": rrd_id, "rrDate": day.isoformat(), "saleDt": f"{day.isoformat()}T10:00:00Z",
+        "docTypeName": doc, "quantity": 1, "retailAmount": price, "forPay": price * 0.85,
+        "nmId": 777, "vendorCode": "ART-1", "subjectName": "Кружка", "brandName": "Бренд",
+    }
+
+
+def wb_handler(sales, orders, stocks=None, finance_rows=None):
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            if not finance_rows:
+                return httpx.Response(204)
+            return httpx.Response(200, json=finance_rows)
         if "sales" in request.url.path:
             return httpx.Response(200, json=sales)
         if "orders" in request.url.path:
@@ -138,7 +151,7 @@ async def test_sync_downloads_and_stores_everything(store, monkeypatch):
     result = await warehouse.sync_store(store, settings)
 
     assert result.ok
-    assert result.stored == {"sales": 2, "orders": 1, "stocks": 1}
+    assert result.stored == {"sales": 2, "orders": 1, "stocks": 1, "finance": 0}
     assert len(await warehouse.read_rows(store.id, "sales")) == 2
 
 
@@ -190,6 +203,8 @@ async def test_failed_source_is_remembered_and_shown_as_warning(store, monkeypat
     def handler(request: httpx.Request) -> httpx.Response:
         if "stocks-report" in request.url.path:
             return httpx.Response(403, json={"detail": "no scope"})
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path:
             return httpx.Response(200, json=[sale(today, "a")])
         return httpx.Response(200, json=[order(today, "o1")])
@@ -319,6 +334,8 @@ async def test_background_sync_waits_out_the_rate_limit(store, monkeypatch):
     attempts = {"sales": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path:
             attempts["sales"] += 1
             if attempts["sales"] == 1:
@@ -376,6 +393,8 @@ async def test_deeper_history_triggers_a_full_download(store, monkeypatch):
         window = request.url.params.get("dateFrom", "")
         if window:
             windows.append(window[:10])
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path:
             return httpx.Response(200, json=[sale(today, "a")])
         if "orders" in request.url.path:
@@ -419,6 +438,8 @@ async def test_coverage_is_remembered_only_for_successful_sources(store, monkeyp
     def handler(request: httpx.Request) -> httpx.Response:
         if "orders" in request.url.path:
             return httpx.Response(500, text="boom")
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path:
             return httpx.Response(200, json=[sale(today, "a")])
         return httpx.Response(200, json={"items": []})
@@ -462,3 +483,172 @@ async def test_period_within_available_data_is_not_flagged(store, monkeypatch):
     report = await warehouse.report_for(store, period(7), settings)
 
     assert not any("глубже" in warning for warning in report.warnings)
+
+
+# --- отчёт реализации: глубина за пределами статистики --------------------------
+
+
+async def test_finance_rows_are_stored_with_their_own_key_and_day():
+    row = {"rrdId": 4242, "rrDate": "2026-01-15", "saleDt": "2026-01-14T10:00:00Z"}
+    assert warehouse.row_key("finance", row, 0) == "4242"
+    assert warehouse.row_day("finance", row, date.today()) == date(2026, 1, 15)
+
+
+async def test_finance_fills_the_days_statistics_no_longer_keeps(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a")],
+        orders=[order(today, "o1")],
+        finance_rows=[finance(deep, 1), finance(deep, 2)],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    # 1000 из статистики за сегодня плюс 2000 из отчёта реализации за глубокий день.
+    assert report.revenue == 3000
+    assert report.payout == pytest.approx(1000 * 0.85 * 3)
+
+
+async def test_finance_does_not_double_count_days_statistics_already_covers(store, monkeypatch):
+    today = date.today()
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a")],
+        orders=[order(today, "o1")],
+        finance_rows=[finance(today, 1)],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    assert report.revenue == 1000
+
+
+async def test_finance_returns_reduce_revenue(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a")],
+        orders=[],
+        finance_rows=[finance(deep, 1), finance(deep, 2, doc="Возврат")],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    assert report.revenue == 1000
+    assert report.returns == 1
+
+
+async def test_finance_ignores_lines_that_are_not_sales(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+    logistics = finance(deep, 3, doc="Логистика")
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a")], orders=[], finance_rows=[logistics],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    assert report.revenue == 1000
+
+
+async def test_deep_period_says_where_the_numbers_came_from(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today, "a")], orders=[], finance_rows=[finance(deep, 1)],
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(14), settings)
+
+    assert any("финансового отчёта" in warning for warning in report.warnings)
+
+
+async def test_finance_is_downloaded_page_by_page(store, monkeypatch):
+    from dashboard.connectors import wildberries
+
+    monkeypatch.setattr(wildberries, "FINANCE_PAGE", 2)
+    today = date.today()
+    deep = today - timedelta(days=8)
+    asked: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            import json as _json
+
+            body = _json.loads(request.content)
+            asked.append(body["rrdId"])
+            if body["rrdId"] == 0:
+                return httpx.Response(200, json=[finance(deep, 1), finance(deep, 2)])
+            return httpx.Response(204)
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    result = await warehouse.sync_store(store, settings)
+
+    assert asked == [0, 2]
+    assert result.stored["finance"] == 2
+
+
+async def test_finance_is_never_asked_for_dates_wildberries_has_no_reports(store, monkeypatch):
+    from dashboard.connectors import wildberries
+
+    asked: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            import json as _json
+
+            asked.append(_json.loads(request.content)["dateFrom"])
+            return httpx.Response(204)
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    await warehouse.sync_store(store, replace(settings, history_days=5000))
+
+    assert asked == [wildberries.FINANCE_SINCE.isoformat()]
+
+
+async def test_next_finance_sync_only_asks_for_recent_changes(store, monkeypatch):
+    today = date.today()
+    deep = today - timedelta(days=8)
+    asked: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports" in request.url.path:
+            import json as _json
+
+            asked.append(_json.loads(request.content)["dateFrom"])
+            return httpx.Response(200, json=[finance(deep, 1)])
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    await warehouse.sync_store(store, settings)
+    from dashboard.connectors import wildberries
+
+    wildberries.reset_cache()
+    await warehouse.sync_store(store, settings)
+
+    # Второй заход начинается от последнего сохранённого дня с перекрытием.
+    assert asked[1] == (deep - timedelta(days=warehouse.OVERLAP_DAYS)).isoformat()

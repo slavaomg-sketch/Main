@@ -159,6 +159,8 @@ def mock_wildberries(monkeypatch, handler):
 async def test_check_reports_working_connection(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == TOKEN
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
         if "sales" in request.url.path:
             return httpx.Response(200, json=[{
                 "date": "2025-03-01T10:00:00", "saleID": "S1", "finishedPrice": 1000,

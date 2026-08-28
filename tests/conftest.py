@@ -67,6 +67,7 @@ def reset_marketplace_state(monkeypatch):
 
     monkeypatch.setattr(wildberries, "STATISTICS_INTERVAL", 0.0)
     monkeypatch.setattr(wildberries, "ANALYTICS_INTERVAL", 0.0)
+    monkeypatch.setattr(wildberries, "FINANCE_INTERVAL", 0.0)
     wildberries.reset_cache()
     Throttle._locks.clear()
     Throttle._next_allowed.clear()

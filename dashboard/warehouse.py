@@ -41,8 +41,18 @@ log = logging.getLogger(__name__)
 # Площадки, данные которых складываются в хранилище.
 # Остальные пока опрашиваются напрямую при каждом запросе.
 STORED: dict[str, tuple[str, ...]] = {
-    "wildberries": ("sales", "orders", "stocks"),
+    "wildberries": ("sales", "orders", "stocks", "finance"),
 }
+
+# Источники, которые качаются своим заходом и своим темпом. Отчёт реализации
+# Wildberries отдаётся раз в минуту, зато хранится годами — именно он даёт
+# панели полугодие и год. Из общей выгрузки он вынесен, чтобы не задерживать
+# статистику.
+SLOW_SOURCES = {"finance"}
+
+# Источники, из которых считаются свежие дни. Отчёт реализации добирает
+# только то, до чего статистика уже не достаёт.
+STATISTICS_SOURCES = ("sales", "orders")
 
 # Насколько дней назад заходим при обычной выгрузке: Wildberries правит
 # статусы задним числом, и без перекрытия эти изменения прошли бы мимо.
@@ -98,6 +108,9 @@ def row_key(source: str, row: dict[str, Any], index: int) -> str:
     У продаж и заказов Wildberries есть `srid`; если его нет, собираем ключ
     из полей, которые вместе однозначно определяют строку.
     """
+    if source == "finance":
+        return str(row.get("rrdId") or row.get("srid") or index)
+
     for field_name in ("srid", "saleID", "odid", "gNumber"):
         value = row.get(field_name)
         if value:
@@ -121,6 +134,8 @@ def row_day(source: str, row: dict[str, Any], fallback: date) -> date:
 
     if source in SNAPSHOT_SOURCES:
         return fallback
+    if source == "finance":
+        return parse_day(row.get("rrDate") or row.get("saleDt")) or fallback
     return parse_day(row.get("date") or row.get("lastChangeDate")) or fallback
 
 
@@ -379,20 +394,12 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
     connector = REAL_CONNECTORS[store.marketplace](store.credentials(config))
     today = date.today()
     horizon = today - timedelta(days=max(config.history_days, 1) - 1)
+    fast_sources = tuple(
+        source for source in STORED[store.marketplace] if source not in SLOW_SOURCES
+    )
 
-    # Обычно качаем только свежие изменения. Полная выгрузка нужна дважды:
-    # в самый первый раз и когда глубину хранения увеличили — иначе длинные
-    # периоды молча показывали бы неполные данные.
-    known = await last_stored_day(store.id, STORED[store.marketplace])
-    covered = await covered_from(store.id, STORED[store.marketplace])
-    needs_history = covered is None or covered > horizon
-
-    if known is None or needs_history:
-        date_from = horizon
-        result.full = True
-    else:
-        date_from = max(known - timedelta(days=OVERLAP_DAYS), horizon)
-        result.full = False
+    date_from = await _window(store.id, fast_sources, horizon)
+    result.full = date_from <= horizon
     result.date_from = date_from
 
     if isinstance(connector, WildberriesConnector):
@@ -402,20 +409,59 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
     else:  # pragma: no cover — пока хранится только Wildberries
         return result
 
-    errors = raw.get("errors", {})
-    for source in STORED[store.marketplace]:
-        error = errors.get(source, "")
-        if error:
-            result.errors[source] = error
-            await mark_sync(store.id, source, error)
-            continue
-        stored = await store_rows(store.id, source, raw.get(source) or [], today)
-        result.stored[source] = stored
-        await mark_sync(store.id, source, covered_from=date_from)
+    await _save(store.id, fast_sources, raw, date_from, today, result)
+
+    # Отчёт реализации качается отдельно: у него свой темп и своя глубина.
+    slow_sources = tuple(
+        source for source in STORED[store.marketplace] if source in SLOW_SOURCES
+    )
+    if slow_sources and isinstance(connector, WildberriesConnector):
+        finance_from = max(
+            await _window(store.id, slow_sources, horizon),
+            wildberries.FINANCE_SINCE,
+        )
+        if finance_from <= today:
+            raw = await connector.collect_finance(finance_from, today)
+            await _save(store.id, slow_sources, raw, finance_from, today, result)
 
     await prune(store.id, horizon)
     result.earliest, result.latest = await stored_range(store.id, STORED[store.marketplace])
     return result
+
+
+async def _window(connection_id: str, sources: tuple[str, ...], horizon: date) -> date:
+    """С какой даты качать эти источники.
+
+    Обычно берём только свежие изменения с небольшим перекрытием. Полная
+    выгрузка нужна дважды: в самый первый раз и когда глубину хранения
+    увеличили — иначе длинные периоды молча показывали бы неполные данные.
+    """
+    known = await last_stored_day(connection_id, sources)
+    covered = await covered_from(connection_id, sources)
+    if known is None or covered is None or covered > horizon:
+        return horizon
+    return max(known - timedelta(days=OVERLAP_DAYS), horizon)
+
+
+async def _save(
+    connection_id: str,
+    sources: tuple[str, ...],
+    raw: dict[str, Any],
+    date_from: date,
+    today: date,
+    result: SyncResult,
+) -> None:
+    """Сложить скачанные строки в базу и отметить, что покрыто."""
+    errors = raw.get("errors", {}) or {}
+    for source in sources:
+        error = errors.get(source, "")
+        if error:
+            result.errors[source] = error
+            await mark_sync(connection_id, source, error)
+            continue
+        stored = await store_rows(connection_id, source, raw.get(source) or [], today)
+        result.stored[source] = stored
+        await mark_sync(connection_id, source, covered_from=date_from)
 
 
 async def sync_all(config: Settings | None = None) -> list[SyncResult]:
@@ -470,7 +516,7 @@ async def report_for(
     config = config or settings
     connector = REAL_CONNECTORS[store.marketplace](store.credentials(config))
 
-    rows = {
+    rows: dict[str, Any] = {
         source: await read_rows(store.id, source, period)
         for source in STORED[store.marketplace]
     }
@@ -480,6 +526,12 @@ async def report_for(
             "SELECT source, error FROM sync_state WHERE connection_id = ?", (store.id,)
         )
         errors = {row["source"]: row["error"] for row in await cursor.fetchall() if row["error"]}
+
+    # Где заканчивается статистика — там начинается отчёт реализации.
+    # Коннектор берёт финансовые строки только за дни раньше этой границы,
+    # чтобы один и тот же день не посчитался дважды.
+    statistics_from, _ = await stored_range(store.id, STATISTICS_SOURCES)
+    rows["statisticsFrom"] = statistics_from
 
     report = connector.build(rows, period, errors)
 
