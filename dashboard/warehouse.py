@@ -481,7 +481,19 @@ async def report_for(
         )
         errors = {row["source"]: row["error"] for row in await cursor.fetchall() if row["error"]}
 
-    return connector.build(rows, period, errors)
+    report = connector.build(rows, period, errors)
+
+    # Площадка хранит статистику ограниченный срок. Если период начинается
+    # раньше, чем есть данные, цифры неполные — и молчать об этом нельзя.
+    earliest, _ = await stored_range(store.id, STORED[store.marketplace])
+    if earliest:
+        report.data_from = earliest
+        if period.date_from < earliest:
+            report.warnings.append(
+                f"данные есть только с {earliest.strftime('%d.%m.%Y')} — "
+                f"площадка не хранит статистику глубже"
+            )
+    return report
 
 
 async def background_loop(config: Settings | None = None) -> None:

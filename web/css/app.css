@@ -451,6 +451,39 @@ html[data-theme="auto"] .icon-moon { display: none; }
 
 /* --- Сетка блоков --------------------------------------------------------- */
 
+/* Полоса-предупреждение над доской: например, что период глубже данных. */
+.notice-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 16px 28px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.notice-strip::before {
+  content: "!";
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.notice-strip strong { color: var(--text); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .notice-strip { padding: 14px 18px 0; }
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

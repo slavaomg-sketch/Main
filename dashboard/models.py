@@ -267,6 +267,11 @@ class MarketplaceReport:
     # В отличие от `error`, отчёт при этом остаётся пригодным.
     warnings: list[str] = field(default_factory=list)
 
+    # С какой даты у нас вообще есть данные. Площадки хранят статистику
+    # ограниченный срок: Wildberries — около полугода. Если запросить период
+    # глубже, цифры будут неполными, и об этом нужно сказать вслух.
+    data_from: date | None = None
+
     revenue: float = 0.0
     orders: int = 0
     units: int = 0
@@ -346,6 +351,7 @@ class MarketplaceReport:
             "demo": self.demo,
             "error": self.error,
             "warnings": list(self.warnings),
+            "dataFrom": self.data_from.isoformat() if self.data_from else "",
             "revenue": _round(self.revenue),
             "orders": int(self.orders),
             "units": int(self.units),

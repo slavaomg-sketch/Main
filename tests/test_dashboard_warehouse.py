@@ -428,3 +428,37 @@ async def test_coverage_is_remembered_only_for_successful_sources(store, monkeyp
 
     # Заказы не выгрузились — значит период не покрыт целиком.
     assert await warehouse.covered_from(store.id, ("sales", "orders", "stocks")) is None
+
+
+# --- глубина хранения на стороне площадки ---------------------------------------
+
+
+async def test_period_deeper_than_available_data_is_flagged(store, monkeypatch):
+    """Wildberries хранит статистику около полугода.
+
+    Запрошенный «Год» покажет меньше — и панель обязана сказать об этом,
+    иначе неполная цифра выглядит достоверной.
+    """
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today - timedelta(days=30), "a")], orders=[]
+    ))
+    await warehouse.sync_store(store, settings)
+
+    deep = Period(date_from=today - timedelta(days=300), date_to=today)
+    report = await warehouse.report_for(store, deep, settings)
+
+    assert report.data_from == today - timedelta(days=30)
+    assert any("не хранит статистику глубже" in warning for warning in report.warnings)
+
+
+async def test_period_within_available_data_is_not_flagged(store, monkeypatch):
+    today = date.today()
+    mock_wb(monkeypatch, wb_handler(
+        sales=[sale(today - timedelta(days=30), "a")], orders=[]
+    ))
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(7), settings)
+
+    assert not any("глубже" in warning for warning in report.warnings)

@@ -52,7 +52,7 @@
      'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
      'toasts', 'footer-note', 'brand-sub', 'topbar',
-     'btn-keys', 'keys', 'keys-body'].forEach(function (id) {
+     'btn-keys', 'keys', 'keys-body', 'coverage-note'].forEach(function (id) {
       dom[id] = $(id);
     });
   }
@@ -590,6 +590,28 @@
     dom['status-text'].textContent = text;
   }
 
+  /* Площадки хранят статистику ограниченный срок. Если выбранный период
+     начинается раньше, чем есть данные, об этом надо сказать заметно. */
+  function renderCoverageNote(data) {
+    var short = data.marketplaces.filter(function (report) {
+      return report.connected && report.dataFrom && report.dataFrom > data.period.from;
+    });
+
+    if (!short.length) {
+      dom['coverage-note'].hidden = true;
+      return;
+    }
+
+    var parts = short.map(function (report) {
+      return report.title + ' — с ' + Fmt.dayLong(report.dataFrom);
+    });
+
+    dom['coverage-note'].innerHTML = '<span><strong>Период показан не полностью.</strong> ' +
+      'Данные есть не за весь выбранный отрезок: ' + parts.join(', ') +
+      '. Площадка не хранит статистику глубже, поэтому цифры за более ранние дни отсутствуют.</span>';
+    dom['coverage-note'].hidden = false;
+  }
+
   function loadSyncStatus() {
     return Api.syncStatus().then(function (payload) {
       state.sync = payload;
@@ -632,6 +654,7 @@
         setStatus('is-live', 'данные обновлены в ' + Fmt.timeLabel(data.generatedAt));
       }
 
+      renderCoverageNote(data);
       dom['brand-sub'].textContent = Fmt.periodLabel(data.period);
       var syncedAt = state.sync && state.sync.syncedAt;
       dom['footer-note'].textContent = 'Период: ' + Fmt.periodLabel(data.period) +
