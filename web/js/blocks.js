@@ -106,6 +106,20 @@
       });
     },
 
+    'kpi.payout': function (body, ctx) {
+      var totals = ctx.data.totals;
+      metric(body, {
+        value: totals.payout,
+        format: Fmt.compactMoney,
+        delta: ctx.data.deltas.payout,
+        footer: totals.revenue
+          ? Fmt.percent(totals.payoutShare) + ' от выручки, после комиссии площадки'
+          : 'после комиссии площадки',
+        spark: (ctx.data.totals.series || []).map(function (point) { return point.revenue; }),
+        color: 'var(--positive)'
+      });
+    },
+
     'kpi.orders': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.orders,

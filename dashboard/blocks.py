@@ -30,6 +30,15 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "profit",
     },
     {
+        "type": "kpi.payout",
+        "title": "К перечислению",
+        "group": "Показатели",
+        "description": "Сколько площадка фактически переведёт после своей комиссии.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "wallet",
+    },
+    {
         "type": "kpi.orders",
         "title": "Заказы",
         "group": "Показатели",
@@ -208,7 +217,7 @@ VALID_SIZES = {"sm", "md", "lg", "xl"}
 
 DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
     ("kpi.revenue", "sm"),
-    ("kpi.profit", "sm"),
+    ("kpi.payout", "sm"),
     ("kpi.orders", "sm"),
     ("kpi.avgCheck", "sm"),
     ("chart.revenueDynamics", "xl"),

@@ -224,6 +224,7 @@ class AccountSummary:
     orders: int = 0
     units: int = 0
     profit: float = 0.0
+    payout: float = 0.0
     returns: int = 0
     stock_units: int = 0
     demo: bool = True
@@ -238,6 +239,7 @@ class AccountSummary:
             "orders": int(self.orders),
             "units": int(self.units),
             "profit": _round(self.profit),
+            "payout": _round(self.payout),
             "returns": int(self.returns),
             "stockUnits": int(self.stock_units),
             "avgCheck": _round(self.revenue / self.orders if self.orders else 0.0),
@@ -283,6 +285,11 @@ class MarketplaceReport:
     logistics: float = 0.0
     ad_spend: float = 0.0
     cost_price: float = 0.0
+
+    # Сколько площадка фактически перечислит продавцу: у Wildberries это
+    # сумма поля forPay, то есть цена за вычетом её комиссии. Точные данные
+    # площадки, а не расчёт.
+    payout: float = 0.0
 
     rating: float = 0.0
     reviews_count: int = 0
@@ -337,6 +344,7 @@ class MarketplaceReport:
             orders=self.orders,
             units=self.units,
             profit=self.profit,
+            payout=self.payout,
             returns=self.returns,
             stock_units=self.stock_units,
             demo=self.demo,
@@ -359,6 +367,7 @@ class MarketplaceReport:
             "cancellations": int(self.cancellations),
             "buyouts": int(self.buyouts),
             "commission": _round(self.commission),
+            "payout": _round(self.payout),
             "logistics": _round(self.logistics),
             "adSpend": _round(self.ad_spend),
             "costPrice": _round(self.cost_price),

@@ -280,19 +280,24 @@ class WildberriesConnector(HttpConnector):
             amount = abs(self.to_float(row.get("finishedPrice") or row.get("totalPrice")))
             for_pay = abs(self.to_float(row.get("forPay")))
 
+            # Возврат уменьшает выручку того дня, когда он произошёл:
+            # «выручка» в панели — это чистые продажи, а не валовые выкупы.
+            sign = -1 if is_return else 1
+
             point = by_day.setdefault(day, DayPoint(day=day))
+            point.revenue += sign * amount
+            point.units += sign
+            report.revenue += sign * amount
+            report.units += sign
+            report.payout += sign * for_pay
+            if for_pay:
+                report.commission += sign * max(amount - for_pay, 0.0)
+
             if is_return:
                 point.returns += 1
                 report.returns += 1
-                continue
-
-            point.revenue += amount
-            point.units += 1
-            report.revenue += amount
-            report.units += 1
-            report.buyouts += 1
-            if for_pay:
-                report.commission += max(amount - for_pay, 0.0)
+            else:
+                report.buyouts += 1
 
             sku = self._sku(row)
             product = by_sku.setdefault(
@@ -303,18 +308,28 @@ class WildberriesConnector(HttpConnector):
                     marketplace=self.code,
                 ),
             )
-            product.revenue += amount
-            product.units += 1
+            product.revenue += sign * amount
+            product.units += sign
+            if is_return:
+                product.returns += 1
 
             region_name = str(row.get("regionName") or row.get("oblastOkrugName") or "Не указан")
             region = by_region[region_name]
             region.region = region_name
-            region.revenue += amount
-            region.orders += 1
+            region.revenue += sign * amount
+            region.orders += sign
 
         report.series = [by_day.get(day, DayPoint(day=day)) for day in period.each_day()]
-        report.products = sorted(by_sku.values(), key=lambda item: item.revenue, reverse=True)[:20]
-        report.regions = sorted(by_region.values(), key=lambda item: item.revenue, reverse=True)
+        report.products = sorted(
+            (product for product in by_sku.values() if product.revenue > 0),
+            key=lambda item: item.revenue,
+            reverse=True,
+        )[:20]
+        report.regions = sorted(
+            (region for region in by_region.values() if region.revenue > 0),
+            key=lambda item: item.revenue,
+            reverse=True,
+        )
 
         if not report.commission:
             report.commission = report.revenue * FALLBACK_COMMISSION

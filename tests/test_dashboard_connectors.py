@@ -133,7 +133,8 @@ def test_marketplace_dates_are_parsed(raw, expected):
     assert parse_day(raw) == expected
 
 
-def test_wildberries_sales_split_sales_and_returns():
+def test_wildberries_revenue_is_net_of_returns():
+    """Выручка — чистые продажи: возврат уменьшает её в день возврата."""
     connector = WildberriesConnector(credentials("wildberries", token="x"))
     report = blank("wildberries")
     rows = [
@@ -141,20 +142,56 @@ def test_wildberries_sales_split_sales_and_returns():
          "supplierArticle": "ART-1", "subject": "Кружка", "regionName": "Москва"},
         {"date": "2025-03-02T11:00:00", "saleID": "S2", "finishedPrice": 500, "forPay": 430,
          "supplierArticle": "ART-1", "subject": "Кружка", "regionName": "Москва"},
-        {"date": "2025-03-02T12:00:00", "saleID": "R3", "finishedPrice": 500,
+        {"date": "2025-03-02T12:00:00", "saleID": "R3", "finishedPrice": 500, "forPay": 430,
          "supplierArticle": "ART-1", "subject": "Кружка", "regionName": "Москва"},
         {"date": "2025-02-20T12:00:00", "saleID": "S4", "finishedPrice": 9999,
          "supplierArticle": "ART-9", "subject": "Вне периода"},
     ]
     connector._apply_sales(report, rows, period())
 
-    assert report.revenue == 1500
-    assert report.units == 2
+    assert report.revenue == 1000          # 1000 + 500 − 500
+    assert report.units == 1
     assert report.returns == 1
-    assert report.commission == pytest.approx(220)  # (1000-850) + (500-430)
+    assert report.buyouts == 2             # выкуплено всё равно два
+    assert report.payout == pytest.approx(850)   # 850 + 430 − 430
+    assert report.commission == pytest.approx(150)
     assert len(report.series) == 3
     assert report.products[0].sku == "ART-1"
+    assert report.products[0].returns == 1
     assert report.regions[0].region == "Москва"
+
+
+def test_return_lowers_revenue_on_the_day_it_happened():
+    connector = WildberriesConnector(credentials("wildberries", token="x"))
+    report = blank("wildberries")
+    connector._apply_sales(report, [
+        {"date": "2025-03-01T10:00:00", "saleID": "S1", "finishedPrice": 1000, "forPay": 850,
+         "supplierArticle": "ART-1", "subject": "Кружка"},
+        {"date": "2025-03-03T12:00:00", "saleID": "R1", "finishedPrice": 1000, "forPay": 850,
+         "supplierArticle": "ART-1", "subject": "Кружка"},
+    ], period())
+
+    by_day = {point.day.isoformat(): point.revenue for point in report.series}
+    assert by_day["2025-03-01"] == 1000
+    assert by_day["2025-03-03"] == -1000
+    assert report.revenue == 0
+    assert report.payout == 0
+
+
+def test_fully_returned_product_leaves_the_top():
+    """Товар, который весь вернули, не должен стоять в топе продаж."""
+    connector = WildberriesConnector(credentials("wildberries", token="x"))
+    report = blank("wildberries")
+    connector._apply_sales(report, [
+        {"date": "2025-03-01T10:00:00", "saleID": "S1", "finishedPrice": 700, "forPay": 600,
+         "supplierArticle": "GOOD", "subject": "Кружка"},
+        {"date": "2025-03-01T10:00:00", "saleID": "S2", "finishedPrice": 300, "forPay": 250,
+         "supplierArticle": "BAD", "subject": "Плед"},
+        {"date": "2025-03-02T10:00:00", "saleID": "R2", "finishedPrice": 300, "forPay": 250,
+         "supplierArticle": "BAD", "subject": "Плед"},
+    ], period())
+
+    assert [product.sku for product in report.products] == ["GOOD"]
 
 
 def test_wildberries_orders_count_cancellations_separately():

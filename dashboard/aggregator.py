@@ -53,8 +53,8 @@ def merge_reports(
 
     for attr in (
         "revenue", "orders", "units", "returns", "cancellations", "buyouts",
-        "commission", "logistics", "ad_spend", "cost_price", "reviews_count",
-        "stock_units",
+        "commission", "payout", "logistics", "ad_spend", "cost_price",
+        "reviews_count", "stock_units",
     ):
         setattr(merged, attr, _sum(reports, attr))
 
@@ -124,6 +124,7 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
     returns = int(_sum(reports, "returns"))
     buyouts = int(_sum(reports, "buyouts"))
     commission = _sum(reports, "commission")
+    payout = _sum(reports, "payout")
     logistics = _sum(reports, "logistics")
     ad_spend = _sum(reports, "ad_spend")
     cost_price = _sum(reports, "cost_price")
@@ -149,6 +150,8 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "buyouts": buyouts,
         "cancellations": int(_sum(reports, "cancellations")),
         "commission": round(commission, 2),
+        "payout": round(payout, 2),
+        "payoutShare": round(payout / revenue * 100, 1) if revenue else 0.0,
         "logistics": round(logistics, 2),
         "adSpend": round(ad_spend, 2),
         "costPrice": round(cost_price, 2),
@@ -208,6 +211,7 @@ def build_deltas(
         "units",
         "profit",
         "avgCheck",
+        "payout",
         "returns",
         "returnRate",
         "buyoutRate",

@@ -329,3 +329,34 @@ def test_warnings_reach_json():
     report.warnings = ["остатки не получены"]
     merged = merge_reports("wildberries", "Wildberries", [report], period())
     assert merged.to_dict()["warnings"] == ["остатки не получены"]
+
+
+# --- «К перечислению» -----------------------------------------------------------
+
+
+def test_payout_is_summed_across_stores_and_marketplaces():
+    first = store_report("Магазин 1", 1000, 10, "A")
+    first.payout = 700
+    second = store_report("Магазин 2", 500, 5, "B")
+    second.payout = 340
+
+    merged = merge_reports("wildberries", "Wildberries", [first, second], period())
+
+    assert merged.payout == 1040
+    assert [account.payout for account in merged.accounts] == [700, 340]
+    assert merged.to_dict()["payout"] == 1040
+
+
+def test_totals_show_payout_share_of_revenue():
+    report = store_report("Магазин 1", 1000, 10, "A")
+    report.payout = 700
+    totals = build_totals([merge_reports("wildberries", "WB", [report], period())])
+
+    assert totals["payout"] == 700
+    assert totals["payoutShare"] == 70.0
+
+
+def test_payout_share_survives_zero_revenue():
+    report = store_report("Магазин 1", 0, 0, "A")
+    totals = build_totals([merge_reports("wildberries", "WB", [report], period())])
+    assert totals["payoutShare"] == 0.0
