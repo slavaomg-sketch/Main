@@ -20,13 +20,13 @@
   var money2 = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   /* Крупные суммы сокращаем: руководителю важен порядок, а не копейки. */
+  /* Суммы в панели не сокращаются: «1,5 млн ₽» прячет полсотни тысяч, а
+     руководитель сверяет цифры с кабинетом до рубля. Сокращение осталось
+     только для подписей осей — там это шкала, а не сумма. */
   function compactMoney(value) {
     var abs = Math.abs(value || 0);
-    if (abs >= 1e9) return trim(value / 1e9) + ' млрд ₽';
-    if (abs >= 1e6) return trim(value / 1e6) + ' млн ₽';
-    if (abs >= 1e4) return money.format(Math.round(value)) + ' ₽';
-    if (abs >= 100) return money.format(Math.round(value)) + ' ₽';
-    return money2.format(value || 0) + ' ₽';
+    if (abs && abs < 100) return money2.format(value) + ' ₽';
+    return money.format(Math.round(value || 0)) + ' ₽';
   }
 
   function trim(value) {
@@ -35,6 +35,9 @@
   }
 
   function fullMoney(value) {
+    var abs = Math.abs(value || 0);
+    // Мелкие суммы показываем с копейками, крупные — целыми рублями.
+    if (abs && abs < 100) return money2.format(value) + ' ₽';
     return money.format(Math.round(value || 0)) + ' ₽';
   }
 

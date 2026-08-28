@@ -64,6 +64,15 @@
   }
 
   /* Универсальная карточка показателя. */
+  /* Точные суммы длиннее сокращённых: «1 462 851 ₽» вместо «1,5 млн ₽».
+     Чтобы такая цифра не вылезала за карточку, крупным шрифтам добавляется
+     ступень поменьше — по длине готовой строки. */
+  function fitValue(node, text) {
+    node.classList.remove('is-long', 'is-very-long');
+    if (text.length > 15) node.classList.add('is-very-long');
+    else if (text.length > 11) node.classList.add('is-long');
+  }
+
   function metric(body, options) {
     var wrap = Fmt.el('div', 'metric');
     var value = Fmt.el('div', 'metric__value', '—');
@@ -75,6 +84,7 @@
     wrap.appendChild(row);
     body.appendChild(wrap);
 
+    fitValue(value, options.format(options.value || 0));
     Fmt.countUp(value, options.value, options.format);
 
     if (options.spark && options.spark.length > 1) {
@@ -102,6 +112,8 @@
     wrap.appendChild(row);
     body.appendChild(wrap);
 
+    fitValue(main, options.format(options.value || 0));
+    fitValue(second, options.secondFormat(options.secondValue || 0));
     Fmt.countUp(main, options.value, options.format);
     Fmt.countUp(second, options.secondValue, options.secondFormat);
 
@@ -131,7 +143,7 @@
     'kpi.revenue': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.revenue,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.revenue,
         footer: Fmt.number(ctx.data.totals.orders) + ' ' +
                 Fmt.plural(ctx.data.totals.orders, ['заказ', 'заказа', 'заказов']),
@@ -144,7 +156,7 @@
       var totals = ctx.data.totals;
       metric(body, {
         value: totals.grossRevenue,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.grossRevenue,
         footer: Fmt.number(totals.buyouts) + ' ' +
                 Fmt.plural(totals.buyouts, ['выкуп', 'выкупа', 'выкупов']) +
@@ -157,10 +169,10 @@
       var totals = ctx.data.totals;
       metric(body, {
         value: totals.buyerPaid,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.buyerPaid,
         footer: totals.platformDiscount
-          ? 'скидка площадки — ' + Fmt.compactMoney(totals.platformDiscount) +
+          ? 'скидка площадки — ' + Fmt.fullMoney(totals.platformDiscount) +
             ' (' + Fmt.percent(totals.platformDiscountShare) + '), за её счёт'
           : 'после скидки площадки',
         color: 'var(--text-secondary)'
@@ -171,7 +183,7 @@
       var totals = ctx.data.totals;
       metric(body, {
         value: totals.returnsAmount,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: reverseDelta(ctx.data.deltas.returnsAmount),
         footer: totals.grossRevenue
           ? Fmt.percent(totals.returnsShare) + ' от выкупов'
@@ -184,7 +196,7 @@
       var noCost = !ctx.data.totals.costPrice;
       metric(body, {
         value: ctx.data.totals.profit,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.profit,
         footer: noCost
           ? 'себестоимость не задана — цифра завышена'
@@ -206,7 +218,7 @@
 
       metric(body, {
         value: totals.bankPayment,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.bankPayment,
         footer: Fmt.number(totals.reportsCount) + ' ' +
                 Fmt.plural(totals.reportsCount, ['отчёт', 'отчёта', 'отчётов']) +
@@ -253,7 +265,7 @@
 
         var share = Math.abs(line.value) / base * 100;
         row.appendChild(Fmt.el('span', 'costs__value',
-          Fmt.compactMoney(line.value) +
+          Fmt.fullMoney(line.value) +
           (line.kind ? '' : '  ' + Fmt.percent(share))));
         wrap.appendChild(row);
       });
@@ -266,7 +278,7 @@
       if (!totals.balanceDeltaKnown) {
         body.appendChild(Charts.emptyState(
           totals.balanceCurrent
-            ? 'Баланс ' + Fmt.compactMoney(totals.balanceCurrent) +
+            ? 'Баланс ' + Fmt.fullMoney(totals.balanceCurrent) +
               '. Панель записывает его ежедневно — прирост появится, ' +
               'когда наберётся вторая запись.'
             : 'Панель ещё не записала баланс кабинета'
@@ -276,10 +288,10 @@
 
       metric(body, {
         value: totals.balanceDelta,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.balanceDelta,
-        footer: 'баланс ' + Fmt.compactMoney(totals.balanceCurrent) +
-                ' · к выводу ' + Fmt.compactMoney(totals.balanceForWithdraw),
+        footer: 'баланс ' + Fmt.fullMoney(totals.balanceCurrent) +
+                ' · к выводу ' + Fmt.fullMoney(totals.balanceForWithdraw),
         color: 'var(--positive)'
       });
     },
@@ -288,7 +300,7 @@
       var totals = ctx.data.totals;
       metric(body, {
         value: totals.payout,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.payout,
         footer: totals.revenue
           ? Fmt.percent(totals.payoutShare) + ' от выручки · до логистики, хранения и штрафов'
@@ -305,9 +317,9 @@
         value: placed,
         format: function (value) { return Fmt.number(value) + ' шт'; },
         secondValue: totals.ordersAmount,
-        secondFormat: Fmt.compactMoney,
+        secondFormat: Fmt.fullMoney,
         delta: ctx.data.deltas.orders,
-        footer: 'средний чек ' + Fmt.compactMoney(totals.avgCheck) +
+        footer: 'средний чек ' + Fmt.fullMoney(totals.avgCheck) +
                 (totals.cancellations
                   ? ' · отменено ' + Fmt.number(totals.cancellations)
                   : ''),
@@ -322,7 +334,7 @@
         value: totals.cancellations,
         format: function (value) { return Fmt.number(value) + ' шт'; },
         secondValue: totals.cancelledAmount,
-        secondFormat: Fmt.compactMoney,
+        secondFormat: Fmt.fullMoney,
         delta: reverseDelta(ctx.data.deltas.cancellations),
         footer: totals.ordersAmount
           ? Fmt.percent(totals.cancelledShare) + ' от суммы заказов'
@@ -336,7 +348,7 @@
         value: totals.returns,
         format: function (value) { return Fmt.number(value) + ' шт'; },
         secondValue: totals.returnsAmount,
-        secondFormat: Fmt.compactMoney,
+        secondFormat: Fmt.fullMoney,
         delta: reverseDelta(ctx.data.deltas.returns),
         footer: totals.grossRevenue
           ? Fmt.percent(totals.returnsShare) + ' от выкупов'
@@ -347,7 +359,7 @@
     'kpi.avgCheck': function (body, ctx) {
       metric(body, {
         value: ctx.data.totals.avgCheck,
-        format: Fmt.compactMoney,
+        format: Fmt.fullMoney,
         delta: ctx.data.deltas.avgCheck,
         footer: 'на заказ',
         spark: (ctx.data.totals.series || []).map(function (point) {
@@ -371,7 +383,7 @@
         value: ctx.data.totals.drr,
         format: function (value) { return Fmt.percent(value); },
         delta: reverseDelta(ctx.data.deltas.drr),
-        footer: 'реклама ' + Fmt.compactMoney(ctx.data.totals.adSpend)
+        footer: 'реклама ' + Fmt.fullMoney(ctx.data.totals.adSpend)
       });
     },
 
@@ -420,7 +432,7 @@
         tooltipTitles: (ctx.data.totals.series || []).map(function (p) { return Fmt.dayLong(p.day); }),
         series: series,
         height: ctx.block.size === 'xl' ? 300 : 240,
-        formatValue: Fmt.compactMoney,
+        formatValue: Fmt.fullMoney,
         formatAxis: Fmt.compactNumber
       });
     },
@@ -449,7 +461,7 @@
         items: (ctx.data.totals.share || []).map(function (item) {
           return { label: item.title, value: item.revenue, color: Fmt.colorOf(item.marketplace) };
         }),
-        centerValue: Fmt.compactMoney(ctx.data.totals.revenue),
+        centerValue: Fmt.fullMoney(ctx.data.totals.revenue),
         centerCaption: 'выручка'
       });
     },
@@ -475,7 +487,7 @@
       rows.forEach(function (row, index) {
         var item = Fmt.el('div', 'bar-item');
         item.appendChild(Fmt.el('span', 'bar-item__name', row.name));
-        item.appendChild(Fmt.el('span', 'bar-item__value', Fmt.compactMoney(row.value)));
+        item.appendChild(Fmt.el('span', 'bar-item__value', Fmt.fullMoney(row.value)));
         var track = Fmt.el('div', 'bar-item__track');
         var fill = Fmt.el('div', 'bar-item__fill');
         fill.style.width = (row.value / max * 100).toFixed(1) + '%';
@@ -529,13 +541,13 @@
 
           var idle = !report.connected && !report.demo;
           [
-            idle ? '—' : Fmt.compactMoney(report.revenue),
+            idle ? '—' : Fmt.fullMoney(report.revenue),
             idle ? '—' : Fmt.percent(shareByCode[report.marketplace] || 0),
             idle ? '—' : Fmt.number(report.orders),
-            idle ? '—' : Fmt.compactMoney(report.avgCheck),
+            idle ? '—' : Fmt.fullMoney(report.avgCheck),
             idle ? '—' : Fmt.percent(report.buyoutRate),
             idle ? '—' : Fmt.percent(report.returnRate),
-            idle ? '—' : Fmt.compactMoney(report.payout)
+            idle ? '—' : Fmt.fullMoney(report.payout)
           ].forEach(function (text, index) {
             var cell = Fmt.el('td', index === 0 || index === 6 ? '' : 'is-muted', text);
             row.appendChild(cell);
@@ -546,13 +558,13 @@
 
       var totals = Fmt.el('tr');
       totals.innerHTML = '<td><strong>Итого</strong></td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.revenue) + '</strong></td>' +
+        '<td><strong>' + Fmt.fullMoney(ctx.data.totals.revenue) + '</strong></td>' +
         '<td class="is-muted">100%</td>' +
         '<td><strong>' + Fmt.number(ctx.data.totals.orders) + '</strong></td>' +
-        '<td class="is-muted">' + Fmt.compactMoney(ctx.data.totals.avgCheck) + '</td>' +
+        '<td class="is-muted">' + Fmt.fullMoney(ctx.data.totals.avgCheck) + '</td>' +
         '<td class="is-muted">' + Fmt.percent(ctx.data.totals.buyoutRate) + '</td>' +
         '<td class="is-muted">' + Fmt.percent(ctx.data.totals.returnRate) + '</td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.payout) + '</strong></td>';
+        '<td><strong>' + Fmt.fullMoney(ctx.data.totals.payout) + '</strong></td>';
       tbody.appendChild(totals);
 
       table.appendChild(tbody);
@@ -595,21 +607,21 @@
         row.appendChild(nameCell);
 
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.titleOf(account.marketplace)));
-        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.revenue)));
+        row.appendChild(Fmt.el('td', null, Fmt.fullMoney(account.revenue)));
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.percent(account.share || 0)));
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.number(account.orders)));
-        row.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(account.avgCheck)));
-        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.payout)));
+        row.appendChild(Fmt.el('td', 'is-muted', Fmt.fullMoney(account.avgCheck)));
+        row.appendChild(Fmt.el('td', null, Fmt.fullMoney(account.payout)));
         tbody.appendChild(row);
       });
 
       var totals = Fmt.el('tr');
       totals.innerHTML = '<td><strong>Итого</strong></td><td class="is-muted"></td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.revenue) + '</strong></td>' +
+        '<td><strong>' + Fmt.fullMoney(ctx.data.totals.revenue) + '</strong></td>' +
         '<td class="is-muted">100%</td>' +
         '<td><strong>' + Fmt.number(ctx.data.totals.orders) + '</strong></td>' +
-        '<td class="is-muted">' + Fmt.compactMoney(ctx.data.totals.avgCheck) + '</td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.payout) + '</strong></td>';
+        '<td class="is-muted">' + Fmt.fullMoney(ctx.data.totals.avgCheck) + '</td>' +
+        '<td><strong>' + Fmt.fullMoney(ctx.data.totals.payout) + '</strong></td>';
       tbody.appendChild(totals);
 
       table.appendChild(tbody);
@@ -670,7 +682,7 @@
 
         tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.units)));
         tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.stock)));
-        tr.appendChild(Fmt.el('td', null, Fmt.compactMoney(row.revenue)));
+        tr.appendChild(Fmt.el('td', null, Fmt.fullMoney(row.revenue)));
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
@@ -732,9 +744,9 @@
         tr.appendChild(nameCell);
 
         tr.appendChild(Fmt.el('td', 'is-muted', Fmt.number(row.orders)));
-        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(row.ordersAmount)));
-        tr.appendChild(Fmt.el('td', null, Fmt.compactMoney(row.ordersAmount / row.orders)));
-        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(row.revenue)));
+        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.fullMoney(row.ordersAmount)));
+        tr.appendChild(Fmt.el('td', null, Fmt.fullMoney(row.ordersAmount / row.orders)));
+        tr.appendChild(Fmt.el('td', 'is-muted', Fmt.fullMoney(row.revenue)));
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
@@ -797,7 +809,7 @@
         segment.style.flex = String(Math.max(part.value, 0));
         segment.style.background = part.color;
         segment.style.animationDelay = (index * 0.06) + 's';
-        segment.title = part.label + ': ' + Fmt.compactMoney(part.value);
+        segment.title = part.label + ': ' + Fmt.fullMoney(part.value);
         bar.appendChild(segment);
       });
       wrap.appendChild(bar);
@@ -811,7 +823,7 @@
         label.appendChild(swatch);
         label.appendChild(Fmt.el('span', null, part.label));
         item.appendChild(label);
-        item.appendChild(Fmt.el('div', 'eco-item__value', Fmt.compactMoney(part.value)));
+        item.appendChild(Fmt.el('div', 'eco-item__value', Fmt.fullMoney(part.value)));
         item.appendChild(Fmt.el('div', 'eco-item__share', Fmt.percent(part.value / revenue * 100) + ' от выручки'));
         legend.appendChild(item);
       });
@@ -930,7 +942,7 @@
       var center = Fmt.el('div', 'goal__center');
       center.appendChild(Fmt.el('div', 'goal__percent', Fmt.percent(progress * 100, 0)));
       center.appendChild(Fmt.el('div', 'goal__caption',
-        Fmt.compactMoney(revenue) + ' из ' + Fmt.compactMoney(goal)));
+        Fmt.fullMoney(revenue) + ' из ' + Fmt.fullMoney(goal)));
       wrap.appendChild(center);
 
       var input = document.createElement('input');

@@ -83,7 +83,7 @@
     var series = (options.series || []).filter(function (item) { return item.values.length; });
     var labels = options.labels || [];
     var height = options.height || 260;
-    var formatValue = options.formatValue || Fmt.compactMoney;
+    var formatValue = options.formatValue || Fmt.fullMoney;
 
     if (!series.length || !labels.length) {
       container.appendChild(emptyState('Нет данных за период'));
@@ -389,7 +389,11 @@
 
     var center = Fmt.svg('text', { class: 'donut__center', x: size / 2, y: size / 2 - 2 });
     var totalText = Fmt.svg('tspan', { class: 'donut__total', x: size / 2, dy: '0' });
-    totalText.textContent = options.centerValue || Fmt.compactMoney(total);
+    totalText.textContent = options.centerValue || Fmt.fullMoney(total);
+    // Точная сумма в середине кольца длиннее сокращённой — ужимаем кегль.
+    if (totalText.textContent.length > 11) {
+      totalText.setAttribute('class', 'donut__total donut__total--long');
+    }
     var caption = Fmt.svg('tspan', { class: 'donut__caption', x: size / 2, dy: '16' });
     caption.textContent = options.centerCaption || 'всего';
     center.appendChild(totalText);

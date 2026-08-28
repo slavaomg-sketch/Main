@@ -584,6 +584,11 @@ html[data-theme="auto"] .icon-moon { display: none; }
   color: var(--text-secondary);
 }
 
+.metric__value.is-long { font-size: clamp(23px, 2.1vw, 32px); }
+.metric__value.is-very-long { font-size: clamp(19px, 1.7vw, 26px); }
+.metric__value--second.is-long { font-size: clamp(16px, 1.4vw, 21px); }
+.metric__value--second.is-very-long { font-size: clamp(14px, 1.2vw, 18px); }
+
 .metric__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .metric__foot { font-size: 12.5px; color: var(--text-tertiary); }
 
@@ -707,6 +712,7 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .donut__chart { flex-shrink: 0; }
 .donut__center { text-anchor: middle; }
 .donut__total { font-size: 17px; font-weight: 600; fill: var(--text); letter-spacing: -0.02em; }
+.donut__total--long { font-size: 13px; }
 .donut__caption { font-size: 10px; fill: var(--text-tertiary); }
 .donut__list { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 9px; }
 
