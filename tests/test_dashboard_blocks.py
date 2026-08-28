@@ -81,3 +81,31 @@ def test_sanitize_preserves_hidden_flag_and_custom_title():
     ])
     assert layout[0]["hidden"] is True
     assert layout[0]["title"] == "Мой блок"
+
+
+# --- блоки, требующие себестоимости ---------------------------------------------
+
+
+def test_default_layout_has_no_blocks_that_need_cost_price():
+    """Пока себестоимость не задана, прибыль считается неверно.
+
+    Такие блоки не должны стоять в готовой раскладке: цифра выглядит
+    достоверной, а на деле завышена на всю стоимость закупки.
+    """
+    from dashboard.db import NEEDS_COST_PRICE
+
+    types = {block["type"] for block in default_layout()}
+    assert not types & set(NEEDS_COST_PRICE)
+
+
+def test_blocks_needing_cost_price_stay_available_in_the_library():
+    """Убрали с глаз — но не выбросили: добавить обратно можно в любой момент."""
+    from dashboard.db import NEEDS_COST_PRICE
+
+    for block_type in NEEDS_COST_PRICE:
+        assert block_type in BLOCK_TYPES
+        assert "себестоимость" in BLOCK_TYPES[block_type]["description"]
+
+
+def test_default_layout_shows_payout():
+    assert "kpi.payout" in {block["type"] for block in default_layout()}

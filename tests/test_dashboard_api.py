@@ -354,3 +354,52 @@ def test_connection_test_reports_partial_answer(client, monkeypatch):
     assert result["ok"] is False
     assert result["partial"] is True
     assert result["summary"] == {"working": 2, "total": 3, "rows": 2}
+
+
+async def test_saved_layouts_lose_blocks_that_need_cost_price(dashboard_db):
+    """Разовая уборка не должна трогать остальные блоки раскладки."""
+    import json
+
+    from dashboard import db
+
+    await db.init_db()
+    async with db.connect() as connection:
+        await connection.execute(
+            "UPDATE layouts SET blocks = ?",
+            (json.dumps([
+                {"id": "a", "type": "kpi.revenue", "size": "sm", "hidden": False,
+                 "title": "Выручка"},
+                {"id": "b", "type": "panel.unitEconomics", "size": "md", "hidden": False,
+                 "title": "Юнит-экономика"},
+                {"id": "c", "type": "kpi.profit", "size": "sm", "hidden": False,
+                 "title": "Прибыль"},
+                {"id": "d", "type": "kpi.orders", "size": "sm", "hidden": False,
+                 "title": "Заказы"},
+            ], ensure_ascii=False),),
+        )
+        await connection.execute(
+            "DELETE FROM preferences WHERE key = 'cost_price_blocks_hidden'"
+        )
+        await connection.commit()
+
+    await db.init_db()          # повторный запуск панели — уборка срабатывает
+    layouts = await db.list_layouts()
+
+    types = [block["type"] for block in layouts[0]["blocks"]]
+    assert types == ["kpi.revenue", "kpi.orders"]
+
+
+async def test_cleanup_runs_only_once(dashboard_db):
+    """Владелец мог сознательно вернуть блок — второй раз его убирать нельзя."""
+    from dashboard import db
+
+    await db.init_db()
+    await db.save_layout("Основной", [
+        {"id": "a", "type": "kpi.revenue", "size": "sm"},
+        {"id": "b", "type": "panel.unitEconomics", "size": "md"},
+    ])
+
+    await db.init_db()          # ещё один запуск панели
+    layouts = await db.list_layouts()
+
+    assert "panel.unitEconomics" in {block["type"] for block in layouts[0]["blocks"]}

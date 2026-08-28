@@ -128,11 +128,41 @@ async def _add_missing_columns(db: aiosqlite.Connection) -> None:
                 await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
 
 
+# Блоки, которые нельзя честно посчитать без себестоимости товара.
+# Пока её негде взять, они убираются из готовых раскладок — вернуть их
+# можно в любой момент через библиотеку блоков.
+NEEDS_COST_PRICE = ("panel.unitEconomics", "kpi.profit")
+
+
+async def _hide_blocks_without_cost_price(db: aiosqlite.Connection) -> None:
+    """Разовая уборка: убрать из сохранённых раскладок блоки, считающие прибыль."""
+    cursor = await db.execute(
+        "SELECT value FROM preferences WHERE key = 'cost_price_blocks_hidden'"
+    )
+    if await cursor.fetchone():
+        return
+
+    cursor = await db.execute("SELECT name, blocks FROM layouts")
+    for row in await cursor.fetchall():
+        blocks = json.loads(row["blocks"])
+        kept = [block for block in blocks if block.get("type") not in NEEDS_COST_PRICE]
+        if len(kept) != len(blocks):
+            await db.execute(
+                "UPDATE layouts SET blocks = ? WHERE name = ?",
+                (json.dumps(kept, ensure_ascii=False), row["name"]),
+            )
+
+    await db.execute(
+        "INSERT OR REPLACE INTO preferences (key, value) VALUES ('cost_price_blocks_hidden', '1')"
+    )
+
+
 async def init_db() -> None:
     async with connect() as db:
         await _drop_pre_release_credentials(db)
         await db.executescript(SCHEMA)
         await _add_missing_columns(db)
+        await _hide_blocks_without_cost_price(db)
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

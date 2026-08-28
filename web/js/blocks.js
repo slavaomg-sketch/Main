@@ -96,11 +96,14 @@
     },
 
     'kpi.profit': function (body, ctx) {
+      var noCost = !ctx.data.totals.costPrice;
       metric(body, {
         value: ctx.data.totals.profit,
         format: Fmt.compactMoney,
         delta: ctx.data.deltas.profit,
-        footer: 'маржинальность ' + Fmt.percent(ctx.data.totals.margin),
+        footer: noCost
+          ? 'себестоимость не задана — цифра завышена'
+          : 'маржинальность ' + Fmt.percent(ctx.data.totals.margin),
         spark: seriesValues(ctx.data, 'revenue'),
         color: 'var(--positive)'
       });
@@ -282,7 +285,7 @@
       var table = Fmt.el('table', 'table');
       var head = Fmt.el('thead');
       head.innerHTML = '<tr><th>Площадка</th><th>Выручка</th><th>Доля</th><th>Заказы</th>' +
-        '<th>Ср. чек</th><th>Выкуп</th><th>Возвраты</th><th>ДРР</th><th>Прибыль</th></tr>';
+        '<th>Ср. чек</th><th>Выкуп</th><th>Возвраты</th><th>К перечислению</th></tr>';
       table.appendChild(head);
 
       var shareByCode = {};
@@ -323,10 +326,9 @@
             idle ? '—' : Fmt.compactMoney(report.avgCheck),
             idle ? '—' : Fmt.percent(report.buyoutRate),
             idle ? '—' : Fmt.percent(report.returnRate),
-            idle ? '—' : Fmt.percent(report.drr),
-            idle ? '—' : Fmt.compactMoney(report.profit)
+            idle ? '—' : Fmt.compactMoney(report.payout)
           ].forEach(function (text, index) {
-            var cell = Fmt.el('td', index === 0 || index === 7 ? '' : 'is-muted', text);
+            var cell = Fmt.el('td', index === 0 || index === 6 ? '' : 'is-muted', text);
             row.appendChild(cell);
           });
 
@@ -341,8 +343,7 @@
         '<td class="is-muted">' + Fmt.compactMoney(ctx.data.totals.avgCheck) + '</td>' +
         '<td class="is-muted">' + Fmt.percent(ctx.data.totals.buyoutRate) + '</td>' +
         '<td class="is-muted">' + Fmt.percent(ctx.data.totals.returnRate) + '</td>' +
-        '<td class="is-muted">' + Fmt.percent(ctx.data.totals.drr) + '</td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.profit) + '</strong></td>';
+        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.payout) + '</strong></td>';
       tbody.appendChild(totals);
 
       table.appendChild(tbody);
@@ -361,7 +362,7 @@
       var table = Fmt.el('table', 'table');
       var head = Fmt.el('thead');
       head.innerHTML = '<tr><th>Магазин</th><th>Площадка</th><th>Выручка</th><th>Доля</th>' +
-        '<th>Заказы</th><th>Ср. чек</th><th>Прибыль</th></tr>';
+        '<th>Заказы</th><th>Ср. чек</th><th>К перечислению</th></tr>';
       table.appendChild(head);
 
       var tbody = Fmt.el('tbody');
@@ -389,7 +390,7 @@
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.percent(account.share || 0)));
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.number(account.orders)));
         row.appendChild(Fmt.el('td', 'is-muted', Fmt.compactMoney(account.avgCheck)));
-        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.profit)));
+        row.appendChild(Fmt.el('td', null, Fmt.compactMoney(account.payout)));
         tbody.appendChild(row);
       });
 
@@ -399,7 +400,7 @@
         '<td class="is-muted">100%</td>' +
         '<td><strong>' + Fmt.number(ctx.data.totals.orders) + '</strong></td>' +
         '<td class="is-muted">' + Fmt.compactMoney(ctx.data.totals.avgCheck) + '</td>' +
-        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.profit) + '</strong></td>';
+        '<td><strong>' + Fmt.compactMoney(ctx.data.totals.payout) + '</strong></td>';
       tbody.appendChild(totals);
 
       table.appendChild(tbody);
@@ -542,6 +543,13 @@
         legend.appendChild(item);
       });
       wrap.appendChild(legend);
+
+      if (!totals.costPrice) {
+        wrap.appendChild(Fmt.el('div', 'block-note',
+          'Себестоимость товара не задана, поэтому прибыль здесь завышена: ' +
+          'из выручки вычтены только комиссия, логистика и реклама.'));
+      }
+
       body.appendChild(wrap);
     },
 
