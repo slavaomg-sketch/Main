@@ -58,6 +58,8 @@
   /* Сглаженная кривая: монотонные кубические Безье без «выбросов». */
   function smoothPath(points) {
     if (!points.length) return '';
+    // Одна точка линией не рисуется — её показываем кружком отдельно.
+    if (points.length === 1) return '';
     if (points.length < 3) {
       return points.map(function (p, i) {
         return (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1);
@@ -100,7 +102,10 @@
       maxValue = niceMax(maxValue * 1.08);
 
       var stepX = labels.length > 1 ? innerWidth / (labels.length - 1) : 0;
-      var scaleX = function (index) { return padding.left + index * stepX; };
+      // Единственную точку ставим по центру, а не в левый край.
+      var scaleX = labels.length > 1
+        ? function (index) { return padding.left + index * stepX; }
+        : function () { return padding.left + innerWidth / 2; };
       var scaleY = function (value) {
         return padding.top + innerHeight - (value / maxValue) * innerHeight;
       };
@@ -174,6 +179,14 @@
           root.appendChild(area);
         }
         root.appendChild(Fmt.svg('path', { class: 'chart__line', d: line, stroke: item.color }));
+
+        // Период в один день: линии нет, поэтому показываем саму точку.
+        if (points.length === 1) {
+          root.appendChild(Fmt.svg('circle', {
+            cx: points[0].x.toFixed(1), cy: points[0].y.toFixed(1), r: 5,
+            fill: item.color, stroke: 'var(--surface-solid)', 'stroke-width': 2
+          }));
+        }
       });
 
       // Прозрачные колонки-«ловушки» для подсказки
@@ -195,9 +208,9 @@
       labels.forEach(function (label, index) {
         var hit = Fmt.svg('rect', {
           class: 'chart__hit',
-          x: (scaleX(index) - stepX / 2).toFixed(1),
+          x: (labels.length > 1 ? scaleX(index) - stepX / 2 : padding.left).toFixed(1),
           y: padding.top,
-          width: Math.max(stepX, 6).toFixed(1),
+          width: (labels.length > 1 ? Math.max(stepX, 6) : innerWidth).toFixed(1),
           height: innerHeight
         });
         hit.addEventListener('mouseenter', function (event) {
@@ -404,6 +417,8 @@
 
   function sparkline(container, values, color) {
     if (!values || values.length < 2) return;
+    // Ровная нулевая линия ничего не сообщает — лучше не рисовать вовсе.
+    if (!values.some(function (value) { return value > 0; })) return;
     responsive(container, function (host, width) {
       var height = 44;
       var max = Math.max.apply(null, values);

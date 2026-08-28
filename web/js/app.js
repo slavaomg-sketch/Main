@@ -138,9 +138,12 @@
       var dot = Fmt.el('span', 'chip__dot');
       chip.appendChild(dot);
       chip.appendChild(Fmt.el('span', null, item.title));
-      if (item.demo) {
-        var badge = Fmt.el('span', 'badge badge--muted', 'демо');
-        chip.appendChild(badge);
+      if (item.state === 'demo') {
+        chip.appendChild(Fmt.el('span', 'badge badge--muted', 'демо'));
+      } else if (item.state === 'empty') {
+        chip.appendChild(Fmt.el('span', 'badge badge--muted', 'нет ключей'));
+      } else if (item.stores > 1) {
+        chip.appendChild(Fmt.el('span', 'badge badge--muted', String(item.stores)));
       }
       if (!state.selected || state.selected.has(item.code)) chip.classList.add('is-active');
       chip.addEventListener('click', function () {
@@ -600,21 +603,28 @@
       renderBoard();
 
       var demo = data.marketplaces.filter(function (report) { return report.demo; });
-      var failed = data.marketplaces.filter(function (report) { return report.error && !report.demo; });
+      var failed = data.marketplaces.filter(function (report) { return report.error; });
+      var live = data.marketplaces.filter(function (report) { return report.connected; });
+      var partial = data.marketplaces.filter(function (report) {
+        return report.connected && (report.warnings || []).length;
+      });
 
-      if (failed.length) {
-        setStatus('is-error', failed.length + ' из ' + data.marketplaces.length + ' площадок недоступны');
-      } else if (demo.length === data.marketplaces.length) {
-        setStatus('is-demo', 'демо-данные · ключи не заданы');
-      } else if (demo.length) {
-        setStatus('is-demo', demo.length + ' площадок в демо-режиме');
+      if (demo.length) {
+        setStatus('is-demo', 'демо-режим · цифры вымышленные');
+      } else if (!live.length) {
+        setStatus('is-demo', 'ключи не заведены · данных нет');
+      } else if (failed.length) {
+        setStatus('is-error', 'нет данных: ' +
+          failed.map(function (report) { return report.title; }).join(', '));
+      } else if (partial.length) {
+        setStatus('is-demo', 'часть данных не пришла · ' + Fmt.timeLabel(data.generatedAt));
       } else {
         setStatus('is-live', 'данные обновлены в ' + Fmt.timeLabel(data.generatedAt));
       }
 
       dom['brand-sub'].textContent = Fmt.periodLabel(data.period);
       dom['footer-note'].textContent = 'Период: ' + Fmt.periodLabel(data.period) +
-        ' · площадок: ' + data.marketplaces.length +
+        ' · подключено площадок: ' + live.length + ' из ' + data.marketplaces.length +
         ' · обновлено ' + Fmt.timeLabel(data.generatedAt);
       return data;
     }).catch(function (error) {

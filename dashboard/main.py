@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import connections
 from . import db
 from .api import guarded, router
 from .config import WEB_DIR, settings
@@ -27,17 +28,22 @@ log = logging.getLogger("dashboard")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init_db()
-    connected = [
-        credentials.title
-        for credentials in settings.marketplaces.values()
-        if credentials.configured
-    ]
+
+    # Ключи живут и в .env, и в базе (страница «Ключи»), поэтому считаем
+    # магазины по итоговому списку подключений, а не только по окружению.
+    stores = await connections.load(settings)
+    ready = [store for store in stores if store.enabled and store.configured]
+
     if settings.force_demo:
         log.info("Панель запущена в демо-режиме (DASHBOARD_DEMO=1)")
-    elif connected:
-        log.info("Подключены площадки: %s", ", ".join(connected))
+    elif ready:
+        log.info(
+            "Подключено магазинов: %d (%s)",
+            len(ready),
+            ", ".join(sorted({store.title for store in ready})),
+        )
     else:
-        log.info("Ключи маркетплейсов не заданы — показываются демо-данные")
+        log.info("Магазины не добавлены — панель покажет нули до ввода ключей")
     yield
 
 

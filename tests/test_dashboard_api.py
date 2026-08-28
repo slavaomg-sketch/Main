@@ -37,8 +37,8 @@ def test_overview_returns_totals_and_marketplaces(client):
     payload = client.get("/api/overview?preset=7d").json()
     assert payload["period"]["days"] == 7
     assert len(payload["marketplaces"]) == 4
-    assert payload["totals"]["revenue"] > 0
-    assert payload["deltas"]["revenue"]["change"] is not None
+    assert payload["totals"]["revenue"] == 0      # ключей нет — и выдумывать нечего
+    assert all(not report["connected"] for report in payload["marketplaces"])
 
 
 def test_overview_respects_marketplace_filter(client):
@@ -66,11 +66,12 @@ def test_overview_rejects_range_longer_than_year(client):
     assert client.get("/api/overview?from=2020-01-01&to=2025-01-01").status_code == 400
 
 
-def test_marketplaces_report_demo_state(client):
+def test_marketplaces_without_keys_are_marked_empty(client):
     payload = client.get("/api/marketplaces").json()
     codes = [item["code"] for item in payload["marketplaces"]]
     assert codes == ["wildberries", "ozon", "yandex", "ali"]
-    assert all(item["demo"] for item in payload["marketplaces"])
+    assert all(item["state"] == "empty" for item in payload["marketplaces"])
+    assert not any(item["demo"] for item in payload["marketplaces"])
     assert all(item["requires"] for item in payload["marketplaces"])
 
 
@@ -246,8 +247,8 @@ def test_marketplace_reports_number_of_ready_stores(client):
     payload = client.get("/api/marketplaces").json()["marketplaces"]
     wildberries = [item for item in payload if item["code"] == "wildberries"][0]
     assert wildberries["stores"] == 2
-    assert wildberries["demo"] is False
-    assert [item for item in payload if item["code"] == "yandex"][0]["demo"] is True
+    assert wildberries["state"] == "connected"
+    assert [item for item in payload if item["code"] == "yandex"][0]["state"] == "empty"
 
 
 def test_store_can_be_renamed_and_switched_off(client):

@@ -6,6 +6,7 @@ from ..config import MarketplaceCredentials, Settings, settings
 from .ali import AliExpressConnector
 from .base import HttpConnector, MarketplaceConnector
 from .demo import DemoConnector
+from .empty import NotConnectedConnector
 from .ozon import OzonConnector
 from .wildberries import WildberriesConnector
 from .yandex import YandexConnector
@@ -32,8 +33,12 @@ def build_connector(
     """
     config = config or settings
     credentials = credentials or config.marketplaces[code]
-    if config.force_demo or not credentials.configured:
+    if config.force_demo:
         return DemoConnector(code=code, title=credentials.title, credentials=credentials)
+    if not credentials.configured:
+        return NotConnectedConnector(
+            code=code, title=config.marketplaces[code].title, credentials=credentials
+        )
     return REAL_CONNECTORS[code](credentials)
 
 
@@ -45,6 +50,7 @@ def all_connectors(config: Settings | None = None) -> list[MarketplaceConnector]
 __all__ = [
     "AliExpressConnector",
     "MarketplaceCredentials",
+    "NotConnectedConnector",
     "DemoConnector",
     "HttpConnector",
     "MARKETPLACE_ORDER",

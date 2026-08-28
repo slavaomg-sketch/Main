@@ -102,12 +102,19 @@ async def marketplaces() -> dict[str, Any]:
     for code in MARKETPLACE_ORDER:
         base = settings.marketplaces[code]
         ready = conn.active(stores, (code,))
+        if settings.force_demo:
+            state = "demo"
+        elif ready:
+            state = "connected"
+        else:
+            state = "empty"
         items.append(
             {
                 "code": code,
                 "title": base.title,
-                "connected": bool(ready) and not settings.force_demo,
-                "demo": not ready or settings.force_demo,
+                "state": state,
+                "connected": state == "connected",
+                "demo": state == "demo",
                 "stores": len(ready),
                 "storeTitles": [store.title for store in ready],
                 "requires": list(base.required),

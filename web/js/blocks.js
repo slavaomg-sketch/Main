@@ -171,7 +171,10 @@
     'chart.revenueDynamics': function (body, ctx) {
       var host = Fmt.el('div');
       body.appendChild(host);
-      var series = ctx.data.marketplaces.map(function (report) {
+      // Площадки без ключей дают ровный ноль — в легенде от них только шум.
+      var series = ctx.data.marketplaces.filter(function (report) {
+        return report.connected || report.demo || report.revenue > 0;
+      }).map(function (report) {
         return {
           title: report.title,
           color: Fmt.colorOf(report.marketplace),
@@ -288,6 +291,8 @@
             name.appendChild(badge);
           } else if (report.demo) {
             name.appendChild(Fmt.el('span', 'badge badge--muted', 'демо'));
+          } else if (!report.connected) {
+            name.appendChild(Fmt.el('span', 'badge badge--muted', 'не подключено'));
           } else if ((report.warnings || []).length) {
             var partial = Fmt.el('span', 'badge badge--warning', 'частично');
             partial.title = report.warnings.join('\n');
@@ -296,15 +301,16 @@
           nameCell.appendChild(name);
           row.appendChild(nameCell);
 
+          var idle = !report.connected && !report.demo;
           [
-            Fmt.compactMoney(report.revenue),
-            Fmt.percent(shareByCode[report.marketplace] || 0),
-            Fmt.number(report.orders),
-            Fmt.compactMoney(report.avgCheck),
-            Fmt.percent(report.buyoutRate),
-            Fmt.percent(report.returnRate),
-            Fmt.percent(report.drr),
-            Fmt.compactMoney(report.profit)
+            idle ? '—' : Fmt.compactMoney(report.revenue),
+            idle ? '—' : Fmt.percent(shareByCode[report.marketplace] || 0),
+            idle ? '—' : Fmt.number(report.orders),
+            idle ? '—' : Fmt.compactMoney(report.avgCheck),
+            idle ? '—' : Fmt.percent(report.buyoutRate),
+            idle ? '—' : Fmt.percent(report.returnRate),
+            idle ? '—' : Fmt.percent(report.drr),
+            idle ? '—' : Fmt.compactMoney(report.profit)
           ].forEach(function (text, index) {
             var cell = Fmt.el('td', index === 0 || index === 7 ? '' : 'is-muted', text);
             row.appendChild(cell);
@@ -652,6 +658,7 @@
         var row = Fmt.el('div', 'health__row');
         var dot = Fmt.el('span', 'health__dot');
         dot.style.background = report.error ? 'var(--negative)'
+          : !report.connected && !report.demo ? 'var(--text-tertiary)'
           : report.demo ? 'var(--warning)' : 'var(--positive)';
         row.appendChild(dot);
         row.appendChild(Fmt.el('span', 'health__name', report.title));
@@ -659,9 +666,12 @@
         var warnings = report.warnings || [];
         var status = report.error ? 'ошибка'
           : report.demo ? 'демо-данные'
+          : !report.connected ? 'не подключено'
           : warnings.length ? 'частично' : 'подключено';
         var badge = Fmt.el('span', 'badge badge--' +
-          (report.error ? 'critical' : (report.demo || warnings.length) ? 'warning' : 'ok'), status);
+          (report.error ? 'critical'
+            : !report.connected ? 'muted'
+            : (report.demo || warnings.length) ? 'warning' : 'ok'), status);
         if (report.error) badge.title = report.error;
         row.appendChild(badge);
         wrap.appendChild(row);

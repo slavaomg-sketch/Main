@@ -267,10 +267,11 @@ async def test_disabled_store_is_not_queried(stub):
     assert len(reports[0].accounts) == 1
 
 
-async def test_marketplace_without_stores_falls_back_to_demo(stub):
+async def test_marketplace_without_stores_shows_nothing(stub):
     reports = await collect(period(), ("wildberries",), settings, await conn.load())
-    assert reports[0].demo is True
-    assert reports[0].revenue > 0
+    assert reports[0].demo is False
+    assert reports[0].connected is False
+    assert reports[0].revenue == 0
 
 
 async def test_products_and_alerts_carry_the_store_they_came_from(stub):

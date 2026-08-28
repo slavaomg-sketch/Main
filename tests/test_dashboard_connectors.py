@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from dashboard.config import MarketplaceCredentials, load_settings
-from dashboard.connectors import build_connector
+from dashboard.connectors import NotConnectedConnector, build_connector
 from dashboard.connectors.ali import AliExpressConnector
 from dashboard.connectors.demo import DemoConnector
 from dashboard.connectors.ozon import DAY_METRICS, OzonConnector
@@ -31,9 +31,28 @@ def credentials(code: str, **values) -> MarketplaceCredentials:
 # --- выбор коннектора --------------------------------------------------------
 
 
-def test_demo_connector_is_used_without_keys():
+def test_marketplace_without_keys_is_not_connected_and_not_demo():
     config = load_settings()
     object.__setattr__(config, "marketplaces", {"ozon": credentials("ozon", api_key="")})
+    object.__setattr__(config, "force_demo", False)
+    connector = build_connector("ozon", config)
+    assert isinstance(connector, NotConnectedConnector)
+    assert connector.configured is False
+
+
+async def test_not_connected_report_is_empty_but_covers_the_period():
+    report = await NotConnectedConnector(code="ozon", title="Ozon").fetch(period())
+    assert report.connected is False
+    assert report.demo is False
+    assert report.revenue == 0
+    assert report.error == ""
+    assert [point.day for point in report.series] == period().each_day()
+
+
+def test_demo_connector_requires_explicit_flag():
+    config = load_settings()
+    object.__setattr__(config, "marketplaces", {"ozon": credentials("ozon", api_key="")})
+    object.__setattr__(config, "force_demo", True)
     assert isinstance(build_connector("ozon", config), DemoConnector)
 
 

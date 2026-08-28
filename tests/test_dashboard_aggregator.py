@@ -96,16 +96,28 @@ async def test_snapshot_contains_every_requested_marketplace():
     snapshot = await build_snapshot(period, MARKETPLACE_ORDER, use_cache=False)
     payload = snapshot.to_dict()
     assert [item["marketplace"] for item in payload["marketplaces"]] == list(MARKETPLACE_ORDER)
-    assert payload["totals"]["revenue"] > 0
     assert payload["period"]["days"] == 7
     assert len(payload["totals"]["series"]) == 7
+
+
+async def test_marketplaces_without_keys_show_zeros_not_invented_sales():
+    """Выдуманные продажи в общей выручке опаснее пустой панели."""
+    period = Period.from_preset("7d", today=date(2025, 3, 10))
+    payload = (await build_snapshot(period, MARKETPLACE_ORDER, use_cache=False)).to_dict()
+
+    assert payload["totals"]["revenue"] == 0
+    assert payload["totals"]["orders"] == 0
+    for report in payload["marketplaces"]:
+        assert report["connected"] is False
+        assert report["demo"] is False
+        assert report["revenue"] == 0
 
 
 async def test_snapshot_is_deterministic_for_same_period():
     period = Period.from_preset("7d", today=date(2025, 3, 10))
     first = (await build_snapshot(period, ("ozon",), use_cache=False)).to_dict()
     second = (await build_snapshot(period, ("ozon",), use_cache=False)).to_dict()
-    assert first["totals"]["revenue"] == second["totals"]["revenue"]
+    assert first["totals"] == second["totals"]
 
 
 async def test_snapshot_respects_marketplace_filter():
