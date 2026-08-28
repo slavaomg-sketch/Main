@@ -22,6 +22,9 @@
   // покоя длиннее вспышки втрое — этого хватает, чтобы пройти мимо.
   var BUG_PERIOD = 12;
   var BUG_HOT = 4;
+  // Терминал не рвёт заряды мгновенно: после нажатия горит запал, и это время —
+  // весь запас хода на то, чтобы уйти из-под воронок.
+  var FUSE_TICKS = 14;
 
   // С чего предмет может скатиться вбок. Стена сюда входит: камень, лежащий
   // на ровной твёрдой поверхности, съезжает с её края, если сбоку и наискось пусто.
@@ -30,6 +33,10 @@
   }
   function isFaller(t) {
     return t === T.ZONK || t === T.INFOTRON || t === T.ORANGE;
+  }
+  /** Заряды, которые слушают терминал: сами не падают, ждут сигнала. */
+  function isCharge(t) {
+    return t === T.YELLOW || t === T.RED;
   }
   function isMonster(t) {
     return t === T.SNIKSNAK || t === T.ELECTRON;
@@ -61,7 +68,7 @@
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0 };
+    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0 };
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -88,6 +95,7 @@
     this.deathTimer = 0;
     this.ticks = 0;
     this.moves = 0;
+    this.fuse = 0;             // 0 — терминал не нажат; иначе тики до подрыва
     return this;
   };
 
@@ -126,7 +134,8 @@
     e.fx = this.fx.slice();
     e.fy = this.fy.slice();
     e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
-                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging };
+                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
+                 carry: this.murphy.carry };
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -134,6 +143,7 @@
     e.deathTimer = this.deathTimer;
     e.ticks = this.ticks;
     e.moves = this.moves;
+    e.fuse = this.fuse;
     return e;
   };
 
@@ -143,7 +153,7 @@
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status;
+    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + this.murphy.carry;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -176,7 +186,7 @@
         // инфотронный взрыв перекрывает обычный: иначе цепочка «диск → электрон»
         // съедала бы собственную добычу
         if (isBlast(t) && !(blast === T.EXPLOSION_INFO && t === T.EXPLOSION)) continue;
-        if (t === T.ORANGE) chain.push([x, y, 'normal']);
+        if (t === T.ORANGE || isCharge(t)) chain.push([x, y, 'normal']);
         if (t === T.ELECTRON) chain.push([x, y, 'info']);
         if (t === T.MURPHY) this.killMurphy(true);
         this.tiles[i] = blast;
@@ -234,6 +244,8 @@
     if (input.snap) {
       if (t === T.BASE) { this.set(nx, ny, T.EMPTY); m.digging = 1; }
       else if (t === T.INFOTRON) { this.set(nx, ny, T.EMPTY); this.collected++; m.digging = 1; }
+      else if (t === T.EMPTY && m.carry) { this.set(nx, ny, T.RED); m.carry = 0; }  // выложили заряд
+      else if (t === T.TERMINAL) this.pressTerminal();
       return;
     }
 
@@ -250,6 +262,18 @@
       return;
     }
     if (isMonster(t)) { this.killMurphy(); return; }
+    // Красный заряд Мёрфи забирает с собой — но только один за раз.
+    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepMurphyTo(nx, ny); this.moves++; return; }
+    // Жёлтый двигается в любую сторону: он не круглый и никуда не скатывается.
+    if (t === T.YELLOW) {
+      if (this.get(nx + dx, ny + dy) !== T.EMPTY) return;
+      this.moveObj(nx, ny, nx + dx, ny + dy);
+      m.pushing = 1;
+      this.stepMurphyTo(nx, ny);
+      this.moves++;
+      return;
+    }
+    if (t === T.TERMINAL) { this.pressTerminal(); return; }
     if ((t === T.ZONK || t === T.ORANGE) && dy === 0) {
       var bi = this.idx(nx, ny);
       if (this.falling[bi]) return;                    // падающий зонк не толкнуть
@@ -370,6 +394,24 @@
     }
   };
 
+  /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
+  Engine.prototype.pressTerminal = function () {
+    if (this.fuse === 0) this.fuse = FUSE_TICKS;
+  };
+
+  /** Запал догорел — рвёт все заряды разом, где бы они ни лежали. */
+  Engine.prototype.updateFuse = function () {
+    if (this.fuse === 0) return;
+    this.fuse--;
+    if (this.fuse > 0) return;
+    var spots = [];
+    for (var i = 0; i < this.tiles.length; i++) if (isCharge(this.tiles[i])) spots.push(i);
+    for (var k = 0; k < spots.length; k++) {
+      if (!isCharge(this.tiles[spots[k]])) continue;    // соседний заряд мог уже сдетонировать по цепочке
+      this.explodeAt(spots[k] % this.w, Math.floor(spots[k] / this.w), 'normal');
+    }
+  };
+
   /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
   Engine.prototype.updateBugs = function () {
     var m = this.murphy;
@@ -394,6 +436,7 @@
 
     this.updateExplosions();
     if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    this.updateFuse();
     this.updateGravity();
     this.updateMonsters();
     if (this.status === 'playing') this.updateBugs();
@@ -415,7 +458,8 @@
     return out.join('\n');
   };
 
-  var api = { Engine: Engine, isRounded: isRounded, isFaller: isFaller, isMonster: isMonster, isBlast: isBlast };
+  var api = { Engine: Engine, isRounded: isRounded, isFaller: isFaller, isCharge: isCharge,
+              isMonster: isMonster, isBlast: isBlast };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else global.SP = Object.assign(global.SP || {}, api);
 })(typeof globalThis !== 'undefined' ? globalThis : this);

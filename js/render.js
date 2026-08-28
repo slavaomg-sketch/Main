@@ -108,6 +108,20 @@
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
+        if (t === T.TERMINAL) {
+          g.save(); g.translate(px, py);
+          SP.Sprites.drawTerminal(g, s, engine.fuse > 0, timeMs);
+          g.restore();
+          continue;
+        }
+        if (t === T.YELLOW || t === T.RED) {
+          // пока горит запал, заряды мигают — иначе не понять, что счёт пошёл
+          g.save(); g.translate(px, py);
+          if (t === T.YELLOW) SP.Sprites.drawYellow(g, s, engine.fuse > 0 && Math.sin(timeMs / 90) > 0);
+          else SP.Sprites.drawRed(g, s, engine.fuse > 0 && Math.sin(timeMs / 90) > 0);
+          g.restore();
+          continue;
+        }
         if (t === T.BUG) {
           g.save(); g.translate(px, py);
           SP.Sprites.drawBug(g, s, engine.bugHot(i), timeMs);

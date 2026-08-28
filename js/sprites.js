@@ -117,6 +117,79 @@
     g.beginPath(); g.moveTo(s / 2 - r * 0.75, s / 2 + r * 0.3); g.lineTo(s / 2 + r * 0.75, s / 2 + r * 0.3); g.stroke();
   }
 
+  // Жёлтый диск: не шар, а брикет — сразу видно, что он не покатится.
+  function drawYellow(g, s, hot) {
+    var b = s * 0.13, w = s - 2 * b;
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    rr(g, b + s * 0.03, b + s * 0.06, w, w, s * 0.14); g.fill();
+    var grad = g.createLinearGradient(b, b, b + w, b + w);
+    grad.addColorStop(0, hot ? '#fffdf0' : '#ffe89a');
+    grad.addColorStop(0.5, hot ? '#ffe14a' : '#f0b429');
+    grad.addColorStop(1, '#a06a06');
+    rr(g, b, b, w, w, s * 0.14);
+    g.fillStyle = grad; g.fill();
+    g.strokeStyle = 'rgba(70,40,0,0.8)';
+    g.lineWidth = Math.max(1, s * 0.05); g.stroke();
+    // косые предупредительные полосы
+    g.save();
+    rr(g, b, b, w, w, s * 0.14); g.clip();
+    g.strokeStyle = 'rgba(50,30,0,0.5)';
+    g.lineWidth = Math.max(1, s * 0.09);
+    for (var k = -1; k < 3; k++) {
+      g.beginPath(); g.moveTo(b + k * s * 0.3, b + w); g.lineTo(b + k * s * 0.3 + w, b); g.stroke();
+    }
+    g.restore();
+  }
+
+  // Красный диск: заряд, который Мёрфи носит в руках.
+  function drawRed(g, s, hot) {
+    var r = s * 0.38;
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.beginPath(); g.ellipse(s / 2, s * 0.88, r * 0.8, r * 0.16, 0, 0, 6.2832); g.fill();
+    sphere(g, s, s / 2, s * 0.54, r, hot ? '#fff2f0' : '#ffc9c0', hot ? '#ff5a3c' : '#d92b1c', '#5c0d06');
+    g.strokeStyle = 'rgba(255,255,255,0.5)';
+    g.lineWidth = Math.max(1, s * 0.05);
+    g.beginPath(); g.arc(s / 2, s * 0.54, r * 0.62, 3.5, 4.9); g.stroke();
+    // фитилёк
+    g.strokeStyle = '#7a6a55';
+    g.lineWidth = Math.max(1, s * 0.06);
+    g.lineCap = 'round';
+    g.beginPath(); g.moveTo(s / 2, s * 0.54 - r); g.quadraticCurveTo(s * 0.66, s * 0.2, s * 0.74, s * 0.14); g.stroke();
+    if (hot) {
+      g.fillStyle = '#fff0a0';
+      g.beginPath(); g.arc(s * 0.74, s * 0.14, s * 0.07, 0, 6.2832); g.fill();
+    }
+  }
+
+  // Терминал: пульт с экраном и кнопкой. Пока запал горит — экран мигает.
+  function drawTerminal(g, s, live, timeMs) {
+    g.fillStyle = '#0a0d16';
+    g.fillRect(0, 0, s, s);
+    var b = s * 0.1;
+    rr(g, b, b, s - 2 * b, s - 2 * b, s * 0.09);
+    g.fillStyle = '#2a3145'; g.fill();
+    g.strokeStyle = '#5d6a8a';
+    g.lineWidth = Math.max(1, s * 0.05); g.stroke();
+    var blink = live ? 0.45 + 0.55 * Math.abs(Math.sin(timeMs / 90)) : 1;
+    // экран
+    rr(g, s * 0.2, s * 0.2, s * 0.6, s * 0.34, s * 0.05);
+    g.fillStyle = live ? 'rgba(255,90,60,' + blink + ')' : '#123a2c'; g.fill();
+    g.strokeStyle = live ? '#ffd0c0' : '#2f7f5f';
+    g.lineWidth = Math.max(1, s * 0.035); g.stroke();
+    g.strokeStyle = live ? '#fff' : '#57e0a5';
+    g.lineWidth = Math.max(1, s * 0.045);
+    g.lineCap = 'round';
+    for (var k = 0; k < 2; k++) {
+      var yy = s * 0.29 + k * s * 0.13;
+      g.beginPath(); g.moveTo(s * 0.27, yy); g.lineTo(s * (k ? 0.6 : 0.73), yy); g.stroke();
+    }
+    // кнопка
+    g.fillStyle = live ? '#ff6a48' : '#c0392b';
+    g.beginPath(); g.arc(s / 2, s * 0.72, s * 0.12, 0, 6.2832); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.6)';
+    g.lineWidth = Math.max(1, s * 0.03); g.stroke();
+  }
+
   function drawExit(g, s, open) {
     g.fillStyle = '#0a0d14';
     g.fillRect(0, 0, s, s);
@@ -401,6 +474,8 @@
     pack.tile[T.INFOTRON] = make(drawInfotron);
     pack.tile[T.ORANGE] = make(drawOrange);
     pack.tile[T.SNIKSNAK] = make(drawSnik);
+    pack.tile[T.YELLOW] = make(function (g, s) { drawYellow(g, s, false); });
+    pack.tile[T.RED] = make(function (g, s) { drawRed(g, s, false); });
     pack.tile[T.EXIT] = make(function (g, s) { drawExit(g, s, false); });
     pack.exitOpen = make(function (g, s) { drawExit(g, s, true); });
     for (var d = 0; d < 4; d++) {
@@ -415,6 +490,7 @@
   global.SP = Object.assign(global.SP, {
     Sprites: {
       build: build, drawElectron: drawElectron, drawBlast: drawBlast, drawBug: drawBug,
+      drawYellow: drawYellow, drawRed: drawRed, drawTerminal: drawTerminal,
       skins: SKINS, skin: skinById,
       drawHero: function (g, size, facing, id) { skinById(id).draw(g, size, facing); }
     }
