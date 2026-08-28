@@ -50,6 +50,22 @@ def statistics_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return dict(totals)
 
 
+def orders_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Итоги дня по строкам заказов, во всех колонках цены.
+
+    Приложение Wildberries показывает заказы в деньгах, и панель обязана
+    сходиться с ним. Считаем отдельно принятые и отменённые: неизвестно,
+    включает приложение отмены или нет.
+    """
+    totals: Counter = Counter()
+    for row in rows:
+        bucket = "отменённые" if row.get("isCancel") else "принятые"
+        totals[f"{bucket}:строк"] += 1
+        for name in ("priceWithDisc", "finishedPrice", "totalPrice"):
+            totals[f"{bucket}:{name}"] += abs(_num(row, name))
+    return {key: round(value, 2) for key, value in totals.items()}
+
+
 def finance_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Итоги дня по строкам отчёта реализации, во всех подходящих колонках.
 
@@ -125,12 +141,14 @@ async def check_day(connection_id: str, day: date) -> dict[str, Any]:
 
     period = Period(date_from=day, date_to=day)
     statistics = await warehouse.read_rows(connection_id, "sales", period)
+    orders = await warehouse.read_rows(connection_id, "orders", period)
     finance = await warehouse.read_rows(connection_id, "finance", period)
 
     by_operation = [row for row in finance if parse_day(row.get("rrDate")) == day]
     return {
         "день": day.isoformat(),
         "статистика": statistics_totals(statistics),
+        "заказы": orders_totals(orders),
         "финотчёт по дате продажи": finance_totals(finance),
         "финотчёт по дате операции": finance_totals(by_operation),
     }
