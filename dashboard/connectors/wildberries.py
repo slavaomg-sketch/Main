@@ -69,6 +69,7 @@ ORDERS_PATH = "/api/v1/supplier/orders"
 STOCKS_PATH = "/api/analytics/v1/stocks-report/wb-warehouses"
 FINANCE_PATH = "/api/finance/v1/sales-reports/detailed"
 BALANCE_PATH = "/api/v1/account/balance"
+REPORTS_PATH = "/api/finance/v1/sales-reports/list"
 
 # Пауза между обращениями к одному методу одним токеном.
 STATISTICS_INTERVAL = 20.0
@@ -99,6 +100,11 @@ FINANCE_PAGES = 12
 
 # Раньше этой даты Wildberries детализацию отчётов реализации не отдаёт.
 FINANCE_SINCE = date(2024, 1, 29)
+
+# Список отчётов реализации — та же таблица, что в кабинете продавца,
+# с готовым итогом «Итого к оплате». Хранится с 1 января 2025 года.
+REPORTS_SINCE = date(2025, 1, 1)
+REPORTS_PAGE = 1000
 
 # Просим только нужные колонки: полная строка отчёта — это под сотню полей,
 # а строк за год набегают сотни тысяч.
@@ -313,6 +319,74 @@ class WildberriesConnector(HttpConnector):
         payload = response.json()
         return payload if isinstance(payload, dict) else {}
 
+    async def reports(
+        self,
+        date_from: date,
+        date_to: date,
+        max_wait: float = FINANCE_PATIENCE,
+    ) -> list[dict[str, Any]]:
+        """Список ежедневных отчётов реализации — как в кабинете продавца.
+
+        Каждая строка это готовый итог дня: продажа, «К перечислению за
+        товар», логистика, хранение, приёмка, штрафы и «Итого к оплате» —
+        та самая сумма, которую площадка переводит на счёт. Считать её
+        самим по строкам детализации не нужно: Wildberries уже посчитал.
+
+        На один день приходится два отчёта — основной и по выкупам.
+        """
+        if date_from < REPORTS_SINCE:
+            date_from = REPORTS_SINCE
+        if date_to < date_from:
+            return []
+
+        key = _token_key(self.credentials.get("token"))
+        rows: list[dict[str, Any]] = []
+        offset = 0
+
+        for _ in range(FINANCE_PAGES):
+            body = {
+                "dateFrom": date_from.isoformat(),
+                "dateTo": date_to.isoformat(),
+                "limit": REPORTS_PAGE,
+                "offset": offset,
+                "period": "daily",
+            }
+
+            async def call(payload: dict[str, Any] = body) -> httpx.Response:
+                async with self.client(FINANCE_URL) as client:
+                    return await client.post(
+                        REPORTS_PATH, json=payload, timeout=FINANCE_TIMEOUT
+                    )
+
+            response = await Throttle.run(
+                f"wb:{key}:reports", FINANCE_INTERVAL, call, max_wait=max_wait
+            )
+            if response.status_code == 204:
+                break
+            response.raise_for_status()
+
+            page = self.as_list(response.json(), "data", "result")
+            if not page:
+                break
+            rows.extend(page)
+            if len(page) < REPORTS_PAGE:
+                break
+            offset += len(page)
+
+        return rows
+
+    async def collect_reports(
+        self,
+        date_from: date,
+        date_to: date,
+        max_wait: float = FINANCE_PATIENCE,
+    ) -> dict[str, Any]:
+        rows, error = await self._try(
+            self.reports(date_from, date_to, max_wait),
+            denied_hint="в токене Wildberries нужна категория «Статистика»",
+        )
+        return {"reports": rows, "errors": {"reports": error}}
+
     async def _balance_rows(self, today: date, max_wait: float) -> list[dict[str, Any]]:
         payload = await self.balance(max_wait)
         return [
@@ -416,6 +490,7 @@ class WildberriesConnector(HttpConnector):
             period,
             rows.get("statisticsFrom"),
         )
+        self._apply_reports(report, rows.get("reports") or [])
         self._apply_stocks(report, rows.get("stocks") or [], period)
 
         report.parents = sorted(
@@ -435,6 +510,7 @@ class WildberriesConnector(HttpConnector):
             ("orders", "заказы"),
             ("stocks", "остатки"),
             ("finance", "отчёт реализации"),
+            ("reports", "итоги отчётов"),
         ):
             if errors.get(source):
                 report.warnings.append(f"{human} не получены — {errors[source]}")
@@ -592,6 +668,29 @@ class WildberriesConnector(HttpConnector):
             point.orders = orders_by_day.get(point.day, 0)
 
         report.funnel = Funnel(orders=report.orders, buyouts=report.buyouts)
+
+    # --- ежедневные отчёты реализации: итоги, посчитанные площадкой ----------
+
+    def _apply_reports(
+        self, report: MarketplaceReport, rows: list[dict[str, Any]]
+    ) -> None:
+        """Сложить итоги ежедневных отчётов за период.
+
+        Это та же таблица, что в кабинете продавца: на каждый день по два
+        отчёта — основной и по выкупам. Считать ничего не надо, Wildberries
+        уже посчитал, в том числе «Итого к оплате» — сумму, которая уйдёт
+        на расчётный счёт.
+        """
+        for row in rows:
+            report.reports_count += 1
+            report.bank_payment += self.to_float(row.get("bankPaymentSum"))
+            report.report_sale += self.to_float(row.get("retailAmountSum"))
+            report.report_for_pay += self.to_float(row.get("forPaySum"))
+            report.delivery_cost += self.to_float(row.get("deliveryServiceSum"))
+            report.storage_cost += self.to_float(row.get("paidStorageSum"))
+            report.acceptance_cost += self.to_float(row.get("paidAcceptanceSum"))
+            report.penalty_sum += self.to_float(row.get("penaltySum"))
+            report.deduction_sum += self.to_float(row.get("deductionSum"))
 
     # --- отчёт реализации: глубина за пределами статистики --------------------
 

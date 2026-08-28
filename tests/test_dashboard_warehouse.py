@@ -63,6 +63,8 @@ def wb_handler(sales, orders, stocks=None, finance_rows=None, balance=None):
     def handler(request: httpx.Request) -> httpx.Response:
         if "account/balance" in request.url.path:
             return httpx.Response(200, json=balance or {"current": 0, "for_withdraw": 0})
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             if not finance_rows:
                 return httpx.Response(204)
@@ -153,7 +155,8 @@ async def test_sync_downloads_and_stores_everything(store, monkeypatch):
     result = await warehouse.sync_store(store, settings)
 
     assert result.ok
-    assert result.stored == {"balance": 1, "sales": 2, "orders": 1, "stocks": 1, "finance": 0}
+    assert result.stored == {"reports": 0, "balance": 1, "sales": 2, "orders": 1,
+                             "stocks": 1, "finance": 0}
     assert len(await warehouse.read_rows(store.id, "sales")) == 2
 
 
@@ -205,6 +208,8 @@ async def test_failed_source_is_remembered_and_shown_as_warning(store, monkeypat
     def handler(request: httpx.Request) -> httpx.Response:
         if "stocks-report" in request.url.path:
             return httpx.Response(403, json={"detail": "no scope"})
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -336,6 +341,8 @@ async def test_background_sync_waits_out_the_rate_limit(store, monkeypatch):
     attempts = {"sales": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -395,6 +402,8 @@ async def test_deeper_history_triggers_a_full_download(store, monkeypatch):
         window = request.url.params.get("dateFrom", "")
         if window:
             windows.append(window[:10])
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -440,6 +449,8 @@ async def test_coverage_is_remembered_only_for_successful_sources(store, monkeyp
     def handler(request: httpx.Request) -> httpx.Response:
         if "orders" in request.url.path:
             return httpx.Response(500, text="boom")
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -591,6 +602,8 @@ async def test_finance_is_downloaded_page_by_page(store, monkeypatch):
     asked: list[int] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             import json as _json
 
@@ -618,6 +631,8 @@ async def test_finance_is_never_asked_for_dates_wildberries_has_no_reports(store
     asked: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             import json as _json
 
@@ -641,6 +656,8 @@ async def test_next_finance_sync_only_asks_for_recent_changes(store, monkeypatch
     asked: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             import json as _json
 
@@ -712,6 +729,8 @@ async def test_wider_column_set_forces_a_full_finance_download(store, monkeypatc
     asked: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             import json as _json
 
@@ -907,3 +926,57 @@ async def test_balance_growth_needs_a_day_to_compare_with(store, monkeypatch):
     assert report.balance_current == 700000
     assert report.balance_delta_known is False
     assert report.balance_delta == 0
+
+
+# --- ежедневные отчёты реализации -----------------------------------------------
+
+
+def daily_report(day: date, report_id: int, sale: float, for_pay: float,
+                 delivery: float = 0.0, bank: float = 0.0) -> dict:
+    """Строка списка отчётов — как её отдаёт Wildberries."""
+    return {
+        "reportId": report_id,
+        "dateFrom": day.isoformat(),
+        "dateTo": day.isoformat(),
+        "reportType": 1,
+        "retailAmountSum": str(sale),
+        "forPaySum": str(for_pay),
+        "deliveryServiceSum": str(delivery),
+        "paidStorageSum": "0",
+        "paidAcceptanceSum": "0",
+        "penaltySum": "0",
+        "deductionSum": "0",
+        "bankPaymentSum": str(bank),
+    }
+
+
+async def test_daily_reports_give_the_amount_that_reaches_the_account(store, monkeypatch):
+    """«Итого к оплате» площадка считает сама — панель только складывает
+    дневные отчёты за период."""
+    today = date.today()
+    rows = [
+        daily_report(today, 1, sale=65551.49, for_pay=48810.33, delivery=5000, bank=43000),
+        daily_report(today, 2, sale=5563.33, for_pay=3692.90, delivery=400, bank=3200),
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "account/balance" in request.url.path:
+            return httpx.Response(200, json={"current": 0, "for_withdraw": 0})
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=rows)
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
+        if "sales" in request.url.path or "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    await warehouse.sync_store(store, settings)
+
+    report = await warehouse.report_for(store, period(3), settings)
+
+    # За день два отчёта: основной и по выкупам — складываются вместе.
+    assert report.reports_count == 2
+    assert report.bank_payment == pytest.approx(46200)
+    assert report.report_sale == pytest.approx(71114.82)
+    assert report.delivery_cost == pytest.approx(5400)

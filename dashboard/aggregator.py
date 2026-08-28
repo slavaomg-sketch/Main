@@ -68,6 +68,9 @@ def merge_reports(
         "commission", "payout", "logistics", "ad_spend", "cost_price",
         "reviews_count", "stock_units",
         "balance_current", "balance_for_withdraw", "balance_delta",
+        "bank_payment", "report_sale", "report_for_pay", "delivery_cost",
+        "storage_cost", "acceptance_cost", "penalty_sum", "deduction_sum",
+        "reports_count",
     ):
         setattr(merged, attr, _sum(reports, attr))
 
@@ -220,6 +223,16 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "returnRate": round(returns / orders * 100, 1) if orders else 0.0,
         "drr": round(ad_spend / revenue * 100, 1) if revenue else 0.0,
         "stockUnits": int(_sum(reports, "stock_units")),
+        # Итоги ежедневных отчётов реализации — как их посчитал Wildberries.
+        "bankPayment": round(_sum(reports, "bank_payment"), 2),
+        "reportSale": round(_sum(reports, "report_sale"), 2),
+        "reportForPay": round(_sum(reports, "report_for_pay"), 2),
+        "deliveryCost": round(_sum(reports, "delivery_cost"), 2),
+        "storageCost": round(_sum(reports, "storage_cost"), 2),
+        "acceptanceCost": round(_sum(reports, "acceptance_cost"), 2),
+        "penaltySum": round(_sum(reports, "penalty_sum"), 2),
+        "deductionSum": round(_sum(reports, "deduction_sum"), 2),
+        "reportsCount": int(_sum(reports, "reports_count")),
         # Прирост баланса кабинета — деньги, реально начисленные площадкой
         # за период, уже после всех её удержаний.
         "balanceCurrent": round(_sum(reports, "balance_current"), 2),
@@ -279,6 +292,7 @@ def build_deltas(
         "grossRevenue",
         "returnsAmount",
         "balanceDelta",
+        "bankPayment",
         "buyerPaid",
         "orders",
         "units",

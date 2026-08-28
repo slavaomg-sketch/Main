@@ -194,6 +194,72 @@
       });
     },
 
+    'kpi.bankPayment': function (body, ctx) {
+      var totals = ctx.data.totals;
+
+      if (!totals.reportsCount) {
+        body.appendChild(Charts.emptyState(
+          'Отчёты реализации за этот период ещё не сформированы'
+        ));
+        return;
+      }
+
+      metric(body, {
+        value: totals.bankPayment,
+        format: Fmt.compactMoney,
+        delta: ctx.data.deltas.bankPayment,
+        footer: Fmt.number(totals.reportsCount) + ' ' +
+                Fmt.plural(totals.reportsCount, ['отчёт', 'отчёта', 'отчётов']) +
+                ' · столько уйдёт на расчётный счёт',
+        color: 'var(--positive)'
+      });
+    },
+
+    'panel.costs': function (body, ctx) {
+      var totals = ctx.data.totals;
+
+      if (!totals.reportsCount) {
+        body.appendChild(Charts.emptyState(
+          'Отчёты реализации за этот период ещё не сформированы'
+        ));
+        return;
+      }
+
+      var commission = Math.max(totals.reportSale - totals.reportForPay, 0);
+      var lines = [
+        { name: 'Продажа', value: totals.reportSale, kind: 'in' },
+        { name: 'Комиссия площадки и эквайринг', value: -commission },
+        { name: 'Логистика', value: -totals.deliveryCost },
+        { name: 'Хранение', value: -totals.storageCost },
+        { name: 'Приёмка', value: -totals.acceptanceCost },
+        { name: 'Штрафы', value: -totals.penaltySum },
+        { name: 'Прочие удержания и выплаты', value: -totals.deductionSum },
+        { name: 'Итого к оплате', value: totals.bankPayment, kind: 'out' }
+      ].filter(function (line) {
+        return line.kind || Math.abs(line.value) >= 0.5;
+      });
+
+      var base = Math.abs(totals.reportSale) || 1;
+      var wrap = Fmt.el('div', 'costs');
+      lines.forEach(function (line) {
+        var row = Fmt.el('div', 'costs__row' + (line.kind ? ' is-' + line.kind : ''));
+        row.appendChild(Fmt.el('span', 'costs__name', line.name));
+
+        var track = Fmt.el('div', 'costs__track');
+        var fill = Fmt.el('div', 'costs__fill');
+        fill.style.width = Math.min(Math.abs(line.value) / base * 100, 100).toFixed(1) + '%';
+        track.appendChild(fill);
+        row.appendChild(track);
+
+        var share = Math.abs(line.value) / base * 100;
+        row.appendChild(Fmt.el('span', 'costs__value',
+          Fmt.compactMoney(line.value) +
+          (line.kind ? '' : '  ' + Fmt.percent(share))));
+        wrap.appendChild(row);
+      });
+      body.appendChild(wrap);
+    },
+
     'kpi.balance': function (body, ctx) {
       var totals = ctx.data.totals;
 

@@ -555,6 +555,26 @@ html[data-theme="auto"] .icon-moon { display: none; }
   font-variant-numeric: tabular-nums;
 }
 /* Две величины в одной карточке: штуки крупно, деньги рядом и чуть тише. */
+/* Цепочка «куда уходят деньги»: от продажи до суммы на расчётный счёт. */
+.costs { display: flex; flex-direction: column; gap: 10px; }
+.costs__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.3fr) minmax(60px, 2fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.costs__name { color: var(--text-secondary); }
+.costs__track { height: 8px; border-radius: 4px; background: var(--surface); overflow: hidden; }
+.costs__fill { height: 100%; border-radius: 4px; background: var(--negative); opacity: 0.55; }
+.costs__value { font-variant-numeric: tabular-nums; white-space: pre; color: var(--text-tertiary); }
+.costs__row.is-in .costs__fill,
+.costs__row.is-out .costs__fill { background: var(--positive); opacity: 0.75; }
+.costs__row.is-in .costs__name,
+.costs__row.is-out .costs__name,
+.costs__row.is-in .costs__value,
+.costs__row.is-out .costs__value { color: var(--text); font-weight: 600; }
+
 /* Подпись под названием строки таблицы — категория товара у родителя. */
 .cell-note { display: block; margin-top: 2px; font-size: 12px; color: var(--text-tertiary); }
 

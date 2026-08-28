@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 # Площадки, данные которых складываются в хранилище.
 # Остальные пока опрашиваются напрямую при каждом запросе.
 STORED: dict[str, tuple[str, ...]] = {
-    "wildberries": ("sales", "orders", "stocks", "finance", "balance"),
+    "wildberries": ("sales", "orders", "stocks", "finance", "reports", "balance"),
 }
 
 # Источники, которые несут историю продаж. По ним считается глубина
@@ -52,7 +52,7 @@ HISTORY_SOURCES = ("sales", "orders", "finance")
 # Wildberries отдаётся раз в минуту, зато хранится годами — именно он даёт
 # панели полугодие и год. Из общей выгрузки он вынесен, чтобы не задерживать
 # статистику.
-SLOW_SOURCES = {"finance", "balance"}
+SLOW_SOURCES = {"finance", "reports", "balance"}
 
 # Источники, из которых считаются свежие дни. Отчёт реализации добирает
 # только то, до чего статистика уже не достаёт.
@@ -115,6 +115,9 @@ def row_key(source: str, row: dict[str, Any], index: int) -> str:
     if source == "finance":
         return str(row.get("rrdId") or row.get("srid") or index)
 
+    if source == "reports":
+        return str(row.get("reportId") or index)
+
     if source == "balance":
         # По одной записи в день: в течение дня она перезаписывается, и в
         # базе остаётся последнее известное значение баланса за этот день.
@@ -145,6 +148,10 @@ def row_day(source: str, row: dict[str, Any], fallback: date) -> date:
         return fallback
     if source == "balance":
         return parse_day(row.get("day")) or fallback
+
+    if source == "reports":
+        # Ежедневный отчёт покрывает один день — берём начало периода.
+        return parse_day(row.get("dateFrom")) or fallback
 
     if source == "finance":
         # `saleDt` — дата самой продажи, `rrDate` — дата, когда операция
@@ -488,6 +495,15 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
         raw = await connector.collect_balance(today)
         await _save(store.id, ("balance",), raw, today, today, result)
         slow_sources = tuple(item for item in slow_sources if item != "balance")
+
+    if "reports" in slow_sources and isinstance(connector, WildberriesConnector):
+        reports_from = max(
+            await _window(store.id, ("reports",), horizon), wildberries.REPORTS_SINCE
+        )
+        if reports_from <= today:
+            raw = await connector.collect_reports(reports_from, today)
+            await _save(store.id, ("reports",), raw, reports_from, today, result)
+        slow_sources = tuple(item for item in slow_sources if item != "reports")
 
     if slow_sources and isinstance(connector, WildberriesConnector):
         # Набор колонок отчёта расширили — значит, в старых строках их нет,

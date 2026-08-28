@@ -402,6 +402,18 @@ class MarketplaceReport:
     # Баланс кабинета: сколько на нём сейчас, сколько доступно к выводу и
     # насколько он вырос за период. Прирост — это и есть деньги, которые
     # площадка начислила за период, уже за вычетом всех своих расходов.
+    # Итоги ежедневных отчётов реализации — как их считает сам Wildberries.
+    # «Итого к оплате» это и есть сумма, которая уходит на расчётный счёт.
+    bank_payment: float = 0.0
+    report_sale: float = 0.0
+    report_for_pay: float = 0.0
+    delivery_cost: float = 0.0
+    storage_cost: float = 0.0
+    acceptance_cost: float = 0.0
+    penalty_sum: float = 0.0
+    deduction_sum: float = 0.0
+    reports_count: int = 0
+
     balance_current: float = 0.0
     balance_for_withdraw: float = 0.0
     balance_delta: float = 0.0
@@ -495,6 +507,15 @@ class MarketplaceReport:
             "rating": _round(self.rating, 2),
             "reviewsCount": int(self.reviews_count),
             "stockUnits": int(self.stock_units),
+            "bankPayment": _round(self.bank_payment),
+            "reportSale": _round(self.report_sale),
+            "reportForPay": _round(self.report_for_pay),
+            "deliveryCost": _round(self.delivery_cost),
+            "storageCost": _round(self.storage_cost),
+            "acceptanceCost": _round(self.acceptance_cost),
+            "penaltySum": _round(self.penalty_sum),
+            "deductionSum": _round(self.deduction_sum),
+            "reportsCount": int(self.reports_count),
             "balanceCurrent": _round(self.balance_current),
             "balanceForWithdraw": _round(self.balance_for_withdraw),
             "balanceDelta": _round(self.balance_delta),

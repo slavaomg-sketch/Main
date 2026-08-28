@@ -218,6 +218,12 @@ async def init_db() -> None:
         # «Пришло на баланс» — прирост баланса кабинета за период. Именно эту
         # сумму владелец выводит на расчётный счёт.
         await _add_blocks_once(db, "balance_block_added", ("kpi.balance",), size="sm")
+        # «Итого к оплате» из ежедневных отчётов реализации и разбивка,
+        # куда уходит разница между продажей и этой суммой.
+        await _add_blocks_once(db, "bank_payment_added", ("kpi.bankPayment",), size="sm")
+        await _add_blocks_once(
+            db, "costs_panel_added", ("panel.costs",), after_type="table.marketplaces"
+        )
         await db.commit()
         cursor = await db.execute("SELECT COUNT(*) AS total FROM layouts")
         row = await cursor.fetchone()

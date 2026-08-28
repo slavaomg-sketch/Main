@@ -414,6 +414,8 @@ def wb_row(day: str = "2025-03-01T10:00:00") -> dict:
 
 async def test_stocks_failure_does_not_lose_sales_and_orders(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -459,6 +461,8 @@ async def test_rate_limit_becomes_warning_not_crash(monkeypatch):
     calls = {"sales": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:
@@ -482,6 +486,8 @@ async def test_answer_for_wider_period_is_reused_instead_of_second_request(monke
     calls = {"sales": 0}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if "sales-reports/list" in request.url.path:
+            return httpx.Response(200, json=[])
         if "sales-reports" in request.url.path:
             return httpx.Response(204)
         if "sales" in request.url.path:

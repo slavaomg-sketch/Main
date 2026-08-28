@@ -61,6 +61,26 @@ BLOCK_CATALOG: list[dict[str, Any]] = [
         "icon": "profit",
     },
     {
+        "type": "kpi.bankPayment",
+        "title": "Итого к оплате",
+        "group": "Показатели",
+        "description": "Сумма из ежедневных отчётов реализации Wildberries — "
+                       "ровно та, что уходит на расчётный счёт.",
+        "sizes": ["sm", "md"],
+        "defaultSize": "sm",
+        "icon": "wallet",
+    },
+    {
+        "type": "panel.costs",
+        "title": "Куда уходят деньги",
+        "group": "Разделы",
+        "description": "Цепочка от продажи до «Итого к оплате»: комиссия, "
+                       "логистика, хранение, приёмка, штрафы — по строкам отчёта.",
+        "sizes": ["md", "lg", "xl"],
+        "defaultSize": "lg",
+        "icon": "wallet",
+    },
+    {
         "type": "kpi.balance",
         "title": "Пришло на баланс",
         "group": "Показатели",
@@ -280,6 +300,7 @@ BLOCK_TYPES: dict[str, dict[str, Any]] = {block["type"]: block for block in BLOC
 VALID_SIZES = {"sm", "md", "lg", "xl"}
 
 DEFAULT_LAYOUT_TYPES: list[tuple[str, str]] = [
+    ("kpi.bankPayment", "sm"),
     ("kpi.balance", "sm"),
     ("kpi.revenue", "sm"),
     ("kpi.grossRevenue", "sm"),
