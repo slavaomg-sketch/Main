@@ -64,6 +64,10 @@ class SyncResult:
     finished_at: datetime = field(default_factory=datetime.utcnow)
     full: bool = False                      # первая выгрузка: качаем всю историю
     date_from: date | None = None
+    # Что в итоге лежит в базе: площадка может отдавать историю не так
+    # глубоко, как её запросили.
+    earliest: date | None = None
+    latest: date | None = None
 
     @property
     def ok(self) -> bool:
@@ -79,6 +83,8 @@ class SyncResult:
             "ok": self.ok,
             "full": self.full,
             "dateFrom": self.date_from.isoformat() if self.date_from else "",
+            "earliest": self.earliest.isoformat() if self.earliest else "",
+            "latest": self.latest.isoformat() if self.latest else "",
             "finishedAt": self.finished_at.replace(microsecond=0).isoformat() + "Z",
         }
 
@@ -248,6 +254,29 @@ async def last_stored_day(connection_id: str, sources: tuple[str, ...]) -> date 
         return None
 
 
+async def stored_range(connection_id: str, sources: tuple[str, ...]) -> tuple[date | None, date | None]:
+    """Какой отрезок дат реально лежит в базе по этому магазину."""
+    history = [source for source in sources if source not in SNAPSHOT_SOURCES]
+    if not history:
+        return None, None
+
+    placeholders = ",".join("?" for _ in history)
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            f"SELECT MIN(day) AS first_day, MAX(day) AS last_day FROM marketplace_rows"
+            f" WHERE connection_id = ? AND source IN ({placeholders})",
+            [connection_id, *history],
+        )
+        row = await cursor.fetchone()
+
+    if not row or not row["first_day"]:
+        return None, None
+    try:
+        return date.fromisoformat(row["first_day"]), date.fromisoformat(row["last_day"])
+    except ValueError:
+        return None, None
+
+
 async def prune(connection_id: str, before: date) -> int:
     """Убрать строки старше срока хранения, чтобы база не росла бесконечно."""
     async with db.connect() as connection:
@@ -385,6 +414,7 @@ async def sync_store(store: connections.Connection, config: Settings | None = No
         await mark_sync(store.id, source, covered_from=date_from)
 
     await prune(store.id, horizon)
+    result.earliest, result.latest = await stored_range(store.id, STORED[store.marketplace])
     return result
 
 
@@ -418,9 +448,10 @@ async def sync_all(config: Settings | None = None) -> list[SyncResult]:
                 )
         for result in results:
             log.info(
-                "Выгружено %s: %s%s",
+                "Выгружено %s: %s; в базе %s%s",
                 result.title,
                 ", ".join(f"{key} {value}" for key, value in result.stored.items()) or "нет строк",
+                f"{result.earliest} — {result.latest}" if result.earliest else "пусто",
                 f"; ошибки: {result.errors}" if result.errors else "",
             )
         return results
