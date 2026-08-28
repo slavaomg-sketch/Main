@@ -1,5 +1,7 @@
 """HTTP-слой панели: данные, раскладки, доступ."""
 
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -405,3 +407,75 @@ async def test_cleanup_runs_only_once(dashboard_db):
     layouts = await db.list_layouts()
 
     assert "panel.unitEconomics" in {block["type"] for block in layouts[0]["blocks"]}
+
+
+# --- фильтр по магазинам --------------------------------------------------------
+
+
+def _two_wb_stores(client, monkeypatch):
+    """Два кабинета Wildberries с разной выручкой — 1000 ₽ и 300 ₽ за сегодня."""
+    import httpx
+
+    from dashboard.connectors.wildberries import WildberriesConnector
+
+    today = date.today().isoformat()
+    prices = {"token-slava": 1000.0, "token-natasha": 300.0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        price = prices[request.headers["Authorization"]]
+        if "sales-reports" in request.url.path:
+            return httpx.Response(204)
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[{
+                "date": f"{today}T10:00:00", "srid": f"s{price}", "saleID": f"S{price}",
+                "finishedPrice": price, "forPay": price, "supplierArticle": "ART",
+                "nmId": 1, "subject": "Кружка",
+            }])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    def fake_client(self, base_url=None):
+        return httpx.AsyncClient(
+            base_url=base_url or self.base_url,
+            headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(WildberriesConnector, "client", fake_client)
+
+    ids = {}
+    for title, token in (("ВБ Вячеслав", "token-slava"), ("ВБ Наталья", "token-natasha")):
+        created = add_store(client, "wildberries", title)["created"]
+        client.put(f"/api/connections/{created}", json={"values": {"token": token}})
+        ids[title] = created
+
+    client.post("/api/sync")
+    return ids
+
+
+def test_store_list_is_published_for_the_switch(client, monkeypatch):
+    ids = _two_wb_stores(client, monkeypatch)
+    payload = client.get("/api/marketplaces").json()
+
+    titles = [store["title"] for store in payload["stores"]]
+    assert titles == ["ВБ Вячеслав", "ВБ Наталья"]
+    assert {store["id"] for store in payload["stores"]} == set(ids.values())
+
+
+def test_overview_can_show_one_store_and_all_together(client, monkeypatch):
+    ids = _two_wb_stores(client, monkeypatch)
+
+    together = client.get("/api/overview?preset=today").json()
+    slava = client.get(f"/api/overview?preset=today&stores={ids['ВБ Вячеслав']}").json()
+    natasha = client.get(f"/api/overview?preset=today&stores={ids['ВБ Наталья']}").json()
+
+    assert together["totals"]["revenue"] == 1300
+    assert slava["totals"]["revenue"] == 1000
+    assert natasha["totals"]["revenue"] == 300
+
+
+def test_unknown_store_filter_falls_back_to_all(client, monkeypatch):
+    _two_wb_stores(client, monkeypatch)
+    payload = client.get("/api/overview?preset=today&stores=нет-такого").json()
+    assert payload["totals"]["revenue"] == 1300

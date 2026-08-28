@@ -398,6 +398,19 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .chip.is-active .chip__dot { transform: scale(1.25); }
 .chip:not(.is-active) .chip__dot { opacity: 0.35; }
 
+/* Магазины — отдельная группа фильтров, отделена от площадок тонкой чертой. */
+.chips--stores { position: relative; padding-left: 15px; }
+.chips--stores::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+
 .filters__meta {
   display: inline-flex;
   align-items: center;

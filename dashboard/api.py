@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from .aggregator import build_snapshot, cache, normalize_codes
+from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
 from .connectors import MARKETPLACE_ORDER, REAL_CONNECTORS
@@ -85,13 +85,23 @@ async def overview(
     date_from: str | None = Query(None, alias="from"),
     date_to: str | None = Query(None, alias="to"),
     marketplaces: str | None = Query(None),
+    stores: str | None = Query(None),
     refresh: bool = Query(False),
 ) -> dict[str, Any]:
     period = _period(preset, date_from, date_to)
     codes = normalize_codes(marketplaces)
-    stores = await conn.load(settings)
+    all_stores = await conn.load(settings)
+
+    # Фильтр по магазинам: пусто — считаем все кабинеты вместе.
+    picked = normalize_stores(stores, all_stores)
+    selected = [store for store in all_stores if store.id in picked] if picked else all_stores
+
     snapshot = await build_snapshot(
-        period, codes, use_cache=not refresh, connections=stores
+        period,
+        codes,
+        use_cache=not refresh,
+        connections=selected,
+        scope=",".join(picked),
     )
     return snapshot.to_dict()
 
@@ -121,7 +131,16 @@ async def marketplaces() -> dict[str, Any]:
                 "requires": list(base.required),
             }
         )
-    return {"marketplaces": items, "forceDemo": settings.force_demo}
+    # Плоский список кабинетов — для переключателя «все магазины / по одному».
+    ready = conn.active(stores, tuple(MARKETPLACE_ORDER))
+    return {
+        "marketplaces": items,
+        "stores": [
+            {"id": store.id, "title": store.title, "marketplace": store.marketplace}
+            for store in ready
+        ],
+        "forceDemo": settings.force_demo,
+    }
 
 
 # --- магазины и их ключи --------------------------------------------------------

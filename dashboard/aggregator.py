@@ -241,12 +241,14 @@ class SnapshotCache:
         self._items: dict[str, tuple[float, Snapshot]] = {}
         self._lock = asyncio.Lock()
 
-    def _key(self, period: Period, codes: tuple[str, ...]) -> str:
-        return f"{period.date_from}:{period.date_to}:{','.join(codes)}"
+    def _key(self, period: Period, codes: tuple[str, ...], scope: str = "") -> str:
+        return f"{period.date_from}:{period.date_to}:{','.join(codes)}:{scope}"
 
-    async def get(self, period: Period, codes: tuple[str, ...]) -> Snapshot | None:
+    async def get(
+        self, period: Period, codes: tuple[str, ...], scope: str = ""
+    ) -> Snapshot | None:
         async with self._lock:
-            item = self._items.get(self._key(period, codes))
+            item = self._items.get(self._key(period, codes, scope))
             if not item:
                 return None
             stored_at, snapshot = item
@@ -254,9 +256,11 @@ class SnapshotCache:
                 return None
             return snapshot
 
-    async def put(self, period: Period, codes: tuple[str, ...], snapshot: Snapshot) -> None:
+    async def put(
+        self, period: Period, codes: tuple[str, ...], snapshot: Snapshot, scope: str = ""
+    ) -> None:
         async with self._lock:
-            self._items[self._key(period, codes)] = (time.monotonic(), snapshot)
+            self._items[self._key(period, codes, scope)] = (time.monotonic(), snapshot)
 
     async def clear(self) -> None:
         async with self._lock:
@@ -273,6 +277,22 @@ def normalize_codes(raw: str | None) -> tuple[str, ...]:
     codes = [code.strip().lower() for code in raw.split(",") if code.strip()]
     selected = tuple(code for code in MARKETPLACE_ORDER if code in codes)
     return selected or MARKETPLACE_ORDER
+
+
+def normalize_stores(raw: str | None, connections: list[Connection]) -> tuple[str, ...]:
+    """Разобрать фильтр магазинов из строки запроса.
+
+    Пустая строка или «all» — смотрим все кабинеты вместе, как раньше.
+    Иначе остаются только перечисленные: у одной площадки может быть
+    несколько магазинов, и руководителю нужно видеть каждый отдельно.
+    """
+    if not raw or raw.strip().lower() in {"all", "*", "все"}:
+        return ()
+    wanted = {item.strip() for item in raw.split(",") if item.strip()}
+    picked = tuple(
+        connection.id for connection in connections if connection.id in wanted
+    )
+    return picked
 
 
 def _tag_account(report: MarketplaceReport, title: str) -> MarketplaceReport:
@@ -351,10 +371,13 @@ async def build_snapshot(
     use_cache: bool = True,
     config: Settings | None = None,
     connections: list[Connection] | None = None,
+    scope: str = "",
 ) -> Snapshot:
+    """Срез за период. `scope` — какие магазины выбраны, входит в ключ кэша:
+    иначе «все магазины» и «только Наталья» делили бы один ответ."""
     config = config or settings
     if use_cache:
-        cached = await cache.get(period, codes)
+        cached = await cache.get(period, codes, scope)
         if cached is not None:
             return cached
 
@@ -375,5 +398,5 @@ async def build_snapshot(
         currency=config.default_currency,
     )
     if use_cache:
-        await cache.put(period, codes, snapshot)
+        await cache.put(period, codes, snapshot, scope)
     return snapshot

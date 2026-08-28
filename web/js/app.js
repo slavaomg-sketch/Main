@@ -33,6 +33,8 @@
     from: '',
     to: '',
     selected: null,      // Set кодов площадок; null — все
+    store: '',           // id магазина; пусто — все магазины вместе
+    storeList: [],
     data: null,
     editing: false,
     loading: false,
@@ -48,7 +50,7 @@
 
   function cacheDom() {
     ['gate', 'gate-form', 'gate-password', 'gate-error', 'app', 'tabs', 'periods',
-     'marketplaces', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
+     'marketplaces', 'stores', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
      'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
      'toasts', 'footer-note', 'brand-sub', 'topbar',
@@ -167,6 +169,48 @@
         loadData();
       });
       dom.marketplaces.appendChild(chip);
+    });
+  }
+
+  function storeTitle(id) {
+    var found = state.storeList.filter(function (item) { return item.id === id; })[0];
+    return found ? found.title : '';
+  }
+
+  function renderStoreChips(list) {
+    state.storeList = list || [];
+    Fmt.clear(dom.stores);
+
+    // Переключатель нужен, только когда кабинетов больше одного.
+    dom.stores.hidden = state.storeList.length < 2;
+    if (state.storeList.length < 2) {
+      state.store = '';
+      return;
+    }
+
+    // Выбранный магазин мог быть удалён — тогда возвращаемся ко «Всем».
+    if (state.store && !storeTitle(state.store)) state.store = '';
+
+    var options = [{ id: '', title: 'Все магазины', marketplace: '' }]
+      .concat(state.storeList);
+
+    options.forEach(function (item) {
+      var chip = Fmt.el('button', 'chip');
+      chip.type = 'button';
+      if (item.id) {
+        chip.style.setProperty('--dot', Fmt.colorOf(item.marketplace));
+        chip.appendChild(Fmt.el('span', 'chip__dot'));
+      }
+      chip.appendChild(Fmt.el('span', null, item.title));
+      if (state.store === item.id) chip.classList.add('is-active');
+      chip.addEventListener('click', function () {
+        if (state.store === item.id) return;
+        state.store = item.id;
+        writeStorage('dashboard.store', item.id);
+        renderStoreChips(state.storeList);
+        loadData();
+      });
+      dom.stores.appendChild(chip);
     });
   }
 
@@ -628,6 +672,7 @@
       params.to = state.to;
     }
     if (state.selected) params.marketplaces = Array.from(state.selected).join(',');
+    if (state.store) params.stores = state.store;
 
     return Api.overview(params).then(function (data) {
       state.data = data;
@@ -655,7 +700,9 @@
       }
 
       renderCoverageNote(data);
-      dom['brand-sub'].textContent = Fmt.periodLabel(data.period);
+      var scope = state.store ? storeTitle(state.store) : '';
+      dom['brand-sub'].textContent = Fmt.periodLabel(data.period) +
+        (scope ? ' · ' + scope : '');
       var syncedAt = state.sync && state.sync.syncedAt;
       dom['footer-note'].textContent = 'Период: ' + Fmt.periodLabel(data.period) +
         ' · подключено площадок: ' + live.length + ' из ' + data.marketplaces.length +
@@ -803,7 +850,10 @@
       onSaved: function () {
         // Ключи изменились — площадки могли перестать быть демонстрационными.
         Api.marketplaces()
-          .then(function (payload) { renderMarketplaceChips(payload.marketplaces); })
+          .then(function (payload) {
+            renderMarketplaceChips(payload.marketplaces);
+            renderStoreChips(payload.stores);
+          })
           .then(function () { return loadData(true); });
       }
     });
@@ -822,6 +872,7 @@
     }
     var codes = readStorage('dashboard.marketplaces', '');
     state.selected = codes ? new Set(codes.split(',')) : null;
+    state.store = readStorage('dashboard.store', '');
   }
 
   function start() {
@@ -834,6 +885,7 @@
         state.catalogByType[definition.type] = definition;
       });
       renderMarketplaceChips(results[1].marketplaces);
+      renderStoreChips(results[1].stores);
       return loadSyncStatus();
     }).then(function () {
       return loadLayouts();
