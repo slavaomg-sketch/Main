@@ -153,12 +153,20 @@
     });
   }
 
+  /* Ряд для линии: по дням, а внутри одного дня — по часам. Иначе за
+     «Вчера» точка была бы одна и рисовать было бы нечего. */
+  function seriesPoints(data) {
+    var hourly = data.totals.hourly || [];
+    if (hourly.length > 1) return hourly;
+    return data.totals.series || [];
+  }
+
   function seriesValues(data, key) {
-    return (data.totals.series || []).map(function (point) { return point[key] || 0; });
+    return seriesPoints(data).map(function (point) { return point[key] || 0; });
   }
 
   function seriesDays(data) {
-    return (data.totals.series || []).map(function (point) { return point.day; });
+    return seriesPoints(data).map(function (point) { return point.day; });
   }
 
   function seriesLabels(data) {

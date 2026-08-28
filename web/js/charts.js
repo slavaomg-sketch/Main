@@ -482,7 +482,7 @@
         var day = settings.days && settings.days[index];
         var text = settings.format ? settings.format(values[index]) : Fmt.fullMoney(values[index]);
         showTooltip(
-          (day ? '<b>' + Fmt.dayLong(day) + '</b><br>' : '') + text,
+          (day ? '<b>' + Fmt.momentLabel(day) + '</b><br>' : '') + text,
           event.clientX,
           box.top - 8
         );

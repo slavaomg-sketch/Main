@@ -11,7 +11,7 @@ import asyncio
 import logging
 import time
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Iterable
 
 from .config import Settings, settings
@@ -97,6 +97,16 @@ def merge_reports(
                 bucket.add(point)
     merged.series = [days[day] for day in period.each_day()]
 
+    hours: dict[datetime, DayPoint] = {
+        hour: DayPoint(day=hour) for hour in period.each_hour()
+    }
+    for report in reports:
+        for point in report.hourly:
+            bucket = hours.get(point.day)
+            if bucket is not None:
+                bucket.add(point)
+    merged.hourly = [hours[hour] for hour in period.each_hour()]
+
     products: dict[str, Product] = {}
     for report in reports:
         for product in report.products:
@@ -178,13 +188,20 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
 
     # Общий дневной ряд: под каждым показателем панели должен быть свой
     # график, поэтому складываются все поля точки, а не три избранных.
-    series: dict[date, DayPoint] = {}
+    series: dict[Any, DayPoint] = {}
+    hourly: dict[Any, DayPoint] = {}
     for report in reports:
         for point in report.series:
             bucket = series.get(point.day)
             if bucket is None:
                 bucket = DayPoint(day=point.day)
                 series[point.day] = bucket
+            bucket.add(point)
+        for point in report.hourly:
+            bucket = hourly.get(point.day)
+            if bucket is None:
+                bucket = DayPoint(day=point.day)
+                hourly[point.day] = bucket
             bucket.add(point)
 
     return {
@@ -252,6 +269,7 @@ def build_totals(reports: list[MarketplaceReport]) -> dict[str, Any]:
         "rating": round(sum(ratings) / len(ratings), 2) if ratings else 0.0,
         "reviewsCount": reviews_count,
         "series": [series[key].to_dict() for key in sorted(series)],
+        "hourly": [hourly[key].to_dict() for key in sorted(hourly)],
         "share": [
             {
                 "marketplace": report.marketplace,

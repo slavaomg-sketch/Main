@@ -558,6 +558,7 @@ class WildberriesConnector(HttpConnector):
         self, report: MarketplaceReport, rows: list[dict[str, Any]], period: Period
     ) -> None:
         by_day: dict[date, DayPoint] = {}
+        by_hour: dict[datetime, DayPoint] = {}
         by_sku: dict[str, Product] = {}
         by_region: dict[str, RegionSales] = defaultdict(lambda: RegionSales(region=""))
 
@@ -579,16 +580,22 @@ class WildberriesConnector(HttpConnector):
             # «выручка» в панели — это чистые продажи, а не валовые выкупы.
             sign = -1 if is_return else 1
 
-            point = by_day.setdefault(day, DayPoint(day=day))
-            point.revenue += sign * amount
-            point.units += sign
-            point.payout += sign * for_pay
-            if is_return:
-                point.returns_amount += amount
-            else:
-                point.gross_revenue += amount
-                point.buyer_paid += self._buyer_price(row)
-                point.buyouts += 1
+            # Внутри одного дня линия рисуется по часам — иначе точка одна.
+            slots = [by_day.setdefault(day, DayPoint(day=day))]
+            if period.days == 1:
+                hour = moment.replace(minute=0, second=0, microsecond=0)
+                slots.append(by_hour.setdefault(hour, DayPoint(day=hour)))
+
+            for point in slots:
+                point.revenue += sign * amount
+                point.units += sign
+                point.payout += sign * for_pay
+                if is_return:
+                    point.returns_amount += amount
+                else:
+                    point.gross_revenue += amount
+                    point.buyer_paid += self._buyer_price(row)
+                    point.buyouts += 1
             report.revenue += sign * amount
             # Валовые выкупы и сумма возвратов хранятся порознь: в личном
             # кабинете Wildberries показывают именно выкупы, без вычета
@@ -634,6 +641,7 @@ class WildberriesConnector(HttpConnector):
             region.orders += sign
 
         report.series = [by_day.get(day, DayPoint(day=day)) for day in period.each_day()]
+        report.hourly = [by_hour.get(hour, DayPoint(day=hour)) for hour in period.each_hour()]
         report.products = sorted(
             (product for product in by_sku.values() if product.revenue > 0),
             key=lambda item: item.revenue,
@@ -650,6 +658,7 @@ class WildberriesConnector(HttpConnector):
     def _apply_orders(
         self, report: MarketplaceReport, rows: list[dict[str, Any]], period: Period
     ) -> None:
+        by_hour = {point.day: point for point in report.hourly}
         orders_by_day: dict[date, int] = defaultdict(int)
         money_by_day: dict[date, dict[str, float]] = defaultdict(
             lambda: {"placed": 0.0, "amount": 0.0, "cancelled": 0.0, "cancelledAmount": 0.0}
@@ -668,6 +677,11 @@ class WildberriesConnector(HttpConnector):
             report.orders_amount += amount
             money_by_day[day]["placed"] += 1
             money_by_day[day]["amount"] += amount
+
+            slot = by_hour.get(moment.replace(minute=0, second=0, microsecond=0))
+            if slot is not None:
+                slot.orders_placed += 1
+                slot.orders_amount += amount
             parent = self._parent(
                 self._sku(row), str(row.get("subject") or row.get("brand") or "")
             )
@@ -679,9 +693,14 @@ class WildberriesConnector(HttpConnector):
                 report.cancelled_amount += amount
                 money_by_day[day]["cancelled"] += 1
                 money_by_day[day]["cancelledAmount"] += amount
+                if slot is not None:
+                    slot.cancellations += 1
+                    slot.cancelled_amount += amount
                 continue
             orders_by_day[day] += 1
             report.orders += 1
+            if slot is not None:
+                slot.orders += 1
 
         for point in report.series:
             point.orders = orders_by_day.get(point.day, 0)

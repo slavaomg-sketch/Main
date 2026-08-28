@@ -158,7 +158,17 @@
     return MARKETPLACE_TITLES[code] || code;
   }
 
+  /* Подпись точки на линии: «27 августа» по дням и «27 августа, 14:00»
+     внутри суток — час отличается наличием времени в самой дате. */
+  function momentLabel(value) {
+    var text = String(value || '');
+    if (text.indexOf('T') === -1) return dayLong(value);
+    var parts = text.split('T');
+    return dayLong(parts[0]) + ', ' + parts[1].slice(0, 5);
+  }
+
   global.Fmt = {
+    momentLabel: momentLabel,
     compactMoney: compactMoney,
     fullMoney: fullMoney,
     number: number,

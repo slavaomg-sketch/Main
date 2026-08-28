@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from calendar import monthrange
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, ClassVar
 
 
@@ -96,6 +96,20 @@ class Period:
     def each_day(self) -> list[date]:
         return [self.date_from + timedelta(days=i) for i in range(self.days)]
 
+    def each_hour(self) -> list[datetime]:
+        """Часы внутри однодневного периода — до текущего часа, если день идёт.
+
+        Для «Сегодня» и «Вчера» суточная линия бесполезна: точка одна.
+        Зато внутри дня видно, как расходятся продажи по часам.
+        """
+        if self.days != 1:
+            return []
+        start = datetime.combine(self.date_from, time.min)
+        last = 23
+        if self.until and self.until.date() == self.date_from:
+            last = self.until.hour
+        return [start + timedelta(hours=index) for index in range(last + 1)]
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "from": self.date_from.isoformat(),
@@ -154,7 +168,9 @@ class DayPoint:
     рисовать. Поля повторяют показатели отчёта один в один.
     """
 
-    day: date
+    # Обычно это дата. Для периода в один день точки нарезаются по часам,
+    # и тогда здесь дата со временем — линия внутри суток.
+    day: date | datetime
     revenue: float = 0.0
     gross_revenue: float = 0.0
     returns_amount: float = 0.0
@@ -477,6 +493,8 @@ class MarketplaceReport:
     balance_at: str = ""
 
     series: list[DayPoint] = field(default_factory=list)
+    # Разрез по часам — только для периода в один день.
+    hourly: list[DayPoint] = field(default_factory=list)
     products: list[Product] = field(default_factory=list)
     parents: list[ParentSales] = field(default_factory=list)
     stock_alerts: list[StockAlert] = field(default_factory=list)
@@ -588,6 +606,7 @@ class MarketplaceReport:
             "drr": _round(self.drr, 1),
             "stockDays": _round(self.stock_days, 1),
             "series": [point.to_dict() for point in self.series],
+            "hourly": [point.to_dict() for point in self.hourly],
             "products": [product.to_dict() for product in self.products],
             "parents": [parent.to_dict() for parent in self.parents],
             "stockAlerts": [alert.to_dict() for alert in self.stock_alerts],

@@ -1009,3 +1009,28 @@ async def test_orders_money_matches_the_marketplace_app(store, monkeypatch):
     assert report.orders_amount == 1800       # 1000 + 500 + 300, до скидки
     assert report.cancelled_amount == 300     # отменённые — отдельной цифрой
     assert report.avg_check == 600
+
+
+async def test_single_day_period_gets_an_hourly_line(store, monkeypatch):
+    """За «Вчера» суточная точка одна — линию рисовать не из чего.
+    Поэтому внутри одного дня ряд нарезается по часам."""
+    yesterday = date.today() - timedelta(days=1)
+
+    def at(hour: int, srid: str, price: float) -> dict:
+        row = sale(yesterday, srid, price=price)
+        row["date"] = f"{yesterday.isoformat()}T{hour:02d}:30:00"
+        row["priceWithDisc"] = price
+        return row
+
+    mock_wb(monkeypatch, wb_handler(sales=[at(9, "a", 1000.0), at(18, "b", 500.0)], orders=[]))
+    await warehouse.sync_store(store, settings)
+
+    one_day = Period(date_from=yesterday, date_to=yesterday)
+    report = await warehouse.report_for(store, one_day, settings)
+
+    assert len(report.series) == 1            # сутки — одна точка
+    assert len(report.hourly) == 24           # а часов двадцать четыре
+    by_hour = {point.day.hour: point.revenue for point in report.hourly}
+    assert by_hour[9] == 1000
+    assert by_hour[18] == 500
+    assert by_hour[3] == 0
