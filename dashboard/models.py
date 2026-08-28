@@ -255,6 +255,10 @@ class MarketplaceReport:
     account_id: str = ""
     account_title: str = ""
 
+    # Частичные проблемы: часть данных пришла, часть нет.
+    # В отличие от `error`, отчёт при этом остаётся пригодным.
+    warnings: list[str] = field(default_factory=list)
+
     revenue: float = 0.0
     orders: int = 0
     units: int = 0
@@ -333,6 +337,7 @@ class MarketplaceReport:
             "connected": self.connected,
             "demo": self.demo,
             "error": self.error,
+            "warnings": list(self.warnings),
             "revenue": _round(self.revenue),
             "orders": int(self.orders),
             "units": int(self.units),

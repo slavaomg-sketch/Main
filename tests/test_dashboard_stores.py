@@ -297,3 +297,30 @@ async def test_broken_store_does_not_break_the_marketplace_report(stub):
     assert by_code["wildberries"].revenue == 1000
     assert by_code["ozon"].accounts[0].title == "Ozon с плохим ключом"
     assert "ключ отклонён" in by_code["ozon"].error
+
+
+# --- частичные сбои при нескольких магазинах ------------------------------------
+
+
+def test_merge_collects_warnings_from_every_store():
+    first = store_report("Магазин 1", 1000, 10, "A")
+    first.warnings = ["остатки не получены — HTTP 404"]
+    second = store_report("Магазин 2", 500, 5, "B")
+    second.warnings = ["остатки не получены — HTTP 404", "продажи не получены — лимит"]
+
+    merged = merge_reports("wildberries", "Wildberries", [first, second], period())
+
+    # Одинаковые предупреждения не повторяются, разные — сохраняются.
+    assert merged.warnings == [
+        "остатки не получены — HTTP 404",
+        "продажи не получены — лимит",
+    ]
+    assert merged.error == ""
+    assert merged.revenue == 1500
+
+
+def test_warnings_reach_json():
+    report = store_report("Магазин 1", 100, 1, "A")
+    report.warnings = ["остатки не получены"]
+    merged = merge_reports("wildberries", "Wildberries", [report], period())
+    assert merged.to_dict()["warnings"] == ["остатки не получены"]

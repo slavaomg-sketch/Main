@@ -204,21 +204,21 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
         value for value in credentials.values.values() if value and len(value) >= 6
     ]
 
+    # Только пробные запросы: собирать полный отчёт здесь не нужно, а лишние
+    # обращения упираются в лимиты площадок (Wildberries считает их строго).
     probes = [probe_to_dict(probe, secrets) for probe in await connector.probe(period)]
-    report = await connector.safe_fetch(period)
+    working = [probe for probe in probes if probe["ok"]]
 
     return {
         "id": store.id,
-        "ok": all(probe["ok"] for probe in probes) and not report.error,
+        "ok": bool(working) and all(probe["ok"] for probe in probes),
+        "partial": bool(working) and not all(probe["ok"] for probe in probes),
         "period": period.to_dict(),
         "probes": probes,
         "summary": {
-            "error": report.error,
-            "days": len(report.series),
-            "orders": report.orders,
-            "products": len(report.products),
-            "hasRevenue": bool(report.revenue),
-            "hasStock": bool(report.stock_units),
+            "working": len(working),
+            "total": len(probes),
+            "rows": sum(probe.get("rows") or 0 for probe in probes),
         },
     }
 

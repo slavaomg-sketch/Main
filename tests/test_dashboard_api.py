@@ -289,3 +289,67 @@ def test_testing_unknown_store_is_not_found(client):
 def test_connections_page_requires_login_when_password_is_set(protected_client):
     assert protected_client.get("/api/connections").status_code == 401
     assert protected_client.post("/api/connections", json={"marketplace": "ozon"}).status_code == 401
+
+
+def test_connection_test_does_not_double_the_requests(client, monkeypatch):
+    """Кнопка «Проверить связь» должна делать по одному запросу на метод:
+    лишние обращения упираются в лимиты площадок."""
+    import httpx
+
+    from dashboard.connectors.wildberries import WildberriesConnector
+
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if "sales" in request.url.path or "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    def fake_client(self, base_url=None):
+        return httpx.AsyncClient(
+            base_url=base_url or self.base_url,
+            headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(WildberriesConnector, "client", fake_client)
+
+    created = add_store(client, "wildberries", "WB")["created"]
+    client.put(f"/api/connections/{created}", json={"values": {"token": "token"}})
+
+    result = client.post(f"/api/connections/{created}/test").json()
+
+    assert result["ok"] is True
+    assert len(result["probes"]) == 3
+    assert len(calls) == 3
+    assert sorted(calls) == sorted(set(calls))
+
+
+def test_connection_test_reports_partial_answer(client, monkeypatch):
+    import httpx
+
+    from dashboard.connectors.wildberries import WildberriesConnector
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "stocks-report" in request.url.path:
+            return httpx.Response(404, json={"detail": "deprecated"})
+        return httpx.Response(200, json=[{"date": "2025-03-01T10:00:00"}])
+
+    def fake_client(self, base_url=None):
+        return httpx.AsyncClient(
+            base_url=base_url or self.base_url,
+            headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(WildberriesConnector, "client", fake_client)
+
+    created = add_store(client, "wildberries", "WB")["created"]
+    client.put(f"/api/connections/{created}", json={"values": {"token": "token"}})
+
+    result = client.post(f"/api/connections/{created}/test").json()
+
+    assert result["ok"] is False
+    assert result["partial"] is True
+    assert result["summary"] == {"working": 2, "total": 3, "rows": 2}

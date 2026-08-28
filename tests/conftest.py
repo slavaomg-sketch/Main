@@ -57,6 +57,25 @@ def fake_bot() -> FakeBot:
     return FakeBot()
 
 
+@pytest.fixture(autouse=True)
+def reset_marketplace_state(monkeypatch):
+    """Кэш ответов площадок и ограничитель частоты живут в памяти процесса —
+    между тестами их нужно обнулять, иначе тесты влияют друг на друга.
+    Паузы между запросами в тестах не нужны: проверяется логика, а не вежливость."""
+    from dashboard.connectors import wildberries
+    from dashboard.connectors.base import Throttle
+
+    monkeypatch.setattr(wildberries, "STATISTICS_INTERVAL", 0.0)
+    monkeypatch.setattr(wildberries, "ANALYTICS_INTERVAL", 0.0)
+    wildberries.reset_cache()
+    Throttle._locks.clear()
+    Throttle._next_allowed.clear()
+    yield
+    wildberries.reset_cache()
+    Throttle._locks.clear()
+    Throttle._next_allowed.clear()
+
+
 @pytest.fixture
 def dashboard_db(tmp_path):
     """Панель пишет раскладки во временную базу — настройки заморожены,

@@ -43,6 +43,9 @@ def merge_reports(
     )
     errors = [report.error for report in reports if report.error]
     merged.error = "; ".join(dict.fromkeys(errors))
+    merged.warnings = list(
+        dict.fromkeys(warning for report in reports for warning in report.warnings)
+    )
     merged.accounts = [report.to_account_summary() for report in reports]
 
     for attr in (
@@ -331,10 +334,13 @@ async def build_snapshot(
         if cached is not None:
             return cached
 
-    reports = await collect(period, codes, config, connections)
+    # Прошлый период считаем первым: Wildberries отдаёт статистику «от даты»,
+    # поэтому более широкая выборка закрывает и текущий период — второй запрос
+    # к площадке не понадобится и лимит частоты не сработает.
     previous: list[MarketplaceReport] = []
     if compare:
         previous = await collect(period.previous(), codes, config, connections)
+    reports = await collect(period, codes, config, connections)
 
     snapshot = Snapshot(
         period=period,

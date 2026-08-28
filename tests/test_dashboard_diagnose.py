@@ -146,9 +146,9 @@ def test_values_flag_shows_raw_sample_but_still_masks_secrets():
 
 
 def mock_wildberries(monkeypatch, handler):
-    def client(self):
+    def client(self, base_url=None):
         return httpx.AsyncClient(
-            base_url=self.base_url,
+            base_url=base_url or self.base_url,
             headers=self.headers(),
             transport=httpx.MockTransport(handler),
         )
@@ -167,9 +167,9 @@ async def test_check_reports_working_connection(monkeypatch):
             }])
         if "orders" in request.url.path:
             return httpx.Response(200, json=[{"date": "2025-03-01T10:00:00", "isCancel": False}])
-        return httpx.Response(200, json=[{
-            "supplierArticle": "ART-1", "quantity": 4, "warehouseName": "Коледино",
-        }])
+        return httpx.Response(200, json={"items": [
+            {"nmId": 178234561, "quantity": 4, "warehouseName": "Коледино"},
+        ]})
 
     mock_wildberries(monkeypatch, handler)
     text = "\n".join(await diagnose.check(wb_store(), period(), wb_config(), with_values=False))
@@ -177,7 +177,7 @@ async def test_check_reports_working_connection(monkeypatch):
     assert TOKEN not in text
     assert "••••" in text
     assert "строк: 1" in text
-    assert "выручка посчитана" in text
+    assert "все запросы прошли" in text
     assert "Кружка" not in text and "Москва" not in text
     assert "WB Основной" in text
 

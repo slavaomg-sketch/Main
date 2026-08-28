@@ -288,6 +288,10 @@
             name.appendChild(badge);
           } else if (report.demo) {
             name.appendChild(Fmt.el('span', 'badge badge--muted', 'демо'));
+          } else if ((report.warnings || []).length) {
+            var partial = Fmt.el('span', 'badge badge--warning', 'частично');
+            partial.title = report.warnings.join('\n');
+            name.appendChild(partial);
           }
           nameCell.appendChild(name);
           row.appendChild(nameCell);
@@ -652,12 +656,19 @@
         row.appendChild(dot);
         row.appendChild(Fmt.el('span', 'health__name', report.title));
 
-        var status = report.error ? 'ошибка' : report.demo ? 'демо-данные' : 'подключено';
+        var warnings = report.warnings || [];
+        var status = report.error ? 'ошибка'
+          : report.demo ? 'демо-данные'
+          : warnings.length ? 'частично' : 'подключено';
         var badge = Fmt.el('span', 'badge badge--' +
-          (report.error ? 'critical' : report.demo ? 'warning' : 'ok'), status);
+          (report.error ? 'critical' : (report.demo || warnings.length) ? 'warning' : 'ok'), status);
         if (report.error) badge.title = report.error;
         row.appendChild(badge);
         wrap.appendChild(row);
+
+        warnings.forEach(function (warning) {
+          wrap.appendChild(Fmt.el('div', 'health__warning', warning));
+        });
       });
       body.appendChild(wrap);
     }

@@ -153,20 +153,31 @@ def test_wildberries_orders_count_cancellations_separately():
     assert report.series[0].orders == 2
 
 
-def test_wildberries_stocks_flag_low_cover_items():
+def test_wildberries_stocks_come_from_analytics_and_map_to_articles():
     connector = WildberriesConnector(credentials("wildberries", token="x"))
     report = blank("wildberries")
     connector._apply_sales(report, [
         {"date": "2025-03-01T10:00:00", "saleID": "S1", "finishedPrice": 100,
-         "supplierArticle": "ART-1", "subject": "Кружка"},
+         "supplierArticle": "ART-1", "nmId": 12345, "subject": "Кружка"},
     ] * 3, period())
+    # Остатки приходят только с номенклатурой WB — связку даёт статистика продаж.
     connector._apply_stocks(report, [
-        {"supplierArticle": "ART-1", "quantity": 2, "warehouseName": "Коледино"},
+        {"nmId": 12345, "quantity": 2, "warehouseName": "Коледино"},
+        {"nmId": 12345, "quantity": 1, "warehouseName": "Казань"},
     ], period())
 
-    assert report.stock_units == 2
+    assert report.stock_units == 3
     assert report.stock_alerts and report.stock_alerts[0].sku == "ART-1"
+    assert report.stock_alerts[0].stock == 3
     assert report.stock_alerts[0].warehouse == "Коледино"
+
+
+def test_wildberries_stocks_without_known_article_still_counted():
+    connector = WildberriesConnector(credentials("wildberries", token="x"))
+    report = blank("wildberries")
+    connector._apply_sales(report, [], period())
+    connector._apply_stocks(report, [{"nmId": 999, "quantity": 7}], period())
+    assert report.stock_units == 7
 
 
 # --- Ozon --------------------------------------------------------------------
@@ -320,3 +331,143 @@ def test_demo_marketplaces_differ_from_each_other():
     wb = DemoConnector(code="wildberries", title="WB").build(period())
     ozon = DemoConnector(code="ozon", title="Ozon").build(period())
     assert wb.revenue != ozon.revenue
+
+
+# --- Wildberries: лимиты, кэш и частичные сбои ---------------------------------
+
+
+def mock_wb(monkeypatch, handler):
+    """Подставной Wildberries: и статистика, и аналитика."""
+    def client(self, base_url=None):
+        return httpx.AsyncClient(
+            base_url=base_url or self.base_url,
+            headers=self.headers(),
+            transport=httpx.MockTransport(handler),
+        )
+
+    monkeypatch.setattr(WildberriesConnector, "client", client)
+
+
+def wb_row(day: str = "2025-03-01T10:00:00") -> dict:
+    return {
+        "date": day, "saleID": "S1", "finishedPrice": 1000, "forPay": 850,
+        "supplierArticle": "ART-1", "nmId": 777, "subject": "Кружка",
+        "regionName": "Москва",
+    }
+
+
+async def test_stocks_failure_does_not_lose_sales_and_orders(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales" in request.url.path:
+            return httpx.Response(200, json=[wb_row()])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[{"date": "2025-03-01T10:00:00", "isCancel": False}])
+        return httpx.Response(404, json={"detail": "This method is deprecated"})
+
+    mock_wb(monkeypatch, handler)
+    report = await WildberriesConnector(credentials("wildberries", token="token")).safe_fetch(period())
+
+    assert report.error == ""
+    assert report.revenue == 1000
+    assert report.orders == 1
+    assert any("остатки" in warning for warning in report.warnings)
+
+
+async def test_missing_analytics_scope_is_explained_in_plain_words(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "supplier" in request.url.path:
+            return httpx.Response(200, json=[wb_row()])
+        return httpx.Response(403, json={"detail": "forbidden"})
+
+    mock_wb(monkeypatch, handler)
+    report = await WildberriesConnector(credentials("wildberries", token="token")).safe_fetch(period())
+
+    assert report.revenue == 1000
+    assert any("Аналитика" in warning for warning in report.warnings)
+
+
+async def test_report_fails_only_when_neither_sales_nor_orders_arrive(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="boom")
+
+    mock_wb(monkeypatch, handler)
+    report = await WildberriesConnector(credentials("wildberries", token="token")).safe_fetch(period())
+
+    assert report.error
+    assert report.revenue == 0
+
+
+async def test_rate_limit_becomes_warning_not_crash(monkeypatch):
+    calls = {"sales": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales" in request.url.path:
+            calls["sales"] += 1
+            return httpx.Response(
+                429, json={"detail": "rate limit exceeded"}, headers={"X-RateLimit-Retry": "1"}
+            )
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[{"date": "2025-03-01T10:00:00", "isCancel": False}])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    report = await WildberriesConnector(credentials("wildberries", token="token")).safe_fetch(period())
+
+    assert report.orders == 1                       # заказы всё равно посчитаны
+    assert any("продажи" in warning for warning in report.warnings)
+    assert calls["sales"] == 2                      # одна вежливая повторная попытка
+
+
+async def test_answer_for_wider_period_is_reused_instead_of_second_request(monkeypatch):
+    calls = {"sales": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "sales" in request.url.path:
+            calls["sales"] += 1
+            return httpx.Response(200, json=[wb_row()])
+        if "orders" in request.url.path:
+            return httpx.Response(200, json=[])
+        return httpx.Response(200, json={"items": []})
+
+    mock_wb(monkeypatch, handler)
+    connector = WildberriesConnector(credentials("wildberries", token="token"))
+
+    wide = Period(date_from=date(2025, 2, 1), date_to=date(2025, 3, 3))
+    await connector.statistics("/api/v1/supplier/sales", wide.date_from)
+    await connector.statistics("/api/v1/supplier/sales", date(2025, 3, 1))
+
+    assert calls["sales"] == 1
+
+
+async def test_earlier_period_is_requested_anew(monkeypatch):
+    calls = {"sales": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["sales"] += 1
+        return httpx.Response(200, json=[wb_row()])
+
+    mock_wb(monkeypatch, handler)
+    connector = WildberriesConnector(credentials("wildberries", token="token"))
+
+    await connector.statistics("/api/v1/supplier/sales", date(2025, 3, 1))
+    await connector.statistics("/api/v1/supplier/sales", date(2025, 2, 1))
+
+    assert calls["sales"] == 2
+
+
+async def test_different_stores_do_not_share_cached_answers(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json=[wb_row()])
+
+    mock_wb(monkeypatch, handler)
+    await WildberriesConnector(credentials("wildberries", token="token-one")).statistics(
+        "/api/v1/supplier/sales", date(2025, 3, 1)
+    )
+    await WildberriesConnector(credentials("wildberries", token="token-two")).statistics(
+        "/api/v1/supplier/sales", date(2025, 3, 1)
+    )
+
+    assert calls["n"] == 2

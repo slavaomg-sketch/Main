@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
@@ -36,6 +38,82 @@ class Probe:
     @property
     def ok(self) -> bool:
         return not self.error and (self.status is None or 200 <= self.status < 300)
+
+
+class RateLimited(Exception):
+    """Площадка просит подождать. Несёт с собой, сколько именно секунд."""
+
+    def __init__(self, seconds: float, message: str) -> None:
+        super().__init__(message)
+        self.seconds = seconds
+
+
+class Throttle:
+    """Не даёт двум запросам к одному методу площадки уйти подряд.
+
+    У маркетплейсов лимиты считаются по токену и методу: Wildberries,
+    например, пускает к статистике примерно раз в минуту. Ограничитель
+    живёт в памяти процесса и общий для всех запросов панели.
+    """
+
+    _locks: dict[str, asyncio.Lock] = {}
+    _next_allowed: dict[str, float] = {}
+
+    @classmethod
+    def _lock(cls, key: str) -> asyncio.Lock:
+        lock = cls._locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            cls._locks[key] = lock
+        return lock
+
+    @classmethod
+    async def run(
+        cls,
+        key: str,
+        min_interval: float,
+        call: Callable[[], Awaitable[httpx.Response]],
+        *,
+        max_wait: float = 10.0,
+    ) -> httpx.Response:
+        """Выполнить запрос, соблюдая паузу между обращениями к методу.
+
+        Если площадка всё же ответила 429, ждём столько, сколько она просит,
+        но не дольше `max_wait` — иначе страница подвисала бы на минуту.
+        """
+        async with cls._lock(key):
+            pause = cls._next_allowed.get(key, 0.0) - time.monotonic()
+            if pause > 0:
+                await asyncio.sleep(min(pause, max_wait))
+
+            response = await call()
+            if response.status_code == 429:
+                wait = cls._retry_after(response)
+                if wait <= max_wait:
+                    log.info("%s: ждём %.0f с по просьбе площадки", key, wait)
+                    await asyncio.sleep(wait)
+                    response = await call()
+                if response.status_code == 429:
+                    cls._next_allowed[key] = time.monotonic() + cls._retry_after(response)
+                    raise RateLimited(
+                        cls._retry_after(response),
+                        f"площадка ограничивает частоту запросов, повторите через "
+                        f"{int(cls._retry_after(response))} с",
+                    )
+
+            cls._next_allowed[key] = time.monotonic() + min_interval
+            return response
+
+    @staticmethod
+    def _retry_after(response: httpx.Response) -> float:
+        for header in ("X-RateLimit-Retry", "Retry-After", "X-Ratelimit-Retry"):
+            raw = response.headers.get(header)
+            if raw:
+                try:
+                    return max(float(raw), 1.0)
+                except ValueError:
+                    continue
+        return 60.0
 
 
 class MarketplaceConnector:
@@ -97,6 +175,8 @@ class MarketplaceConnector:
                 status=exc.response.status_code,
                 error=self.redact(exc.response.text[:300]) or f"HTTP {exc.response.status_code}",
             )
+        except RateLimited as exc:
+            return Probe(label=label, status=429, error=str(exc))
         except httpx.HTTPError as exc:
             return Probe(label=label, error=self.redact(f"нет связи: {exc}"))
         except Exception as exc:  # noqa: BLE001 — диагностика не должна падать
@@ -109,6 +189,8 @@ class MarketplaceConnector:
             message = f"HTTP {exc.response.status_code} от {self.title}"
             log.warning("%s: %s", message, self.redact(exc.response.text[:300]))
             return self.empty_report(error=message)
+        except RateLimited as exc:
+            return self.empty_report(error=f"{self.title}: {exc}")
         except httpx.HTTPError as exc:
             log.warning("Сеть недоступна для %s: %s", self.title, self.redact(str(exc)))
             return self.empty_report(error=f"Нет связи с {self.title}")

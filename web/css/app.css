@@ -731,6 +731,12 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .health__row:first-child { border-top: 0; }
 .health__dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .health__name { flex: 1; font-size: 13.5px; }
+.health__warning {
+  padding: 0 0 8px 20px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
 
 /* --- Пустое состояние и скелетоны ------------------------------------------ */
 
@@ -934,6 +940,7 @@ html[data-theme="auto"] .icon-moon { display: none; }
 }
 
 .probe--ok { border-color: color-mix(in srgb, var(--positive) 40%, transparent); }
+.probe--warn { border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
 .probe--bad { border-color: color-mix(in srgb, var(--negative) 35%, transparent); }
 .probe__head { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
 .probe__row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; flex-wrap: wrap; }

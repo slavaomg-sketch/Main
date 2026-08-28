@@ -112,7 +112,8 @@
     var result = state.results[store.id];
     if (!result) return null;
 
-    var box = Fmt.el('div', 'probe ' + (result.ok ? 'probe--ok' : 'probe--bad'));
+    var box = Fmt.el('div', 'probe ' +
+      (result.ok ? 'probe--ok' : result.partial ? 'probe--warn' : 'probe--bad'));
 
     if (result.reason) {
       box.appendChild(Fmt.el('div', 'probe__head', result.reason));
@@ -120,7 +121,9 @@
     }
 
     box.appendChild(Fmt.el('div', 'probe__head',
-      result.ok ? 'Связь есть, данные приходят' : 'Площадка ответила не так, как ждали'));
+      result.ok ? 'Связь есть, данные приходят'
+        : result.partial ? 'Связь есть, но часть данных площадка не отдала'
+        : 'Площадка ответила не так, как ждали'));
 
     (result.probes || []).forEach(function (probe) {
       var line = Fmt.el('div', 'probe__row');
@@ -151,13 +154,10 @@
     });
 
     if (result.summary) {
-      var text = result.summary.error
-        ? 'Разбор ответа: ' + result.summary.error
-        : 'За неделю: заказов ' + Fmt.number(result.summary.orders) +
-          ', товаров в отчёте ' + Fmt.number(result.summary.products) +
-          ', выручка ' + (result.summary.hasRevenue ? 'посчитана' : 'нулевая') +
-          ', остатки ' + (result.summary.hasStock ? 'есть' : 'не пришли');
-      box.appendChild(Fmt.el('div', 'probe__summary', text));
+      box.appendChild(Fmt.el('div', 'probe__summary',
+        'Проверено запросов: ' + result.summary.total +
+        ', ответили ' + result.summary.working +
+        ', получено строк ' + Fmt.number(result.summary.rows)));
     }
     return box;
   }

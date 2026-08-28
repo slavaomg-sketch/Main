@@ -159,28 +159,23 @@ async def check(
         value for value in credentials.values.values() if value and len(value) >= 6
     ]
 
+    # Только пробные запросы: собирать полный отчёт здесь незачем, а лишние
+    # обращения упираются в лимиты площадок.
     probes = await connector.probe(period)
     for probe in probes:
         lines.extend(describe_probe(probe, secrets, with_values))
 
-    # Что коннектор сумел собрать из этих ответов — только счётчики, без сумм.
-    report = await connector.safe_fetch(period)
-    if report.error:
-        lines.append(f"    разбор ответа: ОШИБКА — {mask(report.error, secrets)}")
+    working = [probe for probe in probes if probe.ok]
+    rows = sum(len(probe.payload) for probe in working if isinstance(probe.payload, list))
+    if not working:
+        lines.append("    итог: площадка не ответила ни на один запрос")
+    elif len(working) == len(probes):
+        lines.append(f"    итог: все запросы прошли, получено строк {rows}")
     else:
         lines.append(
-            "    разбор ответа: "
-            f"точек графика {len(report.series)}, "
-            f"товаров {len(report.products)}, "
-            f"заказов {'есть' if report.orders else 'нет'}, "
-            f"выручка {'посчитана' if report.revenue else 'нулевая'}, "
-            f"остатки {'есть' if report.stock_units else 'нет'}"
+            f"    итог: прошло {len(working)} из {len(probes)} запросов, "
+            f"получено строк {rows} — часть данных панель не покажет"
         )
-        if with_values:
-            lines.append(
-                f"    значения: выручка {report.revenue:.2f}, заказов {report.orders}, "
-                f"товаров продано {report.units}"
-            )
     return lines
 
 
