@@ -2,7 +2,7 @@
 (function (global) {
   'use strict';
   var SP = global.SP;
-  var TICK_MS = 125;
+  var TICK_MS = 135;
   var STORE_KEY = 'infotron.progress.v1';
 
   var el = {};

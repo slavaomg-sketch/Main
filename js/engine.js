@@ -13,6 +13,10 @@
 
   var EXPLOSION_TICKS = 5;
   var DEATH_TICKS = 14;
+  // Сколько тиков зонк качается на краю, прежде чем сорваться. Это фора игроку:
+  // без неё камень трогается в тот же тик, когда из-под него ушла опора,
+  // и убежать физически невозможно.
+  var SHAKE_TICKS = 4;
 
   function isRounded(t) {
     return t === T.ZONK || t === T.INFOTRON || t === T.CHIP || t === T.ORANGE;
@@ -42,6 +46,7 @@
 
     this.tiles = new Uint8Array(n);
     this.falling = new Uint8Array(n);
+    this.shake = new Uint8Array(n);
     this.dir = new Uint8Array(n);
     this.timer = new Uint8Array(n);
     this.moved = new Uint8Array(n);
@@ -90,6 +95,7 @@
     var i = y * this.w + x;
     this.tiles[i] = t;
     this.falling[i] = 0;
+    this.shake[i] = 0;
   };
 
   Engine.prototype.exitOpen = function () { return this.collected >= this.needed; };
@@ -100,6 +106,7 @@
     e.w = this.w; e.h = this.h;
     e.tiles = this.tiles.slice();
     e.falling = this.falling.slice();
+    e.shake = this.shake.slice();
     e.dir = this.dir.slice();
     e.timer = this.timer.slice();
     e.moved = this.moved.slice();
@@ -121,7 +128,7 @@
   Engine.prototype.key = function () {
     var s = '';
     for (var i = 0; i < this.tiles.length; i++) {
-      s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0));
+      s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
     return s + '|' + this.collected + '|' + this.status;
   };
@@ -131,8 +138,10 @@
     this.tiles[j] = this.tiles[i];
     this.falling[j] = this.falling[i];
     this.dir[j] = this.dir[i];
+    this.shake[j] = 0;
     this.tiles[i] = T.EMPTY;
     this.falling[i] = 0;
+    this.shake[i] = 0;
     this.dir[i] = 0;
     this.fx[j] = x - nx;
     this.fy[j] = y - ny;
@@ -150,12 +159,16 @@
         if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
         var i = this.idx(x, y);
         var t = this.tiles[i];
-        if (t === T.WALL || t === T.EXIT || isBlast(t)) continue;
+        if (t === T.WALL || t === T.EXIT) continue;
+        // инфотронный взрыв перекрывает обычный: иначе цепочка «диск → электрон»
+        // съедала бы собственную добычу
+        if (isBlast(t) && !(blast === T.EXPLOSION_INFO && t === T.EXPLOSION)) continue;
         if (t === T.ORANGE) chain.push([x, y, 'normal']);
         if (t === T.ELECTRON) chain.push([x, y, 'info']);
         if (t === T.MURPHY) this.killMurphy(true);
         this.tiles[i] = blast;
         this.falling[i] = 0;
+        this.shake[i] = 0;
         this.dir[i] = 0;
         this.timer[i] = EXPLOSION_TICKS;
         this.fx[i] = 0;
@@ -229,6 +242,9 @@
       if (this.falling[bi]) return;                    // падающий зонк не толкнуть
       if (this.get(nx + dx, ny) !== T.EMPTY) return;
       this.moveObj(nx, ny, nx + dx, ny);
+      // толчок — осознанное действие игрока: раскачка тут не нужна,
+      // иначе камень проезжает мимо дыры, пока не отпустишь клавишу
+      this.shake[this.idx(nx + dx, ny)] = SHAKE_TICKS;
       m.pushing = 1;
       this.stepMurphyTo(nx, ny);
       this.moves++;
@@ -281,8 +297,13 @@
 
         var b = this.get(x, y + 1);
         if (b === T.EMPTY) {
-          this.moveObj(x, y, x, y + 1);
-          this.falling[this.idx(x, y + 1)] = 1;
+          // раз уже летит — летит дальше без раскачки; с места трогается не сразу
+          if (this.falling[i] || this.shake[i] >= SHAKE_TICKS) {
+            this.moveObj(x, y, x, y + 1);
+            this.falling[this.idx(x, y + 1)] = 1;
+          } else {
+            this.shake[i]++;
+          }
           continue;
         }
         if (this.falling[i]) {
@@ -292,17 +313,17 @@
           if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
         }
         if (isRounded(b)) {
-          if (this.get(x - 1, y) === T.EMPTY && this.get(x - 1, y + 1) === T.EMPTY) {
-            this.moveObj(x, y, x - 1, y);
-            this.falling[this.idx(x - 1, y)] = 1;
-            continue;
-          }
-          if (this.get(x + 1, y) === T.EMPTY && this.get(x + 1, y + 1) === T.EMPTY) {
-            this.moveObj(x, y, x + 1, y);
-            this.falling[this.idx(x + 1, y)] = 1;
+          var left = this.get(x - 1, y) === T.EMPTY && this.get(x - 1, y + 1) === T.EMPTY;
+          var right = this.get(x + 1, y) === T.EMPTY && this.get(x + 1, y + 1) === T.EMPTY;
+          if (left || right) {
+            if (this.shake[i] < SHAKE_TICKS) { this.shake[i]++; continue; }
+            var nx = left ? x - 1 : x + 1;
+            this.moveObj(x, y, nx, y);
+            this.falling[this.idx(nx, y)] = 1;
             continue;
           }
         }
+        this.shake[i] = 0;
         this.falling[i] = 0;
       }
     }

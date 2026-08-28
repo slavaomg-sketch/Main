@@ -88,6 +88,11 @@
         if (t === T.EMPTY) continue;
         var px = (x + engine.fx[i] * (1 - alpha)) * s - this.camX;
         var py = (y + engine.fy[i] * (1 - alpha)) * s - this.camY;
+        // качание перед срывом — единственное предупреждение игроку, его видно
+        if (engine.shake[i]) {
+          px += Math.sin(timeMs / 24) * s * 0.05 * engine.shake[i];
+          py += Math.sin(timeMs / 15) * s * 0.018 * engine.shake[i];
+        }
 
         if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
