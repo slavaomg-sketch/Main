@@ -167,8 +167,24 @@
     return dayLong(parts[0]) + ', ' + parts[1].slice(0, 5);
   }
 
+  /* Подпись на оси X: «22 авг» по дням и «14:00» внутри суток. */
+  function axisLabel(value) {
+    var text = String(value || '');
+    if (text.indexOf('T') !== -1) return text.split('T')[1].slice(0, 5);
+    var date = parseDay(value);
+    return date.getDate() + ' ' + MONTHS_SHORT[date.getMonth()];
+  }
+
+  /* Число с одним знаком после запятой, но без хвостового нуля: 1,5 и 30. */
+  function decimal(value) {
+    var rounded = Math.round((value || 0) * 10) / 10;
+    return String(rounded).replace('.', ',');
+  }
+
   global.Fmt = {
+    decimal: decimal,
     momentLabel: momentLabel,
+    axisLabel: axisLabel,
     compactMoney: compactMoney,
     fullMoney: fullMoney,
     number: number,

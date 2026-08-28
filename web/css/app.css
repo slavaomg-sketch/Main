@@ -617,8 +617,16 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .delta--down { background: color-mix(in srgb, var(--negative) 14%, transparent); color: var(--negative); }
 .delta svg { width: 12px; height: 12px; fill: currentColor; }
 
-.spark { margin-top: 12px; width: 100%; height: 44px; display: block; overflow: visible; cursor: crosshair; }
+.spark { margin-top: 14px; width: 100%; height: 96px; display: block; overflow: visible; cursor: crosshair; }
 .spark__marker, .spark__rule { transition: opacity 0.15s var(--ease-out); pointer-events: none; }
+/* Разлиновка и подписи не спорят с данными: волосяная сплошная линия
+   на шаг от фона и текст обычным приглушённым цветом, не цветом ряда. */
+.spark__grid { stroke: var(--line); stroke-width: 1; }
+.spark__tick {
+  font-size: 10px;
+  fill: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
 
 /* --- Режим настройки: элементы управления блоком --------------------------- */
 

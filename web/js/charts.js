@@ -419,48 +419,127 @@
 
   /* --- Мини-график в карточке показателя ----------------------------------- */
 
-  /* Искровая линия под показателем. `options.days` и `options.format`
-     делают её читаемой: при наведении видно дату и значение этого дня,
-     иначе линия — просто украшение. */
+  /* Круглое число не меньше заданного: 4 700 → 5 000, 57 032 → 60 000.
+     По таким засечкам глаз ориентируется без наведения курсора. */
+  var NICE_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
+  function niceCeil(value) {
+    if (!value) return 0;
+    var sign = value < 0 ? -1 : 1;
+    var abs = Math.abs(value);
+    var step = Math.pow(10, Math.floor(Math.log(abs) / Math.LN10));
+    var ratio = abs / step;
+    var nice = NICE_STEPS[NICE_STEPS.length - 1];
+    for (var i = 0; i < NICE_STEPS.length; i++) {
+      if (ratio <= NICE_STEPS[i]) { nice = NICE_STEPS[i]; break; }
+    }
+    return sign * nice * step;
+  }
+
+  /* Все засечки одной оси меряются одной меркой: «60 тыс / 30 тыс / 0»,
+     а не «60 тыс / 30 000 / 0» — иначе шкала читается рывками. */
+  function tickFormatter(top) {
+    var abs = Math.abs(top);
+    var unit = abs >= 1e6 ? 1e6 : abs >= 1e4 ? 1e3 : 1;
+    var suffix = unit === 1e6 ? ' млн' : unit === 1e3 ? ' тыс' : '';
+    return function (value) {
+      if (!value) return '0';           // ноль остаётся нулём, без «0 тыс»
+      return unit === 1 ? Fmt.number(value) : Fmt.decimal(value / unit) + suffix;
+    };
+  }
+
+  /* Линия под показателем — со шкалами и разлиновкой, чтобы значение
+     читалось сразу, а курсор нужен был только для точной цифры дня. */
   function sparkline(container, values, color, options) {
     if (!values || values.length < 2) return;
     // Ровная нулевая линия ничего не сообщает — лучше не рисовать вовсе.
     if (!values.some(function (value) { return value !== 0; })) return;
     var settings = options || {};
+
     responsive(container, function (host, width) {
-      var height = 44;
-      var max = Math.max.apply(null, values);
-      var min = Math.min.apply(null, values);
-      var span = max - min || 1;
-      var stepX = width / (values.length - 1);
+      var height = 96;
+      var padLeft = 46, padRight = 8, padTop = 10, padBottom = 20;
+      var plotW = Math.max(width - padLeft - padRight, 10);
+      var plotH = height - padTop - padBottom;
+
+      // Область с заливкой обязана начинаться от нуля: обрезанная шкала
+      // превращает колебание в обрыв и обманывает глаз.
+      var top = niceCeil(Math.max.apply(null, values.concat([0])));
+      var bottom = Math.min.apply(null, values.concat([0]));
+      bottom = bottom < 0 ? niceCeil(bottom) : 0;
+      var span = (top - bottom) || 1;
+      var formatAxis = settings.formatAxis || tickFormatter(top);
+
+      var stepX = plotW / (values.length - 1);
       var points = values.map(function (value, index) {
-        return { x: index * stepX, y: height - 4 - ((value - min) / span) * (height - 10) };
+        return {
+          x: padLeft + index * stepX,
+          y: padTop + plotH - ((value - bottom) / span) * plotH
+        };
       });
-      var root = Fmt.svg('svg', { class: 'spark', viewBox: '0 0 ' + width + ' ' + height, height: height });
+
+      var root = Fmt.svg('svg', {
+        class: 'spark', viewBox: '0 0 ' + width + ' ' + height, height: height
+      });
+
+      // --- шкала Y: три засечки с разлиновкой ---
+      [bottom, bottom + span / 2, top].forEach(function (tick) {
+        var y = padTop + plotH - ((tick - bottom) / span) * plotH;
+        root.appendChild(Fmt.svg('line', {
+          class: 'spark__grid', x1: padLeft, y1: y, x2: width - padRight, y2: y
+        }));
+        var label = Fmt.svg('text', {
+          class: 'spark__tick', x: padLeft - 8, y: y, 'text-anchor': 'end',
+          'dominant-baseline': 'middle'
+        });
+        label.textContent = formatAxis(tick);
+        root.appendChild(label);
+      });
+
+      // --- шкала X: только края и середина, чтобы не рябило ---
+      var days = settings.days || [];
+      if (days.length === values.length) {
+        [0, Math.floor((values.length - 1) / 2), values.length - 1].forEach(
+          function (index, position) {
+            var label = Fmt.svg('text', {
+              class: 'spark__tick', x: points[index].x, y: height - 5,
+              'text-anchor': position === 0 ? 'start' : position === 1 ? 'middle' : 'end'
+            });
+            label.textContent = Fmt.axisLabel(days[index]);
+            root.appendChild(label);
+          }
+        );
+      }
+
       var gradientId = 'spark-' + Math.random().toString(36).slice(2, 8);
       var defs = Fmt.svg('defs', {});
       var gradient = Fmt.svg('linearGradient', { id: gradientId, x1: '0', y1: '0', x2: '0', y2: '1' });
-      gradient.appendChild(Fmt.svg('stop', { offset: '0', 'stop-color': color, 'stop-opacity': '0.4' }));
+      gradient.appendChild(Fmt.svg('stop', { offset: '0', 'stop-color': color, 'stop-opacity': '0.22' }));
       gradient.appendChild(Fmt.svg('stop', { offset: '1', 'stop-color': color, 'stop-opacity': '0' }));
       defs.appendChild(gradient);
       root.appendChild(defs);
 
+      var base = padTop + plotH;
       var path = smoothPath(points);
       root.appendChild(Fmt.svg('path', {
-        d: path + ' L' + width + ' ' + height + ' L0 ' + height + ' Z',
+        d: path + ' L' + points[points.length - 1].x + ' ' + base +
+           ' L' + points[0].x + ' ' + base + ' Z',
         fill: 'url(#' + gradientId + ')'
       }));
-      root.appendChild(Fmt.svg('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linecap': 'round' }));
+      root.appendChild(Fmt.svg('path', {
+        d: path, fill: 'none', stroke: color, 'stroke-width': 2,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+      }));
 
       // Курсор ведёт по линии: точка на ближайшем дне и подпись рядом.
       var marker = Fmt.svg('circle', {
-        class: 'spark__marker', r: 3.5, cx: 0, cy: 0,
+        class: 'spark__marker', r: 4, cx: 0, cy: 0,
         fill: color, stroke: 'var(--surface-solid)', 'stroke-width': 2
       });
       marker.style.opacity = '0';
       var rule = Fmt.svg('line', {
-        class: 'spark__rule', x1: 0, y1: 0, x2: 0, y2: height,
-        stroke: color, 'stroke-width': 1, 'stroke-dasharray': '2 3'
+        class: 'spark__rule', x1: 0, y1: padTop, x2: 0, y2: base,
+        stroke: color, 'stroke-width': 1
       });
       rule.style.opacity = '0';
       root.appendChild(rule);
@@ -468,8 +547,9 @@
 
       root.addEventListener('mousemove', function (event) {
         var box = root.getBoundingClientRect();
-        var ratio = box.width ? (event.clientX - box.left) / box.width : 0;
-        var index = Math.max(0, Math.min(values.length - 1, Math.round(ratio * (values.length - 1))));
+        var scale = box.width / width || 1;
+        var inside = (event.clientX - box.left) / scale - padLeft;
+        var index = Math.max(0, Math.min(values.length - 1, Math.round(inside / stepX)));
         var point = points[index];
 
         marker.setAttribute('cx', point.x);
@@ -477,9 +557,9 @@
         marker.style.opacity = '1';
         rule.setAttribute('x1', point.x);
         rule.setAttribute('x2', point.x);
-        rule.style.opacity = '0.5';
+        rule.style.opacity = '0.35';
 
-        var day = settings.days && settings.days[index];
+        var day = days[index];
         var text = settings.format ? settings.format(values[index]) : Fmt.fullMoney(values[index]);
         showTooltip(
           (day ? '<b>' + Fmt.momentLabel(day) + '</b><br>' : '') + text,
