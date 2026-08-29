@@ -80,12 +80,14 @@ out.push('  ];');
 var chapterDefs = plan.chapters.map(function (c) {
   return { n: c.n, title: c.title, planned: c.levels.length };
 });
-// уровни за пределами плана (например, вариант главы от внешней модели) получают свою главу
+// уровни за пределами плана получают свою главу; у некоторых глав название задано вручную
+var EXTRA_TITLES = { 12: 'Десять из десяти' };
 levels.forEach(function (l) {
   if (l.chapter > chapterDefs.length && !chapterDefs.some(function (c) { return c.n === l.chapter; })) {
-    chapterDefs.push({ n: l.chapter, title: 'Проба · вариант ChatGPT', planned: 10 });
+    chapterDefs.push({ n: l.chapter, title: EXTRA_TITLES[l.chapter] || 'Проба · вариант ChatGPT', planned: 10 });
   }
 });
+chapterDefs.sort(function (a, b) { return a.n - b.n; });
 out.push('  var CHAPTERS = [');
 out.push(chapterDefs.map(function (c) {
   return '    { n: ' + c.n + ', title: ' + JSON.stringify(c.title) + ', planned: ' + c.planned + ' }';
