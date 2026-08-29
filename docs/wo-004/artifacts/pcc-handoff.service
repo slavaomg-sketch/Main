@@ -1,0 +1,46 @@
+# PROPOSED — not installed. Target path: /etc/systemd/system/pcc-handoff.service
+# Mirrors the hardening of the existing project-control-center.service.
+# Do not install before the WO-004 Owner Gate is approved.
+[Unit]
+Description=PCC structured handoff ingress (WO-004)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pcc-handoff
+Group=pcc-handoff
+WorkingDirectory=/opt/pcc-handoff/current
+Environment=PYTHONPATH=/opt/pcc-handoff/current/src
+Environment=PYTHONUNBUFFERED=1
+Environment=PCC_DB_PATH=/var/lib/pcc-handoff/handoff.sqlite3
+Environment=PCC_MAP_PROJECTION_PATH=/var/lib/pcc-handoff/map_projection.json
+Environment=PCC_REGISTRY_PATH=/opt/pcc-handoff/current/config/registry.json
+Environment=PCC_HOST=127.0.0.1
+Environment=PCC_PORT=8765
+# Token is read from a root-owned 0400 file, never from the unit text.
+EnvironmentFile=/etc/pcc-handoff/token.env
+ExecStart=/opt/pcc-handoff/current/.venv/bin/python -m pcc_handoff.mcp_server
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+InaccessiblePaths=/home /root /var/lib/project-control-center /var/backups/project-control-center
+ReadWritePaths=/var/lib/pcc-handoff
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

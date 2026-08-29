@@ -1,0 +1,16 @@
+# PROPOSED — not applied. Insert inside the existing waac-mcp.dedyn.io server block,
+# after the PCC_WO001_END marker (currently line 311) and before the final
+# `handle { respond 404 }` (currently line 313), matching the WO-001 convention.
+# Replace every __PLACEHOLDER__. Do not expose port 8765 directly.
+
+	# PCC_WO004_BEGIN
+	handle_path /__HANDOFF_PATH__/* {
+		reverse_proxy 127.0.0.1:8765 {
+			# Required: the ingress derives allowed_hosts from its bind address,
+			# so it rejects the public Host header with HTTP 421 unless either
+			# the app is given explicit TransportSecuritySettings or Caddy
+			# rewrites Host. Pick ONE and record the choice at the Owner Gate.
+			header_up Host {upstream_hostport}
+		}
+	}
+	# PCC_WO004_END

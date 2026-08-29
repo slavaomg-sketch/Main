@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "idempotency_key": "pcc-wo-004-registration-v1-20260829",
+  "actor": "WO-004 structured handoff — external Claude Code review",
+  "source": "reconciled",
+  "reason": "Register WO-004 in the canonical registry so that a structured handoff can reference a real Work Order. Registration only: no handoff ingress is deployed by this package.",
+  "evidence": {
+    "review": "Independent Claude Code code/security review of PCC_WO004_shadow_package.zip: 4 high findings, 2 deployment blockers",
+    "inventory": "Read-only production inventory completed on 2026-08-29; production writes 0",
+    "baseline_audit_tail_hash": "e32c5021aba1c9725bc08fe93c116e8ee7227147ce057a1a0d016bc0f718c657",
+    "baseline_counts": "projects 8, conversations 3, work_orders 1, owner_gates 1, dependencies 2, routes 9, audit_events 35, import_runs 3",
+    "shadow_evidence": "16/16 unit tests and scripts/run_e2e.py reproduced independently outside the originating Work",
+    "production_boundary": "No production service, registry, Caddy or systemd configuration was modified"
+  },
+  "work_orders": [
+    {
+      "stable_key": "work_order:pcc:WO-004",
+      "project_key": "project:pcc",
+      "number": "WO-004",
+      "title": "Structured handoff ingress from Work conversations into PCC",
+      "status": "owner_gate",
+      "goal": "Deliver an official route Work -> structured handoff -> PCC -> HQ/map projection, so that a Work result reaches the canonical registry without manual retyping.",
+      "inputs": [
+        "PCC_WO004_shadow_package.zip — isolated shadow implementation, not connected to production",
+        "Independent Claude Code code/security review",
+        "Read-only production inventory of code, registry, storage, systemd and Caddy"
+      ],
+      "owner_gates_summary": "Owner Gate open. Two decisions required before any production change: (1) whether WO-004 may exist at all while WO-001 is rejected and the active project route forbids starting a next Work Order; (2) the production authentication boundary for a publicly reachable MCP endpoint.",
+      "result": "Shadow mechanism implemented and independently reproduced. NOT production-ready: one critical authentication finding, three high findings and two deployment blockers are open. Production changes so far: 0.",
+      "verification_evidence": [
+        "16/16 shadow unit tests reproduced independently",
+        "scripts/run_e2e.py reproduced independently; unauthorized MCP write returns HTTP 401",
+        "CRITICAL: /api/project-state returns full handoff content with no authentication",
+        "HIGH: append-only is a code convention; raw SQLite UPDATE and DELETE both succeed",
+        "HIGH: payload accepts and stores API keys, bearer tokens and private chat URLs verbatim",
+        "HIGH: one static bearer token grants read and write over every project, with no actor attribution",
+        "BLOCKER: behind a reverse proxy the MCP endpoint returns HTTP 421 Invalid Host header",
+        "BLOCKER: package requires Python >=3.12; the VPS provides only Python 3.10.12",
+        "Production release manifest verified: sha256sum -c release/SHA256SUMS, 28 files OK"
+      ],
+      "result_destination": "00 — Штаб Project Control Center",
+      "next_work_order": "Не определён. Следующий Work Order не начинать до решения владельца.",
+      "provenance_kind": "reconciled",
+      "evidence": {
+        "source": "WO-004 external review and read-only production inventory",
+        "reviewer": "Claude Code, isolated контур"
+      },
+      "last_verified_at": "2026-08-29T17:00:00Z",
+      "notes": "Real ChatGPT conversation ID and URL for this Work are unavailable and are not invented.",
+      "expected_version": 0
+    }
+  ],
+  "conversations": [
+    {
+      "stable_key": "conversation:pcc:work:wo-004",
+      "project_key": "project:pcc",
+      "display_title": "WO-004 — Structured handoff ingress",
+      "conversation_type": "Work",
+      "status": "owner_gate",
+      "role": "Изолированная реализация handoff-контракта, ingress и проекции",
+      "work_order_number": "WO-004",
+      "work_order_key": "work_order:pcc:WO-004",
+      "source_namespace": null,
+      "source_external_id": null,
+      "conversation_url": null,
+      "outputs": [
+        "Shadow implementation of the handoff contract, append-only event log and projection",
+        "Independent code/security review with reproduced findings",
+        "Read-only production inventory, exact production diff, backup and rollback plan"
+      ],
+      "result_destination": "00 — Штаб Project Control Center",
+      "provenance_kind": "reconciled",
+      "evidence": {"source": "WO-004 shadow package and external review"},
+      "last_verified_at": "2026-08-29T17:00:00Z",
+      "notes": "Real ChatGPT conversation ID and URL remain unavailable and are not invented.",
+      "expected_version": 0
+    }
+  ],
+  "owner_gates": [
+    {
+      "stable_key": "owner_gate:pcc:WO-004:production-activation",
+      "parent_key": "work_order:pcc:WO-004",
+      "gate_id": "production-activation",
+      "title": "Production activation of the structured handoff ingress",
+      "requirement": "Owner must decide: (1) whether WO-004 may proceed while WO-001 is rejected and the active project route forbids starting a next Work Order; (2) the authentication boundary for a publicly reachable MCP endpoint; (3) the Python runtime strategy on the VPS. Until then no service, registry, systemd or Caddy change is permitted.",
+      "status": "open",
+      "provenance_kind": "reconciled",
+      "evidence": {"source": "WO-004 OWNER GATE package"},
+      "last_verified_at": "2026-08-29T17:00:00Z",
+      "notes": "Blocking findings are listed in the WO-004 verification evidence."
+    }
+  ],
+  "routes": [
+    {
+      "route_key": "route:pcc:WO-004:execute",
+      "target_key": "work_order:pcc:WO-004",
+      "recommended_place": "HQ",
+      "new_chat": false,
+      "title": "00 — Штаб Project Control Center",
+      "why": "Принять решение по Owner Gate WO-004 до любого production-изменения.",
+      "depends_on": "Формальное решение по WO-001 — реестр сейчас запрещает начинать следующий Work Order",
+      "result_destination": "PROJECT CONTROL CENTER registry",
+      "prompt": "Прими решение по Owner Gate WO-004 — structured handoff ingress. Сначала ответь на один вопрос: разрешено ли вести WO-004, если WO-001 находится в статусе rejected, а активный маршрут проекта прямо запрещает начинать следующий Work Order. Если нет — WO-004 остаётся зарегистрированным в статусе owner_gate и работа по нему не ведётся. Если да — отдельно утверди authentication boundary для публично доступного MCP endpoint и стратегию Python runtime на VPS. Не разворачивай endpoint, не меняй Caddy, systemd и registry до этого решения. Результат передай в PROJECT CONTROL CENTER registry через governed idempotent import.",
+      "active": true,
+      "provenance_kind": "reconciled",
+      "evidence": {"source": "WO-004 OWNER GATE package"},
+      "last_verified_at": "2026-08-29T17:00:00Z",
+      "expected_version": 0
+    }
+  ]
+}
