@@ -1,12 +1,12 @@
-# Юнит для бота-трекера доставок. Ставится рядом с reminder-bot.service,
-# это отдельный процесс и отдельный бот от @BotFather.
+# Юнит для бота-хаба (ветка «Доставка» и всё, что добавите дальше).
+# Ставится рядом с reminder-bot.service: отдельный процесс и отдельный бот от @BotFather.
 #
 # Плейсхолдеры подставляются одной командой (см. TRACKER.md):
 #   sed -e 's|__APP_DIR__|/opt/reminder-bot|g' -e 's|__APP_USER__|reminderbot|g' \
-#       deploy/tracker-bot.service | sudo tee /etc/systemd/system/tracker-bot.service
+#       deploy/hub-bot.service | sudo tee /etc/systemd/system/hub-bot.service
 
 [Unit]
-Description=Telegram delivery tracker bot
+Description=Telegram hub bot (delivery tracker and other branches)
 Documentation=https://github.com/slavaomg-sketch/Main
 After=network-online.target
 Wants=network-online.target
@@ -17,7 +17,7 @@ User=__APP_USER__
 Group=__APP_USER__
 WorkingDirectory=__APP_DIR__
 EnvironmentFile=__APP_DIR__/.env
-ExecStart=__APP_DIR__/.venv/bin/python -m trackerbot
+ExecStart=__APP_DIR__/.venv/bin/python -m hub
 
 Restart=always
 RestartSec=10
@@ -27,7 +27,7 @@ StartLimitBurst=5
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=tracker-bot
+SyslogIdentifier=hub-bot
 
 # Нужен только исходящий HTTPS и своя папка data — остальное закрываем.
 NoNewPrivileges=true

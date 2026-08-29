@@ -21,6 +21,17 @@ async def conn(tmp_path):
     await connection.close()
 
 
+@pytest.fixture(scope="session")
+def hub_dispatcher():
+    """Роутеры веток — объекты уровня модуля, поэтому диспетчер один на всю сессию.
+
+    Зависимости в него кладут сами тесты: см. фикстуру `dp` в тестах хаба и веток.
+    """
+    from hub.main import build_dispatcher  # noqa: PLC0415 - тяжёлый импорт только для этих тестов
+
+    return build_dispatcher(config=None)
+
+
 @pytest.fixture
 def config(tmp_path) -> Config:
     return Config(

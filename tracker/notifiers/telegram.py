@@ -1,7 +1,8 @@
 """Сообщение в Telegram — способ получить сигнал на телефон без Мака.
 
-Токен и адресата берём из тех же переменных, что и бот напоминаний:
-``TRACKER_BOT_TOKEN``/``BOT_TOKEN`` и ``TRACKER_CHAT_ID``/первый из ``ADMIN_IDS``.
+Токен и адресата берём из уже настроенных переменных:
+``HUB_BOT_TOKEN``/``TRACKER_BOT_TOKEN``/``BOT_TOKEN`` и
+``TRACKER_CHAT_ID``/первый из ``ADMIN_IDS``.
 """
 
 from __future__ import annotations
@@ -32,7 +33,12 @@ class TelegramNotifier(Notifier):
     name = "telegram"
 
     def __init__(self, token: str | None = None, chat_id: str | None = None) -> None:
-        self.token = token or os.getenv("TRACKER_BOT_TOKEN") or os.getenv("BOT_TOKEN", "")
+        self.token = (
+            token
+            or os.getenv("HUB_BOT_TOKEN")
+            or os.getenv("TRACKER_BOT_TOKEN")
+            or os.getenv("BOT_TOKEN", "")
+        )
         self.chat_id = chat_id or os.getenv("TRACKER_CHAT_ID") or _first_admin()
         self.available = bool(self.token and self.chat_id)
         self.unavailable_reason = (

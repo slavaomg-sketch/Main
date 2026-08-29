@@ -13,7 +13,7 @@ from tracker.providers import YandexDeliveryProvider
 from tracker.store import TripStore
 from tracker.watcher import apply_events, evaluate, next_delay
 
-from .config import BotConfig
+from .config import TaxiConfig
 from .service import fetch_state, refresh_card
 from .texts import event_message
 
@@ -30,7 +30,7 @@ class TripPoller:
         self,
         bot: Bot,
         store: TripStore,
-        config: BotConfig,
+        config: TaxiConfig,
         provider=None,
         sleep=asyncio.sleep,
     ) -> None:

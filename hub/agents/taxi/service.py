@@ -16,7 +16,7 @@ from tracker.models import Trip, TripState, now_utc
 from tracker.providers import TrackerError
 from tracker.store import TripStore
 
-from .config import BotConfig
+from .config import TaxiConfig
 from .keyboards import trip_keyboard
 from .texts import trip_card
 
@@ -37,7 +37,7 @@ async def fetch_state(provider, trip: Trip) -> tuple[TripState | None, str]:
 
 
 async def send_card(
-    bot: Bot, store: TripStore, config: BotConfig, trip: Trip, state: TripState | None, error: str = ""
+    bot: Bot, store: TripStore, config: TaxiConfig, trip: Trip, state: TripState | None, error: str = ""
 ) -> None:
     """Присылает карточку поездки и запоминает её, чтобы потом обновлять."""
     text = trip_card(trip, state, config.tz, error)
@@ -56,7 +56,7 @@ async def send_card(
 async def refresh_card(
     bot: Bot,
     store: TripStore,
-    config: BotConfig,
+    config: TaxiConfig,
     trip: Trip,
     state: TripState | None,
     error: str = "",

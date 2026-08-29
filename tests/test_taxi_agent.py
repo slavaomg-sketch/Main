@@ -1,4 +1,4 @@
-"""Сквозные проверки бота-трекера: настоящие роутеры, подставные Telegram и Яндекс."""
+"""Ветка «Доставка» целиком: настоящие роутеры хаба, подставные Telegram и Яндекс."""
 
 from __future__ import annotations
 
@@ -26,10 +26,11 @@ from aiogram.types import User as TgUser
 from tracker.models import ARRIVED, FINISHED, IN_PROGRESS, TripState
 from tracker.providers import TrackerError
 from tracker.store import TripStore
-from trackerbot.callbacks import AlertCb, TripCb
-from trackerbot.config import BotConfig
-from trackerbot.main import build_dispatcher
-from trackerbot.poller import TripPoller
+from hub.agents.taxi.callbacks import AlertCb, TripCb
+from hub.agents.taxi.config import TaxiConfig
+from hub.config import HubConfig
+from hub.state import HubState
+from hub.agents.taxi.poller import TripPoller
 
 KEY = "e90be707-1875-4406-b66a-4a6fc1e6955e"
 OTHER_KEY = "11111111-2222-3333-4444-555555555555"
@@ -143,27 +144,41 @@ class FakeProvider:
 # ------------------------------------------------------------------------ фикстуры
 
 
-def make_config(tmp_path, **overrides) -> BotConfig:
+def make_hub_config(tmp_path, **overrides) -> HubConfig:
     params = {
-        "token": "42:TRACKER",
-        "state_path": tmp_path / "trips.json",
-        "default_alerts": [5],
+        "token": "42:HUB",
+        "state_path": tmp_path / "hub.json",
         "allowed_ids": [],
+        "tz": "Europe/Moscow",
+    }
+    params.update(overrides)
+    return HubConfig(**params)
+
+
+def make_taxi_config(tmp_path, **overrides) -> TaxiConfig:
+    params = {
+        "trips_path": tmp_path / "trips.json",
+        "default_alerts": [5],
         "poll_seconds": 10.0,
         "tz": "Europe/Moscow",
     }
     params.update(overrides)
-    return BotConfig(**params)
+    return TaxiConfig(**params)
 
 
 @pytest.fixture
-def config(tmp_path) -> BotConfig:
-    return make_config(tmp_path)
+def config(tmp_path) -> TaxiConfig:
+    return make_taxi_config(tmp_path)
+
+
+@pytest.fixture
+def hub_config(tmp_path) -> HubConfig:
+    return make_hub_config(tmp_path)
 
 
 @pytest.fixture
 def store(config) -> TripStore:
-    return TripStore(config.state_path)
+    return TripStore(config.trips_path)
 
 
 @pytest.fixture
@@ -171,20 +186,16 @@ def provider() -> FakeProvider:
     return FakeProvider()
 
 
-@pytest.fixture(scope="session")
-def dispatcher():
-    """Роутер — объект уровня модуля, поэтому диспетчер собирается один раз."""
-    return build_dispatcher(store=None, config=None)
-
-
 @pytest.fixture
-def dp(dispatcher, store, config, provider):
+def dp(hub_dispatcher, tmp_path, store, config, provider, hub_config):
     """Свежее состояние FSM и свои зависимости на каждый тест."""
-    dispatcher.fsm.storage = MemoryStorage()
-    dispatcher["store"] = store
-    dispatcher["config"] = config
-    dispatcher["provider"] = provider
-    return dispatcher
+    hub_dispatcher.fsm.storage = MemoryStorage()
+    hub_dispatcher["hub_config"] = hub_config
+    hub_dispatcher["hub_state"] = HubState(tmp_path / "hub.json")
+    hub_dispatcher["taxi_store"] = store
+    hub_dispatcher["taxi_config"] = config
+    hub_dispatcher["taxi_provider"] = provider
+    return hub_dispatcher
 
 
 @pytest_asyncio.fixture
@@ -409,18 +420,6 @@ async def test_list_shows_only_own_trips(dp, bot, session, store):
     assert "ни за чем не слежу" in session.last_text()
 
 
-async def test_private_bot_ignores_strangers(dp, bot, session, store, tmp_path):
-    dp["config"] = make_config(tmp_path, allowed_ids=[ME])
-
-    await send(dp, bot, URL, user_id=STRANGER)
-    assert "личный" in session.last_text()
-    assert store.load() == []
-
-    session.clear()
-    await send(dp, bot, URL, user_id=ME)
-    assert store.load(), "своего бот пускает"
-
-
 # ------------------------------------------------------------------------- поллер
 
 
@@ -527,37 +526,20 @@ async def test_poller_idles_without_trips(bot, store, config, provider):
     assert await poller(bot, store, config, provider).tick() >= 30
 
 
-# ------------------------------------------------------------------- настройки
+# --------------------------------------------------------- настройки ветки
 
 
-def test_config_requires_its_own_token(monkeypatch):
-    monkeypatch.delenv("TRACKER_BOT_TOKEN", raising=False)
-    with pytest.raises(RuntimeError, match="TRACKER_BOT_TOKEN"):
-        BotConfig.from_env()
-
-
-def test_config_rejects_token_shared_with_reminder_bot(monkeypatch):
-    monkeypatch.setenv("BOT_TOKEN", "42:SAME")
-    monkeypatch.setenv("TRACKER_BOT_TOKEN", "42:SAME")
-    with pytest.raises(RuntimeError, match="отдельный бот"):
-        BotConfig.from_env()
-
-
-def test_config_reads_alerts_and_whitelist(monkeypatch):
-    monkeypatch.setenv("BOT_TOKEN", "1:OTHER")
-    monkeypatch.setenv("TRACKER_BOT_TOKEN", "42:TRACKER")
+def test_taxi_config_reads_alerts(monkeypatch):
     monkeypatch.setenv("TRACKER_ALERTS", "5,15")
-    monkeypatch.setenv("TRACKER_ALLOWED_IDS", "500, 600")
-
-    config = BotConfig.from_env()
-
+    config = TaxiConfig.from_env(tz="Europe/Moscow")
     assert config.default_alerts == [15, 5]
-    assert config.allowed_ids == [500, 600]
-    assert config.is_allowed(500) and not config.is_allowed(1)
+    assert config.tz == "Europe/Moscow"
 
 
-def test_open_bot_allows_everyone(tmp_path):
-    assert make_config(tmp_path).is_allowed(12345)
+def test_taxi_config_rejects_impossible_interval(monkeypatch):
+    monkeypatch.setenv("TRACKER_ALERTS", "5000")
+    with pytest.raises(RuntimeError, match="от 0 до 1440"):
+        TaxiConfig.from_env()
 
 
 # ------------------------------------------------------------------ помощники

@@ -1,4 +1,4 @@
-"""Точка входа: python -m trackerbot"""
+"""Точка входа: python -m hub"""
 
 from __future__ import annotations
 
