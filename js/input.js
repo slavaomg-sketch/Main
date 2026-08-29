@@ -11,6 +11,7 @@
     var self = this;
     this.held = [];         // очередь зажатых направлений: последнее нажатие важнее
     this.snap = false;
+    this.rewind = false;    // зажатая отмотка: пока держат, время идёт назад
     this.onCommand = function () {};
 
     function press(dir) {
@@ -25,6 +26,7 @@
 
     target.addEventListener('keydown', function (e) {
       if (e.code === 'Space') { self.snap = true; e.preventDefault(); return; }
+      if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = true; e.preventDefault(); return; }
       var d = KEYS[e.code];
       if (d !== undefined) { press(d); e.preventDefault(); return; }
       if (e.code === 'KeyR') self.onCommand('restart');
@@ -33,10 +35,11 @@
     });
     target.addEventListener('keyup', function (e) {
       if (e.code === 'Space') { self.snap = false; return; }
+      if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = false; return; }
       var d = KEYS[e.code];
       if (d !== undefined) release(d);
     });
-    global.addEventListener('blur', function () { self.held.length = 0; self.snap = false; });
+    global.addEventListener('blur', function () { self.held.length = 0; self.snap = false; self.rewind = false; });
   }
 
   Input.prototype.current = function () {
@@ -62,6 +65,16 @@
         snapEl.addEventListener(ev, function () { self.snap = false; snapEl.classList.remove('active'); });
       });
     }
+  };
+
+  /** Кнопка «держать»: пока прижата, поле self[prop] остаётся true. */
+  Input.prototype.bindHold = function (el, prop) {
+    if (!el) return;
+    var self = this;
+    el.addEventListener('pointerdown', function (e) { e.preventDefault(); self[prop] = true; el.classList.add('active'); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+      el.addEventListener(ev, function () { self[prop] = false; el.classList.remove('active'); });
+    });
   };
 
   /**

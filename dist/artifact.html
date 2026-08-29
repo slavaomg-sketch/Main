@@ -396,6 +396,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .hud-fuse { color: #ff8a5c; }
 .hud-fuse b { color: #ffd0b0; }
 .hud-grav { color: #c69bf0; }
+
+/* Отмотка: кнопка в шапке и отметка о прохождении начисто. */
+#btn-rewind.active { transform: translateY(1px); filter: brightness(1.35); }
+.lv .n .clean { font-style: normal; margin-left: .25em; color: #ffd76a; }
 </style>
 <div id="app">
   <header id="hud">
@@ -410,6 +414,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       <span class="stat hud-grav" id="hud-grav" title="Тяжесть включена" hidden>⬇ тяжесть</span>
       <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
       <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
+      <button id="btn-rewind" class="chip" title="Отмотать время назад — держи (Backspace)">↶</button>
       <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
       <button id="btn-full" class="chip" title="Во весь экран">⛶</button>
     </div>
@@ -5571,6 +5576,63 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
 <script>
+/*
+ * Лента ходов: позволяет отматывать уровень назад по одному такту.
+ *
+ * Движок детерминированный, поэтому хранить полное состояние на каждый такт не
+ * нужно: держим опорные снимки через каждые KEY тактов, а остаток доигрываем
+ * заново. На карте 50×22 снимок весит около девяти килобайт, так что даже
+ * на самом длинном решении лента укладывается в неполный мегабайт.
+ */
+(function (global) {
+  'use strict';
+  var KEY = 24;
+
+  function History(engine) {
+    this.tape = [];                 // что игрок нажал на каждом такте
+    this.keys = [engine.clone()];   // keys[k] — состояние после k*KEY тактов
+    this.safe = [true];             // safe[n] — на такте n Мёрфи был жив и игра шла
+  }
+
+  /** Запомнить такт. Вызывается сразу после engine.step(action). */
+  History.prototype.record = function (action, engine) {
+    this.tape.push({ dir: action.dir, snap: !!action.snap });
+    this.safe.push(engine.status === 'playing' && engine.murphy.alive);
+    if (this.tape.length % KEY === 0) this.keys.push(engine.clone());
+  };
+
+  History.prototype.length = function () { return this.tape.length; };
+
+  /**
+   * Вернуть состояние на такте n (0 — начало уровня) и обрезать ленту:
+   * всё, что было после n, считается отменённым.
+   */
+  History.prototype.seek = function (n) {
+    n = Math.max(0, Math.min(n, this.tape.length));
+    var k = Math.floor(n / KEY);
+    var e = this.keys[k].clone();
+    for (var i = k * KEY; i < n; i++) e.step(this.tape[i]);
+    this.tape.length = n;
+    this.safe.length = n + 1;
+    this.keys.length = k + 1;
+    return e;
+  };
+
+  /** Последний такт, на котором Мёрфи был ещё жив. */
+  History.prototype.lastSafe = function () {
+    for (var n = this.safe.length - 1; n > 0; n--) if (this.safe[n]) return n;
+    return 0;
+  };
+
+  /** Отмотать на n тактов назад. */
+  History.prototype.back = function (n) { return this.seek(this.tape.length - (n || 1)); };
+
+  var api = { History: History };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else global.SP = Object.assign(global.SP || {}, api);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
 /* Ввод: клавиатура + экранный крестовина для тача. */
 (function (global) {
   'use strict';
@@ -5584,6 +5646,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var self = this;
     this.held = [];         // очередь зажатых направлений: последнее нажатие важнее
     this.snap = false;
+    this.rewind = false;    // зажатая отмотка: пока держат, время идёт назад
     this.onCommand = function () {};
 
     function press(dir) {
@@ -5598,6 +5661,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
     target.addEventListener('keydown', function (e) {
       if (e.code === 'Space') { self.snap = true; e.preventDefault(); return; }
+      if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = true; e.preventDefault(); return; }
       var d = KEYS[e.code];
       if (d !== undefined) { press(d); e.preventDefault(); return; }
       if (e.code === 'KeyR') self.onCommand('restart');
@@ -5606,10 +5670,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     });
     target.addEventListener('keyup', function (e) {
       if (e.code === 'Space') { self.snap = false; return; }
+      if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = false; return; }
       var d = KEYS[e.code];
       if (d !== undefined) release(d);
     });
-    global.addEventListener('blur', function () { self.held.length = 0; self.snap = false; });
+    global.addEventListener('blur', function () { self.held.length = 0; self.snap = false; self.rewind = false; });
   }
 
   Input.prototype.current = function () {
@@ -5635,6 +5700,16 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         snapEl.addEventListener(ev, function () { self.snap = false; snapEl.classList.remove('active'); });
       });
     }
+  };
+
+  /** Кнопка «держать»: пока прижата, поле self[prop] остаётся true. */
+  Input.prototype.bindHold = function (el, prop) {
+    if (!el) return;
+    var self = this;
+    el.addEventListener('pointerdown', function (e) { e.preventDefault(); self[prop] = true; el.classList.add('active'); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+      el.addEventListener(ev, function () { self[prop] = false; el.classList.remove('active'); });
+    });
   };
 
   /**
@@ -5683,6 +5758,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   'use strict';
   var SP = global.SP;
   var TICK_MS = 135;
+  var REWIND_MS = 60;                       // отмотка идёт вдвое быстрее хода
+  var DEATH_REWIND = 12;                    // на сколько отматывает кнопка после гибели
   var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
@@ -5694,6 +5771,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   var renderer = new SP.Renderer(el.screen);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
+  input.bindHold(document.getElementById('btn-rewind'), 'rewind');
   input.bindJoystick(document.getElementById('stage'));
 
   var hello = null;
@@ -5757,8 +5835,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   }
 
   var engine = null;
+  var history = null;
+  var usedRewind = false;
   var levelIndex = 0;
-  var state = 'menu';        // menu | playing | paused | won | dead
+  var state = 'menu';        // menu | playing | rewinding | paused | won | dead
   var acc = 0;
   var last = 0;
 
@@ -5825,7 +5905,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         var b = document.createElement('button');
         b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
         b.disabled = !progress.all && !isTrial(ch.n) && m.i + 1 > limit;
-        b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
+        var rec = progress.done[m.lv.id];
+        b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') +
+            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки">★</i>' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>';
         b.addEventListener('click', function () { startLevel(m.i); });
         row.appendChild(b);
@@ -5853,6 +5935,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     levelIndex = Math.max(0, Math.min(SP.LEVELS.length - 1, i));
     var lv = SP.LEVELS[levelIndex];
     engine = new SP.Engine(lv);
+    history = new SP.History(engine);
+    usedRewind = false;
     renderer.resize(engine);
     acc = 0;
     state = 'playing';
@@ -5882,9 +5966,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     state = 'won';
     var lv = SP.LEVELS[levelIndex];
     var prev = progress.done[lv.id];
-    var rec = { moves: engine.moves, ticks: engine.ticks };
+    var clean = !usedRewind || !!(prev && prev.clean);
+    var rec = { moves: engine.moves, ticks: engine.ticks, clean: clean };
     if (!prev || rec.moves < prev.moves) progress.done[lv.id] = rec;
-    else progress.done[lv.id] = prev;
+    else { prev.clean = clean; progress.done[lv.id] = prev; }
     saveProgress(progress);
 
     var best = progress.done[lv.id];
@@ -5902,15 +5987,48 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   function onDead() {
     state = 'dead';
-    overlay(heroName() + ' погиб', 'Зонк, монстр или взрыв — но результат один.',
-      [{ label: 'Заново (R)', primary: true, action: function () { startLevel(levelIndex); } },
+    overlay(heroName() + ' погиб',
+      'Зонк, монстр или взрыв — но результат один.<br>' +
+      'Можно не начинать заново: отмотай время назад и попробуй иначе.',
+      [{ label: 'Отмотать назад', primary: true, action: function () { rewindBy(DEATH_REWIND); } },
+       { label: 'Заново (R)', action: function () { startLevel(levelIndex); } },
        { label: 'К списку', action: showMenu }]);
+  }
+
+  /* ---------- отмотка ---------- */
+  function canRewind() {
+    return history && history.length() > 0 &&
+      (state === 'playing' || state === 'dead' || state === 'paused' || state === 'rewinding');
+  }
+  /**
+   * Шагнуть назад и вернуться к игре. Отматываем не меньше чем на n тактов и
+   * непременно за черту гибели: возвращать игрока в предсмертную судорогу
+   * бессмысленно, он тут же умрёт снова.
+   */
+  function rewindBy(n) {
+    if (!history || !history.length()) return;
+    var target = Math.max(0, Math.min(history.length() - n, history.lastSafe() - 4));
+    engine = history.seek(target);
+    usedRewind = true;
+    state = 'playing';
+    acc = 0;
+    input.held.length = 0;
+    el.overlay.classList.add('hidden');
+    updateHud();
+  }
+  function enterRewind() {
+    if (state === 'rewinding') return;
+    state = 'rewinding';
+    acc = 0;
+    input.held.length = 0;
+    el.overlay.classList.add('hidden');
   }
 
   function togglePause() {
     if (state === 'playing') {
       state = 'paused';
-      overlay('Пауза', SP.LEVELS[levelIndex].hint || '',
+      overlay('Пауза', (SP.LEVELS[levelIndex].hint || '') +
+        '<br><br><i>Backspace (или кнопка ↶) отматывает время назад — держи, чтобы отмотать дальше.</i>',
         [{ label: 'Продолжить', primary: true, action: resume },
          { label: 'Заново', action: function () { startLevel(levelIndex); } },
          { label: 'К списку уровней', action: showMenu }]);
@@ -5965,12 +6083,32 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var dt = Math.min(250, ts - (last || ts));
     last = ts;
 
-    if (state === 'playing') {
+    if (input.rewind && canRewind()) enterRewind();
+
+    if (state === 'rewinding') {
+      if (!input.rewind) {
+        // отпустили посреди гибели — доматываем до живого места
+        if (engine.status !== 'playing' || !engine.murphy.alive) engine = history.seek(Math.max(0, history.lastSafe() - 2));
+        state = 'playing'; acc = 0; updateHud();
+      }
+      else {
+        acc += dt;
+        var rg = 0;
+        while (acc >= REWIND_MS && rg++ < 8 && history.length() > 0) {
+          acc -= REWIND_MS;
+          engine = history.back(1);
+          usedRewind = true;
+        }
+        updateHud();
+      }
+    } else if (state === 'playing') {
       acc += dt;
       var guard = 0;
       while (acc >= TICK_MS && guard++ < 8) {
         acc -= TICK_MS;
-        var status = engine.step(input.current());
+        var act = input.current();
+        var status = engine.step(act);
+        history.record(act, engine);
         updateHud();
         if (status === 'won') { onWin(); break; }
         if (status === 'dead') { onDead(); break; }

@@ -3,6 +3,8 @@
   'use strict';
   var SP = global.SP;
   var TICK_MS = 135;
+  var REWIND_MS = 60;                       // отмотка идёт вдвое быстрее хода
+  var DEATH_REWIND = 12;                    // на сколько отматывает кнопка после гибели
   var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
@@ -14,6 +16,7 @@
   var renderer = new SP.Renderer(el.screen);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
+  input.bindHold(document.getElementById('btn-rewind'), 'rewind');
   input.bindJoystick(document.getElementById('stage'));
 
   var hello = null;
@@ -77,8 +80,10 @@
   }
 
   var engine = null;
+  var history = null;
+  var usedRewind = false;
   var levelIndex = 0;
-  var state = 'menu';        // menu | playing | paused | won | dead
+  var state = 'menu';        // menu | playing | rewinding | paused | won | dead
   var acc = 0;
   var last = 0;
 
@@ -145,7 +150,9 @@
         var b = document.createElement('button');
         b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
         b.disabled = !progress.all && !isTrial(ch.n) && m.i + 1 > limit;
-        b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') + '</span>' +
+        var rec = progress.done[m.lv.id];
+        b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') +
+            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки">★</i>' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>';
         b.addEventListener('click', function () { startLevel(m.i); });
         row.appendChild(b);
@@ -173,6 +180,8 @@
     levelIndex = Math.max(0, Math.min(SP.LEVELS.length - 1, i));
     var lv = SP.LEVELS[levelIndex];
     engine = new SP.Engine(lv);
+    history = new SP.History(engine);
+    usedRewind = false;
     renderer.resize(engine);
     acc = 0;
     state = 'playing';
@@ -202,9 +211,10 @@
     state = 'won';
     var lv = SP.LEVELS[levelIndex];
     var prev = progress.done[lv.id];
-    var rec = { moves: engine.moves, ticks: engine.ticks };
+    var clean = !usedRewind || !!(prev && prev.clean);
+    var rec = { moves: engine.moves, ticks: engine.ticks, clean: clean };
     if (!prev || rec.moves < prev.moves) progress.done[lv.id] = rec;
-    else progress.done[lv.id] = prev;
+    else { prev.clean = clean; progress.done[lv.id] = prev; }
     saveProgress(progress);
 
     var best = progress.done[lv.id];
@@ -222,15 +232,48 @@
 
   function onDead() {
     state = 'dead';
-    overlay(heroName() + ' погиб', 'Зонк, монстр или взрыв — но результат один.',
-      [{ label: 'Заново (R)', primary: true, action: function () { startLevel(levelIndex); } },
+    overlay(heroName() + ' погиб',
+      'Зонк, монстр или взрыв — но результат один.<br>' +
+      'Можно не начинать заново: отмотай время назад и попробуй иначе.',
+      [{ label: 'Отмотать назад', primary: true, action: function () { rewindBy(DEATH_REWIND); } },
+       { label: 'Заново (R)', action: function () { startLevel(levelIndex); } },
        { label: 'К списку', action: showMenu }]);
+  }
+
+  /* ---------- отмотка ---------- */
+  function canRewind() {
+    return history && history.length() > 0 &&
+      (state === 'playing' || state === 'dead' || state === 'paused' || state === 'rewinding');
+  }
+  /**
+   * Шагнуть назад и вернуться к игре. Отматываем не меньше чем на n тактов и
+   * непременно за черту гибели: возвращать игрока в предсмертную судорогу
+   * бессмысленно, он тут же умрёт снова.
+   */
+  function rewindBy(n) {
+    if (!history || !history.length()) return;
+    var target = Math.max(0, Math.min(history.length() - n, history.lastSafe() - 4));
+    engine = history.seek(target);
+    usedRewind = true;
+    state = 'playing';
+    acc = 0;
+    input.held.length = 0;
+    el.overlay.classList.add('hidden');
+    updateHud();
+  }
+  function enterRewind() {
+    if (state === 'rewinding') return;
+    state = 'rewinding';
+    acc = 0;
+    input.held.length = 0;
+    el.overlay.classList.add('hidden');
   }
 
   function togglePause() {
     if (state === 'playing') {
       state = 'paused';
-      overlay('Пауза', SP.LEVELS[levelIndex].hint || '',
+      overlay('Пауза', (SP.LEVELS[levelIndex].hint || '') +
+        '<br><br><i>Backspace (или кнопка ↶) отматывает время назад — держи, чтобы отмотать дальше.</i>',
         [{ label: 'Продолжить', primary: true, action: resume },
          { label: 'Заново', action: function () { startLevel(levelIndex); } },
          { label: 'К списку уровней', action: showMenu }]);
@@ -285,12 +328,32 @@
     var dt = Math.min(250, ts - (last || ts));
     last = ts;
 
-    if (state === 'playing') {
+    if (input.rewind && canRewind()) enterRewind();
+
+    if (state === 'rewinding') {
+      if (!input.rewind) {
+        // отпустили посреди гибели — доматываем до живого места
+        if (engine.status !== 'playing' || !engine.murphy.alive) engine = history.seek(Math.max(0, history.lastSafe() - 2));
+        state = 'playing'; acc = 0; updateHud();
+      }
+      else {
+        acc += dt;
+        var rg = 0;
+        while (acc >= REWIND_MS && rg++ < 8 && history.length() > 0) {
+          acc -= REWIND_MS;
+          engine = history.back(1);
+          usedRewind = true;
+        }
+        updateHud();
+      }
+    } else if (state === 'playing') {
       acc += dt;
       var guard = 0;
       while (acc >= TICK_MS && guard++ < 8) {
         acc -= TICK_MS;
-        var status = engine.step(input.current());
+        var act = input.current();
+        var status = engine.step(act);
+        history.record(act, engine);
         updateHud();
         if (status === 'won') { onWin(); break; }
         if (status === 'dead') { onDead(); break; }
