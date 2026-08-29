@@ -81,7 +81,7 @@ var chapterDefs = plan.chapters.map(function (c) {
   return { n: c.n, title: c.title, planned: c.levels.length };
 });
 // уровни за пределами плана получают свою главу; у некоторых глав название задано вручную
-var EXTRA_TITLES = { 12: 'Десять из десяти' };
+var EXTRA_TITLES = { 12: 'Десять из десяти', 13: 'Расчёт', 14: 'Живой механизм' };
 levels.forEach(function (l) {
   if (l.chapter > chapterDefs.length && !chapterDefs.some(function (c) { return c.n === l.chapter; })) {
     chapterDefs.push({ n: l.chapter, title: EXTRA_TITLES[l.chapter] || 'Проба · вариант ChatGPT', planned: 10 });
