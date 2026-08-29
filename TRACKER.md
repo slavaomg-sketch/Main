@@ -89,23 +89,28 @@ make bot
 
 ## На сервере
 
-Если бот напоминаний уже стоит по инструкции из [README](README.md),
-хаб добавляется рядом одной командой:
+Если бот напоминаний уже стоит по инструкции из [README](README.md), хаб
+добавляется рядом двумя командами:
 
 ```bash
 cd ~/reminder-bot-src && git pull
-sudo bash deploy/update.sh                 # обновит код в /opt/reminder-bot
-sudo nano /opt/reminder-bot/.env           # добавить HUB_BOT_TOKEN
-
-sed -e 's|__APP_DIR__|/opt/reminder-bot|g' -e 's|__APP_USER__|reminderbot|g' \
-    deploy/hub-bot.service | sudo tee /etc/systemd/system/hub-bot.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now hub-bot
-sudo journalctl -u hub-bot -f
+sudo bash deploy/install-hub.sh
 ```
 
+Скрипт спросит токен нового бота и ваш Telegram ID, проверит токен у Telegram,
+скопирует код, настроит автозапуск и покажет, что получилось. Бот напоминаний,
+его базу и настройки он не трогает; повторный запуск безопасен — им же
+обновляются на свежую версию.
+
 Порты открывать не нужно: бот сам ходит в Telegram (long polling).
+
+| Задача | Команда |
+|---|---|
+| Состояние | `sudo systemctl status hub-bot` |
+| Логи вживую | `sudo journalctl -u hub-bot -f` |
+| Перезапуск | `sudo systemctl restart hub-bot` |
+| Обновить | `cd ~/reminder-bot-src && git pull && sudo bash deploy/install-hub.sh` |
+| Выключить | `sudo systemctl disable --now hub-bot` |
 
 ---
 
