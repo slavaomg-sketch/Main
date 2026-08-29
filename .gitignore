@@ -8,3 +8,6 @@ data/
 *.sqlite3
 .pytest_cache/
 .mypy_cache/
+
+# личные настройки Claude Code (у каждого свои)
+.claude/settings.local.json
