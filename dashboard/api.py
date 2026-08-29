@@ -311,7 +311,7 @@ async def answer_inbox(payload: dict[str, Any] = Body(default_factory=dict)) -> 
 
     if not (account and kind and item_id and text):
         raise HTTPException(status_code=400, detail="Не хватает данных для ответа")
-    if kind not in {chapter for chapter, _ in inbox.CHAPTERS}:
+    if kind not in inbox.CHAPTER_TITLES:
         raise HTTPException(status_code=400, detail="Неизвестный раздел входящих")
 
     try:

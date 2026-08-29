@@ -1352,3 +1352,12 @@ html[data-theme="auto"] .icon-moon { display: none; }
   color: var(--text-secondary);
 }
 .inbox-card__hint strong { color: var(--warning); }
+
+.inbox__row { margin-bottom: 10px; }
+.inbox__row:last-of-type { margin-bottom: 16px; }
+.inbox__count.is-urgent { background: var(--negative); }
+.inbox__count { background: var(--accent); }
+
+/* Подпись под кнопками, а не между ними: так она не сжимается в столбик. */
+.inbox-card__reply > .inbox-card__note { margin: 8px 0 0; text-align: right; }
+.inbox-card__foot { justify-content: space-between; }

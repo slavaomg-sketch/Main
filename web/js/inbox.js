@@ -1,8 +1,12 @@
 /* Экран «Входящие»: всё, что ждёт ответа покупателям.
 
-   В кабинете Wildberries это красные кружки с числами на главной —
-   отзывы без ответа, вопросы, заявки на возврат. Здесь они собраны по
-   всем магазинам сразу, разделены на главы и закрываются прямо отсюда.
+   Устроен в три уровня, как в кабинетах площадок:
+
+       площадка  →  магазин  →  глава  →  обращения
+
+   У каждой площадки свои главы: у Wildberries есть заявки на возврат,
+   у Ozon их нет, у Яндекса нет отдельных вопросов. Список глав приходит
+   с сервера — экран его не выдумывает.
 
    Ответ покупателю виден всем и его нельзя отозвать, поэтому кнопка
    требует второго нажатия — случайный клик ничего не отправит. */
@@ -14,8 +18,10 @@
 
   var state = {
     data: null,          // последний ответ /api/inbox
-    loading: null,       // текущий запрос, чтобы не дёргать площадку дважды
-    chapter: '',         // открытая глава
+    loading: null,       // текущий запрос, чтобы не дёргать площадки дважды
+    place: '',           // выбранная площадка
+    store: '',           // выбранный магазин
+    chapter: '',         // выбранная глава
     drafts: {},          // набранные, но не отправленные ответы
     sending: {},         // обращения, по которым ответ уже улетел
     confirming: {},      // нажали «Отправить» — ждём подтверждения
@@ -45,7 +51,7 @@
       .then(function (payload) {
         state.data = payload;
         state.loading = null;
-        onCounts(payload.total || 0, payload.urgent || 0);
+        announce();
         return payload;
       })
       .catch(function (error) {
@@ -53,6 +59,81 @@
         throw error;
       });
     return state.loading;
+  }
+
+  /* --- выборка по дереву ---------------------------------------------------- */
+
+  function places() {
+    return (state.data && state.data.marketplaces) || [];
+  }
+
+  function currentPlace() {
+    var list = places();
+    for (var i = 0; i < list.length; i += 1) {
+      if (list[i].code === state.place) return list[i];
+    }
+    return list[0] || null;
+  }
+
+  function currentStore() {
+    var place = currentPlace();
+    if (!place) return null;
+    var shops = place.stores || [];
+    for (var i = 0; i < shops.length; i += 1) {
+      if (shops[i].id === state.store) return shops[i];
+    }
+    return shops[0] || null;
+  }
+
+  function currentChapter() {
+    var store = currentStore();
+    if (!store) return null;
+    var chapters = store.chapters || [];
+    for (var i = 0; i < chapters.length; i += 1) {
+      if (chapters[i].kind === state.chapter) return chapters[i];
+    }
+    return chapters[0] || null;
+  }
+
+  // Отвеченное в этом сеансе с экрана убираем, не дожидаясь обновления.
+  function visible(chapter) {
+    return ((chapter && chapter.items) || []).filter(function (item) {
+      return !state.answered[key(item)];
+    });
+  }
+
+  function countOf(node) {
+    // Считаем по тем же правилам, что и показываем: без уже отвеченного.
+    var total = 0;
+    var urgent = 0;
+
+    function walkChapters(chapters) {
+      (chapters || []).forEach(function (chapter) {
+        visible(chapter).forEach(function (item) {
+          total += 1;
+          if (item.urgent) urgent += 1;
+        });
+      });
+    }
+
+    if (node.chapters) {
+      walkChapters(node.chapters);
+    } else if (node.stores) {
+      node.stores.forEach(function (store) { walkChapters(store.chapters); });
+    }
+    return { total: total, urgent: urgent };
+  }
+
+  // Счётчик на кнопке должен показывать то же, что видно на экране.
+  function announce() {
+    var total = 0;
+    var urgent = 0;
+    places().forEach(function (place) {
+      var counted = countOf(place);
+      total += counted.total;
+      urgent += counted.urgent;
+    });
+    onCounts(total, urgent);
   }
 
   /* --- мелочи --------------------------------------------------------------- */
@@ -68,8 +149,7 @@
 
     var time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     var now = new Date();
-    var sameDay = date.toDateString() === now.toDateString();
-    if (sameDay) return 'сегодня, ' + time;
+    if (date.toDateString() === now.toDateString()) return 'сегодня, ' + time;
 
     var yesterday = new Date(now.getTime() - 86400000);
     if (date.toDateString() === yesterday.toDateString()) return 'вчера, ' + time;
@@ -86,57 +166,6 @@
       node.appendChild(Fmt.el('span', i <= rating ? 'inbox__star is-on' : 'inbox__star', '★'));
     }
     return node;
-  }
-
-  function chapterOf(kind) {
-    var chapters = (state.data && state.data.chapters) || [];
-    for (var i = 0; i < chapters.length; i += 1) {
-      if (chapters[i].kind === kind) return chapters[i];
-    }
-    return null;
-  }
-
-  function visible(chapter) {
-    return (chapter.items || []).filter(function (item) {
-      return !state.answered[key(item)];
-    });
-  }
-
-  // Счётчик на кнопке должен считать то же, что видно на экране.
-  function announce() {
-    var chapters = (state.data && state.data.chapters) || [];
-    var total = 0;
-    var urgent = 0;
-    chapters.forEach(function (chapter) {
-      visible(chapter).forEach(function (item) {
-        total += 1;
-        if (item.urgent) urgent += 1;
-      });
-    });
-    onCounts(total, urgent);
-  }
-
-  /* --- отправка ответа ------------------------------------------------------ */
-
-  function send(item, text) {
-    var id = key(item);
-    state.sending[id] = true;
-    render();
-
-    Api.answerInbox(item.accountId, item.kind, item.id, text)
-      .then(function () {
-        delete state.sending[id];
-        delete state.drafts[id];
-        state.answered[id] = text;
-        toast('Ответ отправлен');
-        render();
-        announce();
-      })
-      .catch(function (error) {
-        delete state.sending[id];
-        render();
-        toast(error.message);
-      });
   }
 
   /* --- черновик от помощника ------------------------------------------------ */
@@ -164,6 +193,29 @@
       });
   }
 
+  /* --- отправка ответа ------------------------------------------------------ */
+
+  function send(item, text) {
+    var id = key(item);
+    state.sending[id] = true;
+    render();
+
+    Api.answerInbox(item.accountId, item.kind, item.id, text)
+      .then(function () {
+        delete state.sending[id];
+        delete state.drafts[id];
+        state.answered[id] = text;
+        toast('Ответ отправлен');
+        render();
+        announce();
+      })
+      .catch(function (error) {
+        delete state.sending[id];
+        render();
+        toast(error.message);
+      });
+  }
+
   /* --- карточка обращения --------------------------------------------------- */
 
   function answeredCard(item, text) {
@@ -176,13 +228,7 @@
   function cardHead(item) {
     var head = Fmt.el('header', 'inbox-card__head');
 
-    var store = Fmt.el('span', 'inbox-card__store');
-    var dot = Fmt.el('span', 'inbox-card__dot');
-    dot.style.background = Fmt.colorOf('wildberries');
-    store.appendChild(dot);
-    store.appendChild(Fmt.el('span', null, item.accountTitle || 'магазин'));
-    head.appendChild(store);
-
+    if (item.author) head.appendChild(Fmt.el('span', 'inbox-card__store', item.author));
     if (item.kind === 'feedback' && item.rating) head.appendChild(stars(item.rating));
     if (item.urgent) head.appendChild(Fmt.el('span', 'inbox-card__flag', 'нужен человек'));
 
@@ -250,9 +296,6 @@
       foot.appendChild(ask);
     }
 
-    foot.appendChild(Fmt.el('span', 'inbox-card__note',
-      'Ответ увидят все покупатели, отозвать его нельзя'));
-
     var button = Fmt.el('button', 'btn btn--primary');
     button.type = 'button';
     var label = Fmt.el('span', null,
@@ -278,6 +321,12 @@
     foot.appendChild(button);
 
     box.appendChild(foot);
+    // Предупреждение отдельной строкой: между кнопками оно сжималось
+    // в столбик из трёх слов и переставало читаться.
+    box.appendChild(Fmt.el('p', 'inbox-card__note',
+      item.kind === 'chat'
+        ? 'Сообщение уйдёт покупателю в чат'
+        : 'Ответ увидят все покупатели, отозвать его нельзя'));
     return box;
   }
 
@@ -296,7 +345,7 @@
     }
 
     node.appendChild(Fmt.el('p', 'inbox-card__text',
-      item.text || 'Покупатель оставил оценку без текста'));
+      item.text || 'Покупатель написал без текста'));
 
     if (item.photos && item.photos.length) node.appendChild(photos(item));
 
@@ -304,25 +353,83 @@
     return node;
   }
 
-  /* --- главы ---------------------------------------------------------------- */
+  /* --- три ряда навигации --------------------------------------------------- */
 
-  function chapterChips() {
-    var row = Fmt.el('div', 'chips inbox__chapters');
-    (state.data.chapters || []).forEach(function (chapter) {
-      var items = visible(chapter);
-      var chip = Fmt.el('button', 'chip' + (chapter.kind === state.chapter ? ' is-active' : ''));
-      chip.type = 'button';
-      chip.appendChild(Fmt.el('span', null, chapter.title));
-      chip.appendChild(Fmt.el('span',
-        'inbox__count' + (items.length ? '' : ' is-zero'), String(items.length)));
-      chip.addEventListener('click', function () {
-        state.chapter = chapter.kind;
-        render();
-      });
-      row.appendChild(chip);
+  function chip(title, counted, active, onPick, dot) {
+    var node = Fmt.el('button', 'chip' + (active ? ' is-active' : ''));
+    node.type = 'button';
+    if (dot) {
+      var mark = Fmt.el('span', 'chip__dot');
+      mark.style.background = dot;
+      node.appendChild(mark);
+    }
+    node.appendChild(Fmt.el('span', null, title));
+    node.appendChild(Fmt.el('span',
+      'inbox__count' + (counted.total ? '' : ' is-zero') +
+      (counted.urgent ? ' is-urgent' : ''), String(counted.total)));
+    node.addEventListener('click', onPick);
+    return node;
+  }
+
+  function placeRow() {
+    var row = Fmt.el('div', 'chips inbox__row');
+    var picked = currentPlace();
+    places().forEach(function (place) {
+      row.appendChild(chip(
+        place.title, countOf(place), picked && place.code === picked.code,
+        function () {
+          state.place = place.code;
+          state.store = '';
+          state.chapter = '';
+          render();
+        },
+        Fmt.colorOf(place.code)
+      ));
     });
     return row;
   }
+
+  function storeRow() {
+    var place = currentPlace();
+    var shops = (place && place.stores) || [];
+    if (shops.length < 2) return null;   // один кабинет — выбирать не из чего
+
+    var row = Fmt.el('div', 'chips chips--stores inbox__row');
+    var picked = currentStore();
+    shops.forEach(function (shop) {
+      row.appendChild(chip(
+        shop.title, countOf(shop), picked && shop.id === picked.id,
+        function () {
+          state.store = shop.id;
+          state.chapter = '';
+          render();
+        }
+      ));
+    });
+    return row;
+  }
+
+  function chapterRow() {
+    var store = currentStore();
+    if (!store) return null;
+
+    var row = Fmt.el('div', 'chips inbox__row inbox__chapters');
+    var picked = currentChapter();
+    (store.chapters || []).forEach(function (chapter) {
+      var items = visible(chapter);
+      row.appendChild(chip(
+        chapter.title, { total: items.length, urgent: chapter.urgent },
+        picked && chapter.kind === picked.kind,
+        function () {
+          state.chapter = chapter.kind;
+          render();
+        }
+      ));
+    });
+    return row;
+  }
+
+  /* --- состояния экрана ----------------------------------------------------- */
 
   function emptyChapter(title) {
     var box = Fmt.el('div', 'inbox__empty');
@@ -334,23 +441,31 @@
 
   function troubles() {
     var errors = (state.data && state.data.errors) || {};
-    var codes = Object.keys(errors);
-    if (!codes.length) return null;
+    var keys = Object.keys(errors);
+    if (!keys.length) return null;
+
+    var store = currentStore();
+    var chapter = currentChapter();
+    // Показываем беду только той главы, которая сейчас открыта, — иначе
+    // предупреждение висело бы всегда и его перестали бы читать.
+    var reason = store && chapter ? errors[store.id + ':' + chapter.kind] : null;
+    if (!reason) return null;
 
     var box = Fmt.el('div', 'inbox__trouble');
-    box.appendChild(Fmt.el('strong', null, 'Часть обращений не загрузилась.'));
+    box.appendChild(Fmt.el('strong', null, 'Этот раздел не загрузился: ' + reason + '. '));
     box.appendChild(Fmt.el('span', null,
-      ' Чаще всего это значит, что в токене Wildberries не отмечена категория ' +
-      '«Вопросы и отзывы». Откройте «Ключи», создайте токен с этой категорией ' +
-      'и вставьте его заново.'));
+      reason === 'нет прав в ключе'
+        ? 'Откройте «Ключи» и создайте токен, в котором отмечена нужная ' +
+          'категория — «Вопросы и отзывы» или «Чат с покупателями».'
+        : 'Попробуйте обновить через несколько минут.'));
     return box;
   }
 
-  function noStores() {
+  function nothing() {
     var box = Fmt.el('div', 'inbox__empty');
     box.appendChild(Fmt.el('p', 'inbox__emptyText',
-      'Нет ни одного подключённого магазина Wildberries. Добавьте ключи на ' +
-      'странице «Ключи» — и обращения покупателей появятся здесь.'));
+      'Нет ни одного подключённого магазина. Добавьте ключи на странице ' +
+      '«Ключи» — и обращения покупателей появятся здесь.'));
     return box;
   }
 
@@ -361,23 +476,33 @@
     Fmt.clear(host);
 
     if (!state.data) {
-      host.appendChild(Fmt.el('p', 'inbox__loading', 'Спрашиваем площадку…'));
+      host.appendChild(Fmt.el('p', 'inbox__loading', 'Спрашиваем площадки…'));
       return;
     }
 
-    if (!(state.data.stores || []).length) {
-      host.appendChild(noStores());
+    if (!places().length) {
+      host.appendChild(nothing());
       return;
     }
+
+    host.appendChild(placeRow());
+    var shops = storeRow();
+    if (shops) host.appendChild(shops);
+    var chapters = chapterRow();
+    if (chapters) host.appendChild(chapters);
+
+    // Запоминаем выбор, чтобы следующая отрисовка не «прыгнула» на первый.
+    var place = currentPlace();
+    var store = currentStore();
+    var chapter = currentChapter();
+    if (place) state.place = place.code;
+    if (store) state.store = store.id;
+    if (chapter) state.chapter = chapter.kind;
 
     var trouble = troubles();
     if (trouble) host.appendChild(trouble);
 
-    host.appendChild(chapterChips());
-
-    var chapter = chapterOf(state.chapter) || (state.data.chapters || [])[0];
     if (!chapter) return;
-    state.chapter = chapter.kind;
 
     var items = visible(chapter);
     if (!items.length) {

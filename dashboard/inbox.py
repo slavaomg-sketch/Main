@@ -1,11 +1,17 @@
 """Входящие: всё, что ждёт ответа продавца, в одном месте.
 
-В кабинете Wildberries это красные кружки с числами — отзывы без ответа,
-вопросы покупателей, заявки на возврат. Их нужно закрывать, и панель
-собирает их по всем магазинам сразу, чтобы не заходить в каждый кабинет.
+В кабинете продавца это красные кружки с числами — отзывы без ответа,
+вопросы, заявки на возврат, непрочитанные сообщения. Их нужно закрывать,
+и панель собирает их сразу по всем площадкам и всем кабинетам, чтобы не
+заходить в каждый кабинет по отдельности.
 
-Главы намеренно разделены: у каждой свой смысл, свой темп и, в будущем,
-свой агент-помощник. Общего у них только устройство обращения.
+Устройство трёхуровневое, как и просил владелец:
+
+    площадка  →  магазин  →  глава  →  обращения
+
+Площадки разные, и главы у них разные: у Wildberries есть заявки на
+возврат, у Ozon их нет, у Яндекса нет отдельных вопросов. Поэтому список
+глав объявляет сам коннектор площадки, а не этот модуль.
 """
 
 from __future__ import annotations
@@ -15,23 +21,44 @@ import logging
 from datetime import datetime
 from typing import Any
 
+import httpx
+
 from . import connections
 from .config import Settings, settings
-from .connectors.wb_inbox import InboxItem, WildberriesInbox
+from .connectors.inbox_base import InboxItem
+from .connectors.ozon_inbox import OzonInbox
+from .connectors.wb_inbox import WildberriesInbox
+from .connectors.yandex_inbox import YandexInbox
 
 log = logging.getLogger(__name__)
 
 # Обращение без даты не должно всплывать наверх списка.
 _OLD = datetime(1970, 1, 1)
 
-# Главы входящих в порядке, в котором их видит владелец панели.
-CHAPTERS: tuple[tuple[str, str], ...] = (
-    ("feedback", "Отзывы"),
-    ("question", "Вопросы"),
-    ("claim", "Заявки на возврат"),
-)
+# Какая площадка каким коннектором обслуживается. AliExpress сюда пока
+# не входит: у площадки нет метода, которым продавец отвечает покупателю.
+SOURCES = {
+    "wildberries": WildberriesInbox,
+    "ozon": OzonInbox,
+    "yandex": YandexInbox,
+}
 
-CHAPTER_TITLES = dict(CHAPTERS)
+# Порядок площадок на экране.
+ORDER = ("wildberries", "ozon", "yandex")
+
+TITLES = {
+    "wildberries": "Wildberries",
+    "ozon": "Ozon",
+    "yandex": "Яндекс Маркет",
+}
+
+# Названия глав для показа. Берутся у коннектора, здесь — запасной вариант.
+CHAPTER_TITLES = {
+    "feedback": "Отзывы",
+    "question": "Вопросы",
+    "claim": "Заявки на возврат",
+    "chat": "Сообщения покупателей",
+}
 
 # Последняя выдача `collect`, разложенная по ключу обращения. Нужна, чтобы
 # черновик писался по тексту, который панель получила от площадки сама,
@@ -51,84 +78,121 @@ def find(account_id: str, kind: str, item_id: str) -> InboxItem | None:
     return _seen.get((account_id, kind, str(item_id)))
 
 
-def _connector(store: connections.Connection, config: Settings) -> WildberriesInbox:
-    return WildberriesInbox(store.credentials(config))
+def _source(store: connections.Connection, config: Settings):
+    """Коннектор входящих для магазина."""
+    factory = SOURCES.get(store.marketplace)
+    if factory is None:
+        raise LookupError(f"у площадки {store.marketplace} нет входящих")
+    return factory(store.credentials(config))
 
 
 async def _for_store(
     store: connections.Connection, config: Settings
-) -> tuple[list[InboxItem], dict[str, str]]:
-    """Обращения одного магазина. Сбой одной главы не уносит остальные."""
-    connector = _connector(store, config)
-    items: list[InboxItem] = []
+) -> tuple[list[dict[str, Any]], dict[str, str], list[InboxItem]]:
+    """Главы одного магазина. Сбой одной главы не уносит остальные."""
+    source = _source(store, config)
+    chapters: list[dict[str, Any]] = []
     errors: dict[str, str] = {}
+    collected: list[InboxItem] = []
 
-    for kind, loader in (
-        ("feedback", connector.feedbacks),
-        ("question", connector.questions),
-        ("claim", connector.claims),
-    ):
+    for kind, title in source.CHAPTERS:
         try:
-            found = await loader()
+            found = await source.load(kind)
         except Exception as exc:  # noqa: BLE001 — глава могла быть недоступна
-            errors[kind] = f"{type(exc).__name__}"
+            errors[f"{store.id}:{kind}"] = _reason(exc)
             log.info("Входящие %s, глава %s: %s", store.title, kind, exc)
-            continue
+            found = []
 
         for item in found:
             item.account_id = store.id
             item.account_title = store.title
-        items.extend(found)
+            item.marketplace = store.marketplace
 
-    return items, errors
+        found.sort(key=lambda item: item.created_at or _OLD, reverse=True)
+        collected.extend(found)
+        chapters.append({
+            "kind": kind,
+            "title": title or CHAPTER_TITLES.get(kind, kind),
+            "count": len(found),
+            "urgent": sum(1 for item in found if item.urgent),
+            "items": [item.to_dict() for item in found],
+        })
+
+    return chapters, errors, collected
+
+
+def _reason(error: BaseException) -> str:
+    """Короткое человеческое объяснение, почему глава не открылась."""
+    if isinstance(error, httpx.HTTPStatusError):
+        code = error.response.status_code
+        if code in {401, 403}:
+            return "нет прав в ключе"
+        if code == 404:
+            return "площадка не отдаёт этот раздел"
+        if code == 429:
+            return "площадка просит подождать"
+        return f"площадка ответила {code}"
+    return type(error).__name__
 
 
 async def collect(config: Settings | None = None) -> dict[str, Any]:
-    """Собрать входящие по всем подключённым магазинам Wildberries."""
+    """Собрать входящие по всем площадкам и всем их кабинетам."""
     config = config or settings
+
     stores = [
         store
         for store in await connections.load(config)
-        if store.marketplace == "wildberries" and store.enabled and store.configured
+        if store.marketplace in SOURCES and store.enabled and store.configured
     ]
 
     if not stores:
         _seen.clear()
-        return {"chapters": [], "total": 0, "urgent": 0, "stores": []}
+        return {"marketplaces": [], "total": 0, "urgent": 0, "errors": {}}
 
     gathered = await asyncio.gather(
         *(_for_store(store, config) for store in stores), return_exceptions=True
     )
 
-    items: list[InboxItem] = []
     errors: dict[str, str] = {}
+    by_marketplace: dict[str, list[dict[str, Any]]] = {}
+    seen: list[InboxItem] = []
+
     for store, outcome in zip(stores, gathered):
         if isinstance(outcome, BaseException):
-            errors[store.id] = f"{type(outcome).__name__}"
+            errors[store.id] = _reason(outcome)
             continue
-        found, store_errors = outcome
-        items.extend(found)
-        errors.update({f"{store.id}:{key}": value for key, value in store_errors.items()})
 
-    remember(items)
+        chapters, store_errors, items = outcome
+        errors.update(store_errors)
+        seen.extend(items)
 
-    chapters = []
-    for kind, title in CHAPTERS:
-        chapter = [item for item in items if item.kind == kind]
-        chapter.sort(key=lambda item: item.created_at or _OLD, reverse=True)
-        chapters.append({
-            "kind": kind,
-            "title": title,
-            "count": len(chapter),
-            "urgent": sum(1 for item in chapter if item.urgent),
-            "items": [item.to_dict() for item in chapter],
+        by_marketplace.setdefault(store.marketplace, []).append({
+            "id": store.id,
+            "title": store.title,
+            "total": sum(chapter["count"] for chapter in chapters),
+            "urgent": sum(chapter["urgent"] for chapter in chapters),
+            "chapters": chapters,
+        })
+
+    remember(seen)
+
+    marketplaces = []
+    for code in ORDER:
+        shops = by_marketplace.get(code)
+        if not shops:
+            continue
+        marketplaces.append({
+            "code": code,
+            "title": TITLES.get(code, code),
+            "total": sum(shop["total"] for shop in shops),
+            "urgent": sum(shop["urgent"] for shop in shops),
+            "stores": shops,
         })
 
     return {
-        "chapters": chapters,
-        "total": len(items),
-        "urgent": sum(1 for item in items if item.urgent),
-        "stores": [{"id": store.id, "title": store.title} for store in stores],
+        "marketplaces": marketplaces,
+        "total": sum(place["total"] for place in marketplaces),
+        "urgent": sum(place["urgent"] for place in marketplaces),
         "errors": errors,
     }
 
@@ -142,4 +206,4 @@ async def reply(
     if store is None:
         raise LookupError("магазин не найден")
 
-    await _connector(store, config).answer(kind, item_id, text)
+    await _source(store, config).answer(kind, item_id, text)
