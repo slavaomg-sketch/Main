@@ -1361,3 +1361,18 @@ html[data-theme="auto"] .icon-moon { display: none; }
 /* Подпись под кнопками, а не между ними: так она не сжимается в столбик. */
 .inbox-card__reply > .inbox-card__note { margin: 8px 0 0; text-align: right; }
 .inbox-card__foot { justify-content: space-between; }
+
+/* Конвейер: разбор пачки и массовая отправка. */
+.inbox__conveyor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.inbox__progress { font-size: 12.5px; color: var(--text-secondary); margin-right: auto; }
+.inbox__conveyor .btn { height: 32px; font-size: 13px; }

@@ -564,3 +564,88 @@ def test_draft_returns_the_text_and_the_warning(client, monkeypatch):
     }).json()
 
     assert payload == {"answer": "Разберёмся.", "needsHuman": True, "why": "речь о деньгах"}
+
+
+# --- конвейер -------------------------------------------------------------------
+
+
+def test_batch_needs_a_working_agent(client):
+    """Без моста разбирать нечем — панель обязана сказать это прямо."""
+    answer = client.post("/api/inbox/batch", json={
+        "accountId": "wb1", "kind": "chat", "ids": ["i1"],
+    })
+    assert answer.status_code == 503
+    assert "не настроен" in answer.json()["detail"]
+
+
+def test_batch_refuses_unknown_chapter(client, monkeypatch):
+    from dashboard import agent
+
+    monkeypatch.setattr(agent, "available", lambda config=None: True)
+    assert client.post("/api/inbox/batch", json={
+        "accountId": "wb1", "kind": "почта", "ids": [],
+    }).status_code == 400
+
+
+def test_batch_runs_and_can_be_read_back(client, monkeypatch):
+    from dashboard import agent, inbox, pipeline
+    from dashboard.connectors.inbox_base import InboxItem
+
+    pipeline._batches.clear()
+    inbox.remember([
+        InboxItem(kind="chat", id="i1", text="Когда приедет?", account_id="wb1",
+                  account_title="ВБ Вячеслав", marketplace="wildberries"),
+    ])
+
+    async def write(item, title, config):
+        return agent.Draft(answer="Завтра будет у вас.")
+
+    monkeypatch.setattr(agent, "available", lambda config=None: True)
+    monkeypatch.setattr(agent, "draft", write)
+
+    started = client.post("/api/inbox/batch", json={
+        "accountId": "wb1", "kind": "chat", "ids": ["i1"],
+    }).json()
+    assert started["total"] == 1
+
+    payload = client.get(f"/api/inbox/batch/{started['id']}").json()
+    assert payload["done"] == 1
+    assert payload["drafts"][0]["answer"] == "Завтра будет у вас."
+    pipeline._batches.clear()
+
+
+def test_unknown_batch_is_not_found(client):
+    assert client.get("/api/inbox/batch/нет-такой").status_code == 404
+
+
+def test_mass_send_refuses_an_empty_request(client):
+    assert client.post("/api/inbox/send", json={
+        "accountId": "wb1", "kind": "chat", "answers": {},
+    }).status_code == 400
+
+
+def test_mass_send_refuses_more_than_a_batch(client):
+    from dashboard import pipeline
+
+    answers = {f"i{number}": "Ответ" for number in range(pipeline.MAX_BATCH + 1)}
+    answer = client.post("/api/inbox/send", json={
+        "accountId": "wb1", "kind": "chat", "answers": answers,
+    })
+    assert answer.status_code == 400
+    assert "Слишком много" in answer.json()["detail"]
+
+
+def test_mass_send_reports_what_went_out(client, monkeypatch):
+    from dashboard import inbox
+
+    async def reply(account, kind, item_id, text, config):
+        if item_id == "i2":
+            raise RuntimeError("отказ")
+
+    monkeypatch.setattr(inbox, "reply", reply)
+    payload = client.post("/api/inbox/send", json={
+        "accountId": "wb1", "kind": "chat", "answers": {"i1": "Да", "i2": "Нет"},
+    }).json()
+
+    assert payload["sent"] == ["i1"]
+    assert payload["failed"] == {"i2": "RuntimeError"}

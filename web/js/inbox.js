@@ -27,7 +27,10 @@
     confirming: {},      // нажали «Отправить» — ждём подтверждения
     answered: {},        // на что уже ответили в этом сеансе
     drafting: {},        // помощник сейчас пишет черновик
-    hints: {}            // предупреждения помощника «тут нужен человек»
+    hints: {},           // предупреждения помощника «тут нужен человек»
+    batch: null,         // идущий или разобранный конвейер
+    sendingBatch: false, // массовая отправка в пути
+    confirmBatch: false  // нажали «Отправить типовые» — ждём подтверждения
   };
 
   var host = null;
@@ -166,6 +169,183 @@
       node.appendChild(Fmt.el('span', i <= rating ? 'inbox__star is-on' : 'inbox__star', '★'));
     }
     return node;
+  }
+
+  /* --- конвейер: разбор пачки ----------------------------------------------- */
+
+  // Сколько обращений уходит в один заход. Столько же держит сервер.
+  var BATCH = 30;
+
+  function batchScope() {
+    var store = currentStore();
+    var chapter = currentChapter();
+    if (!store || !chapter) return null;
+    return { accountId: store.id, kind: chapter.kind, chapter: chapter };
+  }
+
+  function startBatch() {
+    var scope = batchScope();
+    if (!scope) return;
+
+    var ids = visible(scope.chapter).slice(0, BATCH).map(function (item) { return item.id; });
+    if (!ids.length) return;
+
+    state.batch = { running: true, total: ids.length, done: 0, ready: 0, human: 0, failed: 0 };
+    render();
+
+    Api.startBatch(scope.accountId, scope.kind, ids)
+      .then(function (batch) { watchBatch(batch); })
+      .catch(function (error) {
+        state.batch = null;
+        render();
+        toast(error.message);
+      });
+  }
+
+  function watchBatch(batch) {
+    state.batch = {
+      id: batch.id, running: !batch.finished, total: batch.total, done: batch.done,
+      ready: batch.ready, human: batch.human, failed: batch.failed
+    };
+
+    // Черновики кладём в те же поля, что и при одиночном запросе, —
+    // владелец правит их ровно так же.
+    (batch.drafts || []).forEach(function (draft) {
+      var full = batch.accountId + ':' + batch.kind + ':' + draft.id;
+      if (draft.answer) state.drafts[full] = draft.answer;
+      if (draft.needsHuman) {
+        state.hints[full] = draft.why || 'Помощник не уверен — проверьте сами.';
+      }
+      if (draft.error) state.hints[full] = draft.error;
+    });
+
+    render();
+
+    if (batch.finished) return;
+    setTimeout(function () {
+      Api.readBatch(batch.id)
+        .then(watchBatch)
+        .catch(function (error) {
+          state.batch = null;
+          render();
+          toast(error.message);
+        });
+    }, 1500);
+  }
+
+  // Отправляем то, что помощник счёл типовым и что владелец не стёр.
+  function approvedAnswers() {
+    var scope = batchScope();
+    if (!scope) return {};
+    var answers = {};
+    visible(scope.chapter).forEach(function (item) {
+      var id = key(item);
+      var text = (state.drafts[id] || '').trim();
+      if (!text || state.hints[id]) return;   // с пометкой — только руками
+      answers[item.id] = text;
+    });
+    return answers;
+  }
+
+  // Сколько разобранного ждёт человека. Считаем здесь же, а не берём с
+  // сервера: иначе строка итога могла показать «из одного — два».
+  function needingHuman() {
+    var scope = batchScope();
+    if (!scope) return 0;
+    return visible(scope.chapter).filter(function (item) {
+      return !!state.hints[key(item)];
+    }).length;
+  }
+
+  function sendApproved() {
+    var scope = batchScope();
+    var answers = approvedAnswers();
+    var ids = Object.keys(answers);
+    if (!scope || !ids.length) return;
+
+    state.sendingBatch = true;
+    render();
+
+    Api.sendBatch(scope.accountId, scope.kind, answers)
+      .then(function (result) {
+        state.sendingBatch = false;
+        (result.sent || []).forEach(function (itemId) {
+          var full = scope.accountId + ':' + scope.kind + ':' + itemId;
+          state.answered[full] = state.drafts[full] || '';
+          delete state.drafts[full];
+        });
+        var failed = Object.keys(result.failed || {}).length;
+        toast('Отправлено: ' + (result.sent || []).length +
+              (failed ? ', не удалось: ' + failed : ''));
+        render();
+        announce();
+      })
+      .catch(function (error) {
+        state.sendingBatch = false;
+        render();
+        toast(error.message);
+      });
+  }
+
+  function conveyor() {
+    var scope = batchScope();
+    if (!scope || !(state.data && state.data.agent)) return null;
+
+    var items = visible(scope.chapter);
+    if (!items.length) return null;
+
+    var bar = Fmt.el('div', 'inbox__conveyor');
+    var batch = state.batch;
+
+    if (batch && batch.running) {
+      bar.appendChild(Fmt.el('span', 'inbox__progress',
+        'Помощник пишет: ' + batch.done + ' из ' + batch.total + '…'));
+      return bar;
+    }
+
+    var ready = Object.keys(approvedAnswers()).length;
+
+    if (batch && !batch.running) {
+      bar.appendChild(Fmt.el('span', 'inbox__progress',
+        'Разобрано ' + batch.total + ': типовых ' + ready +
+        ', нужен человек — ' + needingHuman() +
+        (batch.failed ? ', не вышло ' + batch.failed : '')));
+    } else {
+      bar.appendChild(Fmt.el('span', 'inbox__progress',
+        'Ждёт ответа: ' + items.length +
+        (items.length > BATCH ? ' — за раз разбираем ' + BATCH : '')));
+    }
+
+    var run = Fmt.el('button', 'btn btn--ghost');
+    run.type = 'button';
+    run.appendChild(Fmt.el('span', null,
+      'Разобрать ' + Math.min(items.length, BATCH)));
+    run.addEventListener('click', startBatch);
+    bar.appendChild(run);
+
+    if (ready) {
+      var send = Fmt.el('button', 'btn btn--primary');
+      send.type = 'button';
+      var label = Fmt.el('span', null,
+        state.confirmBatch ? 'Точно отправить ' + ready + '?' : 'Отправить типовые (' + ready + ')');
+      if (state.confirmBatch) send.classList.add('btn--danger');
+      if (state.sendingBatch) label.textContent = 'Отправляем…';
+      send.appendChild(label);
+      send.disabled = !!state.sendingBatch;
+      send.addEventListener('click', function () {
+        if (!state.confirmBatch) {
+          // Пачка уходит покупателям и не отзывается — спрашиваем дважды.
+          state.confirmBatch = true;
+          render();
+          return;
+        }
+        state.confirmBatch = false;
+        sendApproved();
+      });
+      bar.appendChild(send);
+    }
+
+    return bar;
   }
 
   /* --- черновик от помощника ------------------------------------------------ */
@@ -422,6 +602,8 @@
         picked && chapter.kind === picked.kind,
         function () {
           state.chapter = chapter.kind;
+          state.batch = null;
+          state.confirmBatch = false;
           render();
         }
       ));
@@ -503,6 +685,9 @@
     if (trouble) host.appendChild(trouble);
 
     if (!chapter) return;
+
+    var bar = conveyor();
+    if (bar) host.appendChild(bar);
 
     var items = visible(chapter);
     if (!items.length) {

@@ -69,6 +69,17 @@
       return request('POST', '/api/inbox/draft',
                      { accountId: accountId, kind: kind, id: id });
     },
+    startBatch: function (accountId, kind, ids) {
+      return request('POST', '/api/inbox/batch',
+                     { accountId: accountId, kind: kind, ids: ids });
+    },
+    readBatch: function (id) {
+      return request('GET', '/api/inbox/batch/' + encodeURIComponent(id));
+    },
+    sendBatch: function (accountId, kind, answers) {
+      return request('POST', '/api/inbox/send',
+                     { accountId: accountId, kind: kind, answers: answers });
+    },
     answerInbox: function (accountId, kind, id, text) {
       return request('POST', '/api/inbox/answer',
                      { accountId: accountId, kind: kind, id: id, text: text });

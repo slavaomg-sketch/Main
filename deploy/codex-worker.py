@@ -30,6 +30,7 @@ import shutil
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -48,6 +49,11 @@ TIMEOUT = int(os.getenv("WB_AGENT_TIMEOUT") or 180)
 # Как часто заглядываем в ящик. Секунда — чтобы кнопка «Черновик» в панели
 # не казалась залипшей, и при этом сервер не грелся впустую.
 POLL = 1.0
+
+# Сколько черновиков пишем одновременно. Разбор пачки из сотни сообщений
+# по одному занял бы четверть часа. Больше двух-трёх ставить не стоит:
+# каждый вызов Codex — отдельный тяжёлый процесс.
+WORKERS = int(os.getenv("WB_AGENT_WORKERS") or 3)
 
 # Ответы живут час: панель забирает их за секунды, остальное — мусор.
 KEEP = timedelta(hours=1)
@@ -89,9 +95,13 @@ def prepare() -> Path:
     return schema
 
 
-def run_codex(prompt: str, schema: Path) -> dict:
-    """Один вызов Codex. Возвращает разобранный ответ или причину отказа."""
-    out = WORK / "last.json"
+def run_codex(prompt: str, schema: Path, task_id: str) -> dict:
+    """Один вызов Codex. Возвращает разобранный ответ или причину отказа.
+
+    Файл ответа именуется по заданию: работников несколько, и общий файл
+    они бы затирали друг у друга.
+    """
+    out = WORK / f"out-{task_id}.json"
     out.unlink(missing_ok=True)
 
     command = [
@@ -134,6 +144,8 @@ def run_codex(prompt: str, schema: Path) -> dict:
         payload = json.loads(out.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {"ok": False, "error": "ответ Codex не разобрался"}
+    finally:
+        out.unlink(missing_ok=True)
 
     if not isinstance(payload, dict) or not payload.get("answer"):
         return {"ok": False, "error": "Codex вернул пустой черновик"}
@@ -155,8 +167,7 @@ def reply(task_id: str, payload: dict) -> None:
     temporary.replace(ANSWERS / f"{task_id}.json")
 
 
-def handle(request: Path, schema: Path) -> None:
-    task_id = request.stem
+def handle(request: Path, task_id: str, schema: Path) -> None:
     try:
         task = json.loads(request.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -171,7 +182,7 @@ def handle(request: Path, schema: Path) -> None:
         return
 
     say(f"{task_id}: пишу черновик ({len(prompt)} знаков)")
-    answer = run_codex(prompt, schema)
+    answer = run_codex(prompt, schema, task_id)
     reply(task_id, answer)
     say(f"{task_id}: {'готово за ' + str(answer.get('seconds')) + ' с' if answer['ok'] else answer['error']}")
 
@@ -187,25 +198,42 @@ def sweep() -> None:
             pass
 
 
+def claim(request: Path) -> Path | None:
+    """Забрать задание себе.
+
+    Переименование атомарно: два работника не смогут взять один файл, и
+    сканирующий цикл больше не увидит уже взятое.
+    """
+    taken = request.with_suffix(".taken")
+    try:
+        request.rename(taken)
+    except OSError:
+        return None
+    return taken
+
+
 def main() -> int:
     schema = prepare()
-    say(f"мост запущен, Codex: {CODEX}, ящик: {AGENT_DIR}")
+    say(f"мост запущен, Codex: {CODEX}, ящик: {AGENT_DIR}, разом: {WORKERS}")
 
     last_sweep = time.monotonic()
-    while True:
-        try:
-            tasks = sorted(QUEUE.glob("*.json"), key=lambda path: path.stat().st_mtime)
-        except OSError:
-            tasks = []
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        while True:
+            try:
+                tasks = sorted(QUEUE.glob("*.json"), key=lambda path: path.stat().st_mtime)
+            except OSError:
+                tasks = []
 
-        for request in tasks:
-            handle(request, schema)
+            for request in tasks:
+                taken = claim(request)
+                if taken is not None:
+                    pool.submit(handle, taken, request.stem, schema)
 
-        if time.monotonic() - last_sweep > 600:
-            sweep()
-            last_sweep = time.monotonic()
+            if time.monotonic() - last_sweep > 600:
+                sweep()
+                last_sweep = time.monotonic()
 
-        time.sleep(POLL)
+            time.sleep(POLL)
 
 
 if __name__ == "__main__":

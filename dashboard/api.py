@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import agent, inbox
+from . import agent, inbox, pipeline
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -298,6 +298,53 @@ async def draft_inbox(payload: dict[str, Any] = Body(default_factory=dict)) -> d
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return written.to_dict()
+
+
+@guarded.post("/inbox/batch")
+async def start_batch(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    """Запустить разбор пачки. Черновики пишутся в фоне, ответ — сразу."""
+    account = str(payload.get("accountId") or "").strip()
+    kind = str(payload.get("kind") or "").strip()
+    ids = payload.get("ids")
+
+    if not (account and kind) or not isinstance(ids, list):
+        raise HTTPException(status_code=400, detail="Не хватает данных для разбора")
+    if kind not in inbox.CHAPTER_TITLES:
+        raise HTTPException(status_code=400, detail="Неизвестный раздел входящих")
+    if not agent.available(settings):
+        raise HTTPException(status_code=503, detail="Помощник не настроен на сервере")
+
+    batch = pipeline.start(account, kind, [str(item) for item in ids], settings)
+    return batch.to_dict()
+
+
+@guarded.get("/inbox/batch/{batch_id}")
+async def read_batch(batch_id: str) -> dict[str, Any]:
+    """Как идёт разбор пачки и что уже написано."""
+    batch = pipeline.get(batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Пачка не найдена")
+    return batch.to_dict()
+
+
+@guarded.post("/inbox/send")
+async def send_batch(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+    """Отправить разом то, что владелец утвердил. Действие необратимое —
+    вызывается только по явному нажатию в панели."""
+    account = str(payload.get("accountId") or "").strip()
+    kind = str(payload.get("kind") or "").strip()
+    answers = payload.get("answers")
+
+    if not (account and kind) or not isinstance(answers, dict) or not answers:
+        raise HTTPException(status_code=400, detail="Нечего отправлять")
+    if kind not in inbox.CHAPTER_TITLES:
+        raise HTTPException(status_code=400, detail="Неизвестный раздел входящих")
+    if len(answers) > pipeline.MAX_BATCH:
+        raise HTTPException(status_code=400, detail="Слишком много ответов за раз")
+
+    return await pipeline.send_all(
+        account, kind, {str(key): str(value) for key, value in answers.items()}, settings
+    )
 
 
 @guarded.post("/inbox/answer")
