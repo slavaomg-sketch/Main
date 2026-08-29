@@ -52,6 +52,16 @@ def parse_key(url: str) -> str:
     return match.group(0).lower()
 
 
+def find_keys(text: str) -> list[str]:
+    """Все идентификаторы поездок в тексте — в сообщении их может быть несколько."""
+    found: list[str] = []
+    for match in _UUID_RE.finditer(text or ""):
+        key = match.group(0).lower()
+        if key not in found:
+            found.append(key)
+    return found
+
+
 def normalize_url(url: str) -> str:
     """Приводит ссылку к канонической форме (заодно проверяет её)."""
     key = parse_key(url)

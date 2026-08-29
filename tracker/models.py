@@ -75,6 +75,8 @@ class Trip:
     label: str = ""
     alerts: list[int] = field(default_factory=lambda: [5])
     notifiers: list[str] = field(default_factory=lambda: ["console"])
+    # Кому в Telegram сообщать. None — поездка заведена из командной строки.
+    chat_id: int | None = None
     created_at: datetime = field(default_factory=now_utc)
     fired: list[int] = field(default_factory=list)
     arrived_notified: bool = False
@@ -101,6 +103,7 @@ class Trip:
             "label": self.label,
             "alerts": list(self.alerts),
             "notifiers": list(self.notifiers),
+            "chat_id": self.chat_id,
             "created_at": self.created_at.isoformat(),
             "fired": list(self.fired),
             "arrived_notified": self.arrived_notified,
@@ -121,6 +124,7 @@ class Trip:
             label=raw.get("label", ""),
             alerts=[int(a) for a in raw.get("alerts", [5])],
             notifiers=list(raw.get("notifiers", ["console"])),
+            chat_id=int(raw["chat_id"]) if raw.get("chat_id") is not None else None,
             created_at=_parse_dt(raw.get("created_at")) or now_utc(),
             fired=[int(a) for a in raw.get("fired", [])],
             arrived_notified=bool(raw.get("arrived_notified", False)),
