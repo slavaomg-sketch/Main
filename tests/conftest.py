@@ -73,9 +73,12 @@ def reset_marketplace_state(monkeypatch):
 
     monkeypatch.setattr(ozon, "REQUEST_INTERVAL", 0.0)
 
-    from dashboard.connectors import wb_inbox
+    from dashboard.connectors import ozon_inbox, wb_inbox, yandex_inbox
 
     monkeypatch.setattr(wb_inbox, "INTERVAL", 0.0)
+    monkeypatch.setattr(wb_inbox, "CHAT_INTERVAL", 0.0)
+    monkeypatch.setattr(ozon_inbox, "INTERVAL", 0.0)
+    monkeypatch.setattr(yandex_inbox, "INTERVAL", 0.0)
     wildberries.reset_cache()
     Throttle._locks.clear()
     Throttle._next_allowed.clear()
