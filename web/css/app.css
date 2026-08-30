@@ -1681,3 +1681,5 @@ a.btn--ghost { color: var(--text); }
 .ctile__reviews { color: var(--text-tertiary); }
 .ctile__waiting { color: var(--text-tertiary); font-style: italic; }
 .ctile__sales { color: var(--positive); font-weight: 600; }
+
+.products__cabinets { margin-bottom: 14px; }

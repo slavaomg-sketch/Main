@@ -267,13 +267,18 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
 
 
 @guarded.get("/products")
-async def read_products() -> dict[str, Any]:
-    """Список товаров: картинка, число карточек, что уже описано."""
-    found = await products.parents()
+async def read_products(account: str = Query("")) -> dict[str, Any]:
+    """Список товаров выбранного кабинета: картинка, число карточек, описание.
+
+    Без указания кабинета показываются товары всех кабинетов сразу.
+    """
+    found = await products.parents(account)
     return {
         "parents": found,
         "total": len(found),
         "cards": sum(item["cards"] for item in found),
+        "stores": await products.stores(settings),
+        "account": account,
     }
 
 
@@ -282,9 +287,10 @@ async def read_product_cards(
     parent: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(products.PAGE, ge=1, le=products.PAGE),
+    account: str = Query(""),
 ) -> dict[str, Any]:
-    """Карточки одного товара."""
-    return await products.cards_of(parent, offset, limit)
+    """Карточки одного товара — в выбранном кабинете."""
+    return await products.cards_of(parent, offset, limit, account)
 
 
 @guarded.get("/products/card/{nm_id}")
@@ -326,14 +332,20 @@ async def read_card_notes() -> dict[str, Any]:
 
 
 @guarded.get("/knowledge")
-async def read_knowledge() -> dict[str, Any]:
-    """Все известные родители. Незаполненные — первыми."""
-    found = await knowledge.all_parents()
+async def read_knowledge(account: str = Query("")) -> dict[str, Any]:
+    """Справки о товарах. Неописанные — первыми.
+
+    `account` сужает список до товаров одного кабинета; сама справка общая,
+    потому что товар физически один.
+    """
+    found = await knowledge.all_parents(account)
     return {
         "parents": [item.to_dict() for item in found],
         "filled": sum(1 for item in found if item.filled),
         "named": sum(1 for item in found if item.title.strip()),
         "total": len(found),
+        "stores": await products.stores(settings),
+        "account": account,
     }
 
 

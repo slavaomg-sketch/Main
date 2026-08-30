@@ -713,6 +713,7 @@ def test_main_page_links_to_the_tasks_page(client):
 def test_knowledge_starts_empty(client):
     assert client.get("/api/knowledge").json() == {
         "parents": [], "filled": 0, "named": 0, "total": 0,
+        "stores": [], "account": "",
     }
 
 
@@ -753,7 +754,9 @@ def test_products_page_is_served(client):
 
 
 def test_products_start_empty(client):
-    assert client.get("/api/products").json() == {"parents": [], "total": 0, "cards": 0}
+    assert client.get("/api/products").json() == {
+        "parents": [], "total": 0, "cards": 0, "stores": [], "account": "",
+    }
 
 
 def test_unknown_card_is_not_found(client):

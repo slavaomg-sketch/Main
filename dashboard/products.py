@@ -128,24 +128,75 @@ async def save_cards(connection_id: str, cards: list) -> int:
                 ),
             )
         await connection.commit()
+
+    # Заводим запись о товаре сразу здесь. Иначе карточки существовали бы, а
+    # товара в справочнике не было — и он зависел бы от того, кто вызвал
+    # сохранение первым.
+    await knowledge.remember(
+        [card.article for card in cards],
+        {knowledge.parent_of(card.article): card.name for card in cards if card.name},
+    )
     return len(cards)
 
 
-async def _categories() -> dict[str, str]:
+async def stores(config: Settings | None = None) -> list[dict[str, Any]]:
+    """Кабинеты, в которых есть карточки.
+
+    Товар физически принадлежит кабинету: у Вячеслава свои карточки, у
+    Натальи свои. Смотреть их вперемешку — верный способ перепутать, где
+    что править.
+    """
+    config = config or settings
+    known = {store.id: store.title for store in await connections.load(config)}
+
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            """
+            SELECT connection_id, COUNT(*) AS cards, COUNT(DISTINCT parent) AS parents
+              FROM product_cards
+             WHERE connection_id <> ''
+             GROUP BY connection_id
+             ORDER BY cards DESC
+            """
+        )
+        rows = await cursor.fetchall()
+
+    return [
+        {
+            "id": row["connection_id"],
+            "title": known.get(row["connection_id"], "Кабинет удалён"),
+            "cards": int(row["cards"] or 0),
+            "parents": int(row["parents"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def _only(account_id: str) -> tuple[str, list[Any]]:
+    """Условие «только этот кабинет» — или пусто, если кабинет не выбран."""
+    account_id = (account_id or "").strip()
+    if not account_id:
+        return "", []
+    return " AND connection_id = ?", [account_id]
+
+
+async def _categories(account_id: str = "") -> dict[str, str]:
     """Категория товара — предмет, к которому площадка отнесла его карточки.
 
     У товара карточки почти всегда одного предмета, но встречаются
     исключения. Берём преобладающий: одна ошибка в тысяче карточек не
     должна уводить весь товар в чужую полку.
     """
+    где, значения = _only(account_id)
     async with db.connect() as connection:
         cursor = await connection.execute(
-            """
+            f"""
             SELECT parent, subject, COUNT(*) AS cards
               FROM product_cards
-             WHERE parent <> '' AND TRIM(subject) <> ''
+             WHERE parent <> '' AND TRIM(subject) <> ''{где}
              GROUP BY parent, subject
-            """
+            """,
+            значения,
         )
         rows = await cursor.fetchall()
 
@@ -158,14 +209,18 @@ async def _categories() -> dict[str, str]:
     return {parent: subject for parent, (_, subject) in best.items()}
 
 
-async def parents() -> list[dict[str, Any]]:
-    """Список товаров с картинкой и числом карточек — верхний уровень."""
-    known = {item.parent: item for item in await knowledge.all_parents()}
-    categories = await _categories()
+async def parents(account_id: str = "") -> list[dict[str, Any]]:
+    """Список товаров с картинкой и числом карточек — верхний уровень.
 
+    Пустой `account_id` означает «все кабинеты сразу».
+    """
+    known = {item.parent: item for item in await knowledge.all_parents()}
+    categories = await _categories(account_id)
+
+    где, значения = _only(account_id)
     async with db.connect() as connection:
         cursor = await connection.execute(
-            """
+            f"""
             SELECT parent,
                    COUNT(*) AS cards,
                    SUM(CASE WHEN photo = '' THEN 1 ELSE 0 END) AS without_photo,
@@ -173,10 +228,11 @@ async def parents() -> list[dict[str, Any]]:
                    MAX(photo) AS photo,
                    MIN(title) AS sample
               FROM product_cards
-             WHERE parent <> ''
+             WHERE parent <> ''{где}
              GROUP BY parent
              ORDER BY cards DESC, parent
-            """
+            """,
+            значения,
         )
         rows = await cursor.fetchall()
 
@@ -225,26 +281,30 @@ async def _sales_of(nm_ids: list[str]) -> dict[str, int]:
     return {str(row["nm_id"]): int(row["sold"] or 0) for row in rows}
 
 
-async def cards_of(parent: str, offset: int = 0, limit: int = PAGE) -> dict[str, Any]:
-    """Карточки одного товара."""
+async def cards_of(
+    parent: str, offset: int = 0, limit: int = PAGE, account_id: str = ""
+) -> dict[str, Any]:
+    """Карточки одного товара — в выбранном кабинете."""
     parent = (parent or "").strip().upper()
     limit = max(1, min(int(limit or PAGE), PAGE))
     offset = max(0, int(offset or 0))
 
+    где, значения = _only(account_id)
     async with db.connect() as connection:
         counter = await connection.execute(
-            "SELECT COUNT(*) AS total FROM product_cards WHERE parent = ?", (parent,)
+            f"SELECT COUNT(*) AS total FROM product_cards WHERE parent = ?{где}",
+            [parent, *значения],
         )
         total = int((await counter.fetchone())["total"] or 0)
 
         cursor = await connection.execute(
-            """
+            f"""
             SELECT * FROM product_cards
-             WHERE parent = ?
+             WHERE parent = ?{где}
              ORDER BY article, nm_id
              LIMIT ? OFFSET ?
             """,
-            (parent, limit, offset),
+            [parent, *значения, limit, offset],
         )
         rows = await cursor.fetchall()
 

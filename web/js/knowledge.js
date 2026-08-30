@@ -22,6 +22,8 @@
     saving: {},
     filter: 'all',     // all | unnamed | unfilled
     search: '',
+    stores: [],        // кабинеты
+    account: '',       // выбранный кабинет
     refresh: null      // ход сбора каталога
   };
 
@@ -32,11 +34,12 @@
   }
 
   function load() {
-    return Api.knowledge().then(function (payload) {
+    return Api.knowledge(state.account).then(function (payload) {
       state.parents = payload.parents || [];
       state.filled = payload.filled || 0;
       state.named = payload.named || 0;
       state.total = payload.total || 0;
+      state.stores = payload.stores || [];
       render();
     });
   }
@@ -276,9 +279,39 @@
     items.forEach(function (item) { listHost.appendChild(card(item)); });
   }
 
+  function storeRow() {
+    var shops = state.stores || [];
+    if (shops.length < 2) return null;   // один кабинет — выбирать не из чего
+
+    var row = Fmt.el('div', 'chips chips--stores products__cabinets');
+    var все = Fmt.el('button', 'chip' + (state.account ? '' : ' is-active'));
+    все.type = 'button';
+    все.appendChild(Fmt.el('span', null, 'Все кабинеты'));
+    все.addEventListener('click', function () {
+      state.account = '';
+      load().catch(function (error) { toast(error.message); });
+    });
+    row.appendChild(все);
+
+    shops.forEach(function (shop) {
+      var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
+      chip.type = 'button';
+      chip.appendChild(Fmt.el('span', null, shop.title));
+      chip.appendChild(Fmt.el('span', 'inbox__count', String(shop.parents)));
+      chip.addEventListener('click', function () {
+        state.account = shop.id;
+        load().catch(function (error) { toast(error.message); });
+      });
+      row.appendChild(chip);
+    });
+    return row;
+  }
+
   function render() {
     if (!host) return;
     Fmt.clear(host);
+    var shops = storeRow();
+    if (shops) host.appendChild(shops);
     host.appendChild(Fmt.el('p', 'know__lead',
       'Это справочник ответов: что помощник вправе сказать покупателю. ' +
       'Ему запрещено выдумывать характеристики, поэтому на вопрос о товаре ' +

@@ -67,10 +67,12 @@
 
     inbox: function () { return request('GET', '/api/inbox'); },
     tasks: function () { return request('GET', '/api/tasks'); },
-    products: function () { return request('GET', '/api/products'); },
-    productCards: function (parent, offset) {
+    products: function (account) {
+      return request('GET', '/api/products' + query({ account: account }));
+    },
+    productCards: function (parent, offset, account) {
       return request('GET', '/api/products/' + encodeURIComponent(parent) +
-                     query({ offset: offset }));
+                     query({ offset: offset, account: account }));
     },
     productCard: function (nmId) {
       return request('GET', '/api/products/card/' + encodeURIComponent(nmId));
@@ -84,7 +86,9 @@
     },
     cardNotes: function () { return request('GET', '/api/products/notes/all'); },
 
-    knowledge: function () { return request('GET', '/api/knowledge'); },
+    knowledge: function (account) {
+      return request('GET', '/api/knowledge' + query({ account: account }));
+    },
     refreshKnowledge: function () { return request('POST', '/api/knowledge/refresh'); },
     knowledgeRefreshStatus: function () { return request('GET', '/api/knowledge/refresh'); },
     saveKnowledge: function (parent, title, facts) {

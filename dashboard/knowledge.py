@@ -168,19 +168,36 @@ async def save(parent: str, title: str, facts: str) -> Facts:
     return Facts(parent=parent, title=title, facts=facts, updated_at=now)
 
 
-async def all_parents() -> list[Facts]:
+async def all_parents(account_id: str = "") -> list[Facts]:
     """Все известные родители.
 
     Сверху — те, которым владелец ещё не дал название, и среди них первыми
     товары с наибольшим числом карточек: их описание окупается сильнее всего.
+
+    `account_id` сужает список до товаров одного кабинета. Сама справка при
+    этом общая: товар физически один, и характеристики у него одни, в каком
+    бы кабинете он ни продавался. Иначе владельцу пришлось бы описывать
+    один и тот же кабель дважды.
     """
+    account_id = (account_id or "").strip()
+    условие = ""
+    значения: list[str] = []
+    if account_id:
+        условие = """
+             WHERE parent IN (SELECT DISTINCT parent FROM product_cards
+                               WHERE connection_id = ? AND parent <> '')
+        """
+        значения = [account_id]
+
     async with db.connect() as connection:
         cursor = await connection.execute(
-            """
+            f"""
             SELECT parent, title, facts, updated_at, cards, sample FROM product_facts
+            {условие}
             ORDER BY CASE WHEN TRIM(title) = '' THEN 0 ELSE 1 END,
                      cards DESC, parent
-            """
+            """,
+            значения,
         )
         rows = await cursor.fetchall()
     return [

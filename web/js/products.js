@@ -24,6 +24,8 @@
     search: '',
     onlyTrouble: false,
     category: '',       // выбранная полка
+    stores: [],         // кабинеты, в которых есть карточки
+    account: '',        // выбранный кабинет
 
     parent: null,       // открытый товар
     list: null,         // его карточки
@@ -49,13 +51,47 @@
   /* --- загрузка ------------------------------------------------------------- */
 
   function loadParents() {
-    return Api.products().then(function (payload) {
+    return Api.products(state.account).then(function (payload) {
       state.parents = payload.parents || [];
       state.total = payload.total || 0;
       state.cards = payload.cards || 0;
+      state.stores = payload.stores || [];
       state.level = 'parents';
       render();
     });
+  }
+
+  function storeRow() {
+    var shops = state.stores || [];
+    if (shops.length < 2) return null;   // один кабинет — выбирать не из чего
+
+    var row = Fmt.el('div', 'chips chips--stores products__cabinets');
+    var все = Fmt.el('button', 'chip' + (state.account ? '' : ' is-active'));
+    все.type = 'button';
+    все.appendChild(Fmt.el('span', null, 'Все кабинеты'));
+    все.addEventListener('click', function () { switchStore(''); });
+    row.appendChild(все);
+
+    shops.forEach(function (shop) {
+      var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
+      chip.type = 'button';
+      chip.appendChild(Fmt.el('span', null, shop.title));
+      chip.appendChild(Fmt.el('span', 'inbox__count', String(shop.parents)));
+      chip.addEventListener('click', function () { switchStore(shop.id); });
+      row.appendChild(chip);
+    });
+    return row;
+  }
+
+  function switchStore(id) {
+    // Кабинет сменился — прежний товар и его карточки к нему не относятся.
+    state.account = id;
+    state.category = '';
+    state.parent = null;
+    state.card = null;
+    state.level = 'parents';
+    поход += 1;
+    loadParents().catch(function (error) { toast(error.message); });
   }
 
   function openParent(parent) {
@@ -65,7 +101,7 @@
     поход += 1;                     // прежняя дозагрузка оценок больше не нужна
     render();
 
-    Api.productCards(parent.parent, 0)
+    Api.productCards(parent.parent, 0, state.account)
       .then(function (payload) {
         state.list = payload;
         render();
@@ -130,7 +166,7 @@
     state.loadingMore = true;
     render();
 
-    Api.productCards(list.parent, list.offset + list.cards.length)
+    Api.productCards(list.parent, list.offset + list.cards.length, state.account)
       .then(function (next) {
         state.loadingMore = false;
         list.cards = list.cards.concat(next.cards || []);
@@ -315,6 +351,9 @@
   }
 
   function parentsLevel() {
+    var shops = storeRow();
+    if (shops) host.appendChild(shops);
+
     var bar = Fmt.el('div', 'know__bar');
     bar.appendChild(Fmt.el('span', 'know__tally',
       'Товаров: ' + state.total + ' · карточек: ' + Fmt.number(state.cards)));

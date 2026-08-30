@@ -278,3 +278,100 @@ async def test_продажи_видны_и_в_самой_карточке(ка�
 
     вид = await products.card_view("105")
     assert вид["sales"] == 1
+
+
+# --- разделение по кабинетам ----------------------------------------------------
+
+
+@pytest.fixture
+async def два_кабинета(dashboard_db):
+    """Два кабинета Wildberries, как у владельца."""
+    await db.init_db()
+    созданные = {}
+    for название, токен in (("ВБ Вячеслав", "token-slava"), ("ВБ Наталья", "token-natasha")):
+        запись = await conn.create("wildberries", название)
+        await conn.save_values(запись.id, {"token": токен})
+        созданные[название] = запись.id
+    return созданные
+
+
+async def test_товары_разделены_по_кабинетам(два_кабинета):
+    """У Вячеслава свои товары, у Натальи свои — вперемешку их смотреть
+    нельзя, иначе непонятно, где что править."""
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [
+        карточка(1, "CAB-(СЛАВА-1)-A"), карточка(2, "CAB-(СЛАВА-2)-A"),
+    ])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [
+        карточка(3, "CAB-(НАТАША-1)-A"),
+    ])
+
+    у_славы = {item["parent"] for item in await products.parents(два_кабинета["ВБ Вячеслав"])}
+    у_наташи = {item["parent"] for item in await products.parents(два_кабинета["ВБ Наталья"])}
+
+    assert у_славы == {"СЛАВА-1", "СЛАВА-2"}
+    assert у_наташи == {"НАТАША-1"}
+    # А без выбора кабинета видно всё сразу.
+    assert len(await products.parents()) == 3
+
+
+async def test_карточки_товара_берутся_из_своего_кабинета(два_кабинета):
+    """Один и тот же товар может продаваться из обоих кабинетов."""
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [
+        карточка(1, "CAB-(ОБЩИЙ)-A", "У Вячеслава"),
+    ])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [
+        карточка(2, "CAB-(ОБЩИЙ)-B", "У Натальи"),
+    ])
+
+    у_славы = await products.cards_of("ОБЩИЙ", account_id=два_кабинета["ВБ Вячеслав"])
+    assert у_славы["total"] == 1
+    assert у_славы["cards"][0]["title"] == "У Вячеслава"
+
+    вместе = await products.cards_of("ОБЩИЙ")
+    assert вместе["total"] == 2
+
+
+async def test_список_кабинетов_со_счётчиками(два_кабинета):
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [
+        карточка(1, "CAB-(A)-X"), карточка(2, "CAB-(A)-Y"), карточка(3, "CAB-(B)-Z"),
+    ])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [карточка(4, "CAB-(C)-W")])
+
+    список = {item["title"]: item for item in await products.stores(settings)}
+    assert список["ВБ Вячеслав"]["cards"] == 3
+    assert список["ВБ Вячеслав"]["parents"] == 2
+    assert список["ВБ Наталья"]["cards"] == 1
+
+
+async def test_категории_считаются_внутри_кабинета(два_кабинета):
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [
+        Card(article="CAB-(ПРОВОД)-A", name="Кабель", nm_id="1",
+             brand="", subject="Кабели", photos=()),
+    ])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [
+        Card(article="GLV-(ПЕРЧАТКИ)-A", name="Перчатки", nm_id="2",
+             brand="", subject="Перчатки", photos=()),
+    ])
+
+    полки = {item["category"] for item in await products.parents(два_кабинета["ВБ Вячеслав"])}
+    assert полки == {"Кабели"}
+
+
+async def test_справка_остаётся_общей_на_товар(два_кабинета):
+    """Товар физически один: описывать один и тот же кабель дважды —
+    лишняя работа для владельца."""
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [карточка(1, "CAB-(ОБЩИЙ)-A")])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [карточка(2, "CAB-(ОБЩИЙ)-B")])
+    await knowledge.save("ОБЩИЙ", "Кабель", "До 60 Вт.")
+
+    for кабинет in два_кабинета.values():
+        видно = await knowledge.all_parents(кабинет)
+        assert [item.facts for item in видно] == ["До 60 Вт."]
+
+
+async def test_справочник_показывает_товары_своего_кабинета(два_кабинета):
+    await products.save_cards(два_кабинета["ВБ Вячеслав"], [карточка(1, "CAB-(СЛАВА)-A")])
+    await products.save_cards(два_кабинета["ВБ Наталья"], [карточка(2, "CAB-(НАТАША)-A")])
+
+    у_славы = {item.parent for item in await knowledge.all_parents(два_кабинета["ВБ Вячеслав"])}
+    assert у_славы == {"СЛАВА"}
