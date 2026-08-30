@@ -44,10 +44,19 @@ MAX_PAGES = 1000
 
 @dataclass(frozen=True)
 class Card:
-    """Одна карточка товара — ровно то, что нужно справочнику."""
+    """Одна карточка товара — то, что видит покупатель."""
 
     article: str
     name: str
+    nm_id: str = ""
+    brand: str = ""
+    subject: str = ""
+    photos: tuple[str, ...] = ()
+
+    @property
+    def photo(self) -> str:
+        """Главное изображение — то самое «геройское»."""
+        return self.photos[0] if self.photos else ""
 
 
 class WildberriesCatalogue(HttpConnector):
@@ -120,7 +129,14 @@ class WildberriesCatalogue(HttpConnector):
                 article = str(row.get("vendorCode") or "").strip()
                 if not article:
                     continue
-                страница.append(Card(article=article, name=self._name(row)))
+                страница.append(Card(
+                    article=article,
+                    name=self._name(row),
+                    nm_id=str(row.get("nmID") or row.get("nmId") or ""),
+                    brand=str(row.get("brand") or "").strip(),
+                    subject=str(row.get("subjectName") or "").strip(),
+                    photos=self._photos(row),
+                ))
 
             found.extend(страница)
             if on_page is not None and страница:
@@ -140,6 +156,27 @@ class WildberriesCatalogue(HttpConnector):
             cursor = {"limit": PAGE, "updatedAt": метка[0], "nmID": метка[1]}
 
         return found
+
+    def _photos(self, row: dict[str, Any]) -> tuple[str, ...]:
+        """Изображения карточки, первое — главное.
+
+        Площадка отдаёт каждое фото несколькими размерами. Берём самый
+        крупный из доступных: владелец смотрит их, чтобы заметить брак,
+        а на мелком превью брак не виден.
+        """
+        found: list[str] = []
+        for photo in self.as_list(row, "photos"):
+            if isinstance(photo, str):
+                found.append(photo)
+                continue
+            if not isinstance(photo, dict):
+                continue
+            for size in ("big", "c516x688", "c246x328", "square", "tm"):
+                url = photo.get(size)
+                if isinstance(url, str) and url:
+                    found.append(url)
+                    break
+        return tuple(found)
 
     def _name(self, row: dict[str, Any]) -> str:
         """Человеческое имя карточки: заголовок, а без него — предмет и бренд."""

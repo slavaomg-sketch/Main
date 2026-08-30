@@ -731,9 +731,32 @@ def test_knowledge_is_saved_and_listed(client):
 def test_knowledge_page_is_served(client):
     page = client.get("/knowledge")
     assert page.status_code == 200
-    assert "Справочник товаров" in page.text
+    assert "Справочник ответов" in page.text
     assert "knowledge-page.js" in page.text
 
 
 def test_tasks_page_links_to_the_knowledge_page(client):
     assert 'href="/knowledge"' in client.get("/tasks").text
+
+
+# --- товары ---------------------------------------------------------------------
+
+
+def test_products_page_is_served(client):
+    """«Товары» — отдельный раздел, не часть справочника ответов."""
+    page = client.get("/products")
+    assert page.status_code == 200
+    assert "products-page.js" in page.text
+    # И между разделами есть переходы в обе стороны.
+    assert 'href="/knowledge"' in page.text
+    assert 'href="/products"' in client.get("/knowledge").text
+
+
+def test_products_start_empty(client):
+    assert client.get("/api/products").json() == {"parents": [], "total": 0, "cards": 0}
+
+
+def test_unknown_card_is_not_found(client):
+    assert client.get("/api/products/card/нет-такой").status_code == 404
+    assert client.put("/api/products/card/нет-такой/note",
+                      json={"note": "текст"}).status_code == 404

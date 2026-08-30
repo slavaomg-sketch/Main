@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from . import connections, db, inbox
+from . import connections, db, inbox, products
 from . import knowledge as знание
 from .config import Settings, settings
 from .connectors.wb_catalogue import WildberriesCatalogue
@@ -142,6 +142,9 @@ async def _collect(config: Settings) -> None:
             впустую: прочитанное уже сохранено.
             """
             _, родители = await _save(cards)
+            # Сами карточки тоже сохраняем: по ним владелец ходит глазами
+            # в разделе «Товары».
+            await products.save_cards(store.id, cards)
             run.cards += len(cards)
             known.update(знание.parent_of(card.article) for card in cards)
             known.discard("")

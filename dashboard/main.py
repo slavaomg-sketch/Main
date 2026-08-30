@@ -93,7 +93,7 @@ def create_app() -> FastAPI:
         """
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/assets/") or path in {"/", "/tasks", "/knowledge", "/favicon.svg"}:
+        if path.startswith("/assets/") or path in {"/", "/tasks", "/knowledge", "/products", "/favicon.svg"}:
             response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response
 
@@ -114,6 +114,11 @@ def create_app() -> FastAPI:
     async def knowledge_page() -> FileResponse:
         """Справочник товаров: что помощник знает о каждом родителе."""
         return FileResponse(WEB_DIR / "knowledge.html")
+
+    @app.get("/products", include_in_schema=False)
+    async def products_page() -> FileResponse:
+        """Товары: каталог и карточки глазами владельца."""
+        return FileResponse(WEB_DIR / "products.html")
 
     @app.get("/favicon.svg", include_in_schema=False)
     async def favicon() -> FileResponse:

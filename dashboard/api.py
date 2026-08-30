@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import agent, catalogue, inbox, knowledge, pipeline, tasks
+from . import agent, catalogue, inbox, knowledge, pipeline, products, tasks
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -261,6 +261,65 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
             "rows": sum(probe.get("rows") or 0 for probe in probes),
         },
     }
+
+
+# --- товары: каталог глазами владельца ------------------------------------------
+
+
+@guarded.get("/products")
+async def read_products() -> dict[str, Any]:
+    """Список товаров: картинка, число карточек, что уже описано."""
+    found = await products.parents()
+    return {
+        "parents": found,
+        "total": len(found),
+        "cards": sum(item["cards"] for item in found),
+    }
+
+
+@guarded.get("/products/{parent}")
+async def read_product_cards(
+    parent: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(products.PAGE, ge=1, le=products.PAGE),
+) -> dict[str, Any]:
+    """Карточки одного товара."""
+    return await products.cards_of(parent, offset, limit)
+
+
+@guarded.get("/products/card/{nm_id}")
+async def read_card(nm_id: str) -> dict[str, Any]:
+    """Одна карточка со всеми фотографиями."""
+    found = await products.card(nm_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Карточка не найдена")
+    return found.to_dict()
+
+
+@guarded.post("/products/card/{nm_id}/rating")
+async def read_card_rating(nm_id: str) -> dict[str, Any]:
+    """Спросить у площадки оценку и число отзывов по карточке."""
+    found = await products.rating(nm_id, settings)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Карточка не найдена")
+    return found.to_dict()
+
+
+@guarded.put("/products/card/{nm_id}/note")
+async def save_card_note(
+    nm_id: str, payload: dict[str, Any] = Body(default_factory=dict)
+) -> dict[str, Any]:
+    """Записать правку по карточке — что в ней надо поменять."""
+    found = await products.save_note(nm_id, str(payload.get("note") or ""))
+    if found is None:
+        raise HTTPException(status_code=404, detail="Карточка не найдена")
+    return found.to_dict()
+
+
+@guarded.get("/products/notes/all")
+async def read_card_notes() -> dict[str, Any]:
+    """Все карточки, по которым есть правки — рабочий список на исправление."""
+    return {"cards": await products.notes()}
 
 
 # --- справка о товарах ----------------------------------------------------------

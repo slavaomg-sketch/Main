@@ -67,6 +67,23 @@
 
     inbox: function () { return request('GET', '/api/inbox'); },
     tasks: function () { return request('GET', '/api/tasks'); },
+    products: function () { return request('GET', '/api/products'); },
+    productCards: function (parent, offset) {
+      return request('GET', '/api/products/' + encodeURIComponent(parent) +
+                     query({ offset: offset }));
+    },
+    productCard: function (nmId) {
+      return request('GET', '/api/products/card/' + encodeURIComponent(nmId));
+    },
+    cardRating: function (nmId) {
+      return request('POST', '/api/products/card/' + encodeURIComponent(nmId) + '/rating');
+    },
+    saveCardNote: function (nmId, note) {
+      return request('PUT', '/api/products/card/' + encodeURIComponent(nmId) + '/note',
+                     { note: note });
+    },
+    cardNotes: function () { return request('GET', '/api/products/notes/all'); },
+
     knowledge: function () { return request('GET', '/api/knowledge'); },
     refreshKnowledge: function () { return request('POST', '/api/knowledge/refresh'); },
     knowledgeRefreshStatus: function () { return request('GET', '/api/knowledge/refresh'); },

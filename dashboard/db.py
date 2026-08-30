@@ -60,6 +60,27 @@ CREATE TABLE IF NOT EXISTS product_facts (
     updated_at TEXT NOT NULL
 );
 
+-- Карточки товаров: то, что видно покупателю на площадке.
+-- Нужны, чтобы владелец мог глазами пройти по своему каталогу: у одного
+-- товара их сотни, и проверить их иначе нельзя.
+CREATE TABLE IF NOT EXISTS product_cards (
+    nm_id         TEXT PRIMARY KEY,
+    connection_id TEXT NOT NULL DEFAULT '',
+    parent        TEXT NOT NULL DEFAULT '',
+    article       TEXT NOT NULL DEFAULT '',
+    title         TEXT NOT NULL DEFAULT '',
+    brand         TEXT NOT NULL DEFAULT '',
+    subject       TEXT NOT NULL DEFAULT '',
+    photo         TEXT NOT NULL DEFAULT '',   -- главное изображение
+    photos        TEXT NOT NULL DEFAULT '',   -- остальные, через перевод строки
+    rating        REAL NOT NULL DEFAULT 0,
+    feedbacks     INTEGER NOT NULL DEFAULT -1, -- -1: ещё не спрашивали
+    note          TEXT NOT NULL DEFAULT '',    -- правки владельца
+    updated_at    TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS product_cards_parent ON product_cards (parent);
+
 -- Выгрузка площадок: сырые строки, как их отдал маркетплейс.
 -- Отчёт за любой период считается уже отсюда, без обращения к площадке.
 CREATE TABLE IF NOT EXISTS marketplace_rows (
