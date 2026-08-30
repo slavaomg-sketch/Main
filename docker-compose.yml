@@ -5,6 +5,20 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      APP_MODULE: bot.main
       DB_PATH: /app/data/bot.db
     volumes:
       - ./data:/app/data
+
+  # Бот-хаб: ветка «Доставка» и всё, что добавите дальше.
+  # Запуск отдельно от бота напоминаний:  docker compose up -d hub
+  hub:
+    build: .
+    container_name: hub-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_MODULE: hub
+    volumes:
+      - ./data:/data
+    profiles: ["hub"]
