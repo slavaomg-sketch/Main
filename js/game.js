@@ -8,12 +8,13 @@
   var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
-  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart', 'btn-hint',
+  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart', 'btn-hint', 'btn-sound',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
    'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n', 'hud-grav'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var renderer = new SP.Renderer(el.screen);
+  var sound = new SP.Sound(global);
   var input = new SP.Input(global);
   input.bindTouch(document.getElementById('pad'));
   input.bindHold(document.getElementById('btn-rewind'), 'rewind');
@@ -200,6 +201,7 @@
     document.body.classList.remove('in-menu');
     el['hud-level'].textContent = '#' + lv.id + ' ' + lv.name;
     el.hint.textContent = lv.hint || '';
+    sound.play('level');
     updateHud();
   }
 
@@ -363,6 +365,21 @@
     else if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
   });
   if (el['btn-hint']) el['btn-hint'].addEventListener('click', showHint);
+  function paintSound() {
+    if (!el['btn-sound']) return;
+    el['btn-sound'].textContent = sound.on ? '\u{1F50A}' : '\u{1F507}';
+    el['btn-sound'].classList.toggle('off', !sound.on);
+    el['btn-sound'].title = sound.on ? '\u0417\u0432\u0443\u043a \u0432\u043a\u043b\u044e\u0447\u0451\u043d' : '\u0417\u0432\u0443\u043a \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d';
+  }
+  if (el['btn-sound']) el['btn-sound'].addEventListener('click', function () {
+    if (sound.toggle()) sound.play('ui');
+    paintSound();
+  });
+  paintSound();
+  // браузер заводит звук только после жеста игрока
+  ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+    global.addEventListener(ev, function () { sound.unlock(); }, { once: false, passive: true });
+  });
   el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
   global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
 
@@ -388,6 +405,7 @@
           acc -= REWIND_MS;
           engine = history.back(1);
           usedHelp = true;
+          if ((history.length() & 3) === 0) sound.play('rewind');
         }
         updateHud();
       }
@@ -397,7 +415,9 @@
       while (acc >= TICK_MS && guard++ < 8) {
         acc -= TICK_MS;
         var act = input.current();
+        var before = sound.ready() ? SP.probe(engine) : null;
         var status = engine.step(act);
+        if (before) sound.tick(before, SP.probe(engine), engine.ticks);
         history.record(act, engine);
         updateHud();
         if (status === 'won') { onWin(); break; }
@@ -408,7 +428,7 @@
   }
 
   // отладочный вход: SP.game.start(индекс) — удобно смотреть уровни без прохождения
-  SP.game = { start: startLevel, get engine() { return engine; } };
+  SP.game = { start: startLevel, sound: sound, get engine() { return engine; } };
 
   // старт: сперва приветствие, потом список уровней
   startLevel(0);

@@ -60,6 +60,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 }
 .chip:hover { border-color: #40507c; background: #1e2842; }
 .chip:active { transform: translateY(1px); }
+.chip.off { opacity: .45; }
 
 /* ---------- сцена ---------- */
 #stage {
@@ -241,11 +242,21 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 }
 @media (max-width: 620px) {
   #hud { font-size: 13px; gap: 6px; padding: 6px 8px; }
+  /* на узком экране в шапке тесно: жмём кнопки и убираем подписи единиц,
+     иначе крайняя кнопка (отмотка) уезжает за край */
+  #hud .chip { padding: 5px 7px; }
+  .hud-right { gap: 5px; }
+  .unit { display: none; }
   .stat { font-size: 12px; }
   .hud-title { font-size: 13px; }
   .panel { padding: 16px 14px; }
   .panel h1 { font-size: 24px; }
   #level-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); max-height: 44vh; }
+}
+/* самые узкие телефоны: шапка ужимается до предела */
+@media (max-width: 380px) {
+  #hud { gap: 4px; padding: 6px 5px; }
+  #hud .chip { padding: 5px 6px; }
 }
 /* в ландшафте по высоте тесно: крестовина ложится поверх поля по углам */
 @media (max-height: 560px) and (pointer: coarse) {
