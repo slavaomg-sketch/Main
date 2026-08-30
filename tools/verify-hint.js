@@ -16,7 +16,7 @@ var LEVELS = require(path.join(__dirname, '..', 'js', 'levels.js')).LEVELS;
 var solutions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'levels', 'solutions.json'), 'utf8'));
 
 var STRIDE = 9;            // как часто проверять список смертельных ходов
-var lies = 0, scolds = 0, checked = 0;
+var lies = 0, scolds = 0, brags = 0, checked = 0;
 
 LEVELS.forEach(function (lv) {
   var moves = solutions[String(lv.id)];
@@ -38,11 +38,17 @@ LEVELS.forEach(function (lv) {
         console.log('ЗРЯ  #' + lv.id + ' ' + lv.name + ' — на такте ' + t + ' верный ход назван смертельным');
         scolds++;
       }
+      if (e.heroes.length > 1 && S.advise(e).source === 'goal') {
+        console.log('ХВАСТ #' + lv.id + ' ' + lv.name + ' — на такте ' + t +
+                    ' совет вдвоём выдан за дорогу к добыче, хотя дороги советчик не знает');
+        brags++;
+      }
     }
     e.step(acts[t]);
   }
 });
 
 console.log('\nСоветчик проверен на ' + checked + ' уровнях.');
-console.log('Ложных приговоров «не пройти»: ' + lies + ' · зря объявленных смертельными ходов: ' + scolds);
-if (lies || scolds) process.exit(1);
+console.log('Ложных приговоров «не пройти»: ' + lies + ' · зря объявленных смертельными ходов: ' + scolds +
+            ' · советов, выданных не за то, чем они есть: ' + brags);
+if (lies || scolds || brags) process.exit(1);

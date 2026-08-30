@@ -24,6 +24,27 @@ var solutions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'levels', 
 var HORIZON = 24;          // сколько тактов смотрим вперёд после отклонения
 var AUTOPILOT_LIMIT = 6000;
 
+/*
+ * Парковки: такты, на которых сдвинулся ровно один из двоих, потому что
+ * второй упёрся. Это и есть работа с очерёдностью — то, ради чего глава
+ * сделана. Считается одним прогоном эталона, без всякого перебора, и на
+ * уровнях с одним героем всегда ноль.
+ */
+function parkings(lv, acts) {
+  var e = new lib.Engine(lv);
+  if (e.heroes.length < 2) return 0;
+  var n = 0;
+  function snap() { return e.heroes.map(function (m) { return m.out ? 'x' : m.x + ',' + m.y; }); }
+  for (var i = 0; i < acts.length && e.status === 'playing'; i++) {
+    var was = snap();
+    e.step(acts[i]);
+    var now = snap(), moved = 0;
+    for (var k = 0; k < was.length; k++) if (was[k] !== now[k] && now[k] !== 'x' && was[k] !== 'x') moved++;
+    if (moved === 1 && e.heroes.every(function (m) { return !m.out; })) n++;
+  }
+  return n;
+}
+
 /* Прямая дорога от входа к выходу по клеткам, которые в принципе проходимы. */
 function straight(lv) {
   var map = lv.map, h = map.length, w = 0;
@@ -104,7 +125,12 @@ function probe(lv, acts) {
  * ОБЪЯВЛЕНО: односторонние порты, заряды с терминалом и второй герой. Это не
  *   измерение, а признание устройства: там, где ход только в одну сторону, где
  *   надо выложить заряд и лишь потом нажать, или где одна клавиша ведёт двоих,
- *   ошибиться порядком можно всегда.
+ *   ошибиться порядком можно всегда. За второго героя надбавка маленькая:
+ *   основное про него не объявляется, а меряется — см. парковки.
+ * ИЗМЕРЕНО (вдвоём): парковки — такты, на которых сдвинулся ровно один герой,
+ *   потому что второй упёрся. Их не спутать с длиной: уровень на двоих короток
+ *   в тактах и густ в решениях, и старая мерка, где длина шла за труд, ставила
+ *   самому плотному уровню главы тройку.
  * ВЫВЕДЕНО: надбавка «за замысел» безопасному уровню, на котором буксует
  *   жадный автопилот. Она не даётся уровням на зарядах и уровням на двоих —
  *   там автопилот бессилен не от глубины, а оттого, что попросту не умеет ни
@@ -135,7 +161,11 @@ function rate(m, lv) {
   if (hasPorts(lv)) { s += 1; why.push('дорога в один конец'); }
   if (hasCharges(lv)) { s += 1; why.push('на зарядах и терминале'); }
   // Двое на одной клавише: любой ход двигает обоих, и порядок выхода тоже задача.
-  if (hasMate(lv)) { s += 2; why.push('одна клавиша на двоих'); }
+  if (hasMate(lv)) { s += 1; why.push('одна клавиша на двоих'); }
+  var pk = m.parkings > 11 ? 3 : m.parkings > 6 ? 2 : m.parkings > 2 ? 1 : 0;
+  s += pk;
+  if (pk >= 3) why.push('почти каждый такт разводит героев');
+  else if (pk >= 1) why.push('с разведением героев');
   if (!m.greedy && m.lethal < 0.1 && !hasCharges(lv) && !hasMate(lv)) { s += 3; why.push('берётся только расчётом'); }
   if (m.greedy) { s -= 2; why.push('проходится и напролом'); }
 
@@ -159,6 +189,7 @@ function measure(lv, opts) {
     detour: +(p.ticks / straight(lv)).toFixed(2),
     lethal: p.tried ? +(p.killed / p.tried).toFixed(3) : 0,
     width: +p.width.toFixed(2),
+    parkings: parkings(lv, acts),
     greedy: greedy
   };
   m.rating = rate(m, lv);

@@ -177,9 +177,15 @@
     var why = lost(e);
     if (why) return { verdict: 'lost', reason: why };
     var fatal = fatalMoves(e, opts.horizon || HORIZON);
+    // Откуда взялся совет — важнее самого совета. 'goal' — ход к ближайшей
+    // добыче; 'safe' — просто ход, который не убивает. Раньше запасной 'safe'
+    // выдавался за 'goal', и на уровнях вдвоём (где дороги советчик не знает
+    // вовсе) выходило прямое враньё.
+    var source = 'goal';
     var dir = stepToward(e);
     if (dir >= 0 && fatal.indexOf(dir) >= 0) dir = -1;
     if (dir < 0) {
+      source = 'safe';
       for (var d = 0; d < 4; d++) {
         if (fatal.indexOf(d) >= 0) continue;
         var n = e.clone(), before = n.key();
@@ -187,7 +193,7 @@
         if (n.key() !== before) { dir = d; break; }
       }
     }
-    return { verdict: 'ok', fatal: fatal, dir: dir };
+    return { verdict: 'ok', fatal: fatal, dir: dir, source: dir >= 0 ? source : null };
   }
 
   var api = { advise: advise, lost: lost, fatalMoves: fatalMoves, stepToward: stepToward,

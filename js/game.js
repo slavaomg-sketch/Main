@@ -289,10 +289,11 @@
     renderer.setMarks(cells, global.performance.now());
     var parts = [];
     if (a.fatal.length) parts.push('красным — ходы, после которых уже не выжить (' + a.fatal.map(function (d) { return ARROW[d]; }).join(', ') + ')');
-    if (a.dir >= 0) parts.push('зелёным — куда, пожалуй, стоит идти');
-    else if (engine.heroes.length > 1 && !a.fatal.length) {
-      sayHint('Вдвоём советчик не подсказывает дорогу: ход ведёт обоих сразу, и «ближе к добыче» для одного ничего не значит для другого. Смертельных ходов сейчас нет.', false);
-      return;
+    if (a.source === 'goal') parts.push('зелёным — куда, пожалуй, стоит идти');
+    else if (a.source === 'safe') {
+      parts.push(engine.heroes.length > 1
+        ? 'зелёным — просто ход, который не убивает: вдвоём дороги советчик не знает, ведь клавиша ведёт обоих сразу'
+        : 'зелёным — просто ход, который не убивает: дороги отсюда советчик не видит');
     }
     sayHint(parts.length ? parts.join('; ') + '.' : 'Сейчас ни один ход не смертелен — иди куда задумал.', false);
   }
