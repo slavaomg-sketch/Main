@@ -15,7 +15,14 @@
 
 Оценка и число отзывов спрашиваются у площадки по требованию, когда
 владелец открывает карточку: спрашивать их для всех двадцати трёх тысяч
-разом никакого смысла нет.
+разом никакого смысла нет. Умеет это пока только Wildberries — у
+остальных площадок оценка берётся другими методами, и врать «0 отзывов»
+там, где мы просто не спрашивали, нельзя.
+
+Карточки всех площадок лежат в одной таблице, а номера у площадок свои
+и вполне могут совпасть числом. Поэтому чужие номера хранятся с
+приставкой площадки — `ozon-123456`, `ya-UA-TC-1M-WH`, — а наружу
+отдаётся и она, и настоящий номер площадки.
 """
 
 from __future__ import annotations
@@ -30,6 +37,33 @@ from .connectors.wb_feedback_rating import WildberriesRating
 
 # Сколько карточек показываем за раз.
 PAGE = 60
+
+# Приставка к номеру карточки → площадка. Без приставки — Wildberries:
+# с него всё начиналось, и его номера уже лежат в базе как есть.
+PREFIXES = {"ozon-": "ozon", "ya-": "yandex"}
+
+TITLES = {
+    "wildberries": "Wildberries",
+    "ozon": "Ozon",
+    "yandex": "Яндекс Маркет",
+}
+
+
+def marketplace_of(nm_id: str) -> str:
+    """Какой площадке принадлежит номер карточки."""
+    for prefix, code in PREFIXES.items():
+        if str(nm_id).startswith(prefix):
+            return code
+    return "wildberries"
+
+
+def platform_id(nm_id: str) -> str:
+    """Номер карточки так, как его знает сама площадка — без приставки."""
+    nm_id = str(nm_id)
+    for prefix in PREFIXES:
+        if nm_id.startswith(prefix):
+            return nm_id[len(prefix):]
+    return nm_id
 
 
 @dataclass(frozen=True)
@@ -48,6 +82,10 @@ class Card:
     feedbacks: int
     note: str
     connection_id: str
+
+    @property
+    def marketplace(self) -> str:
+        return marketplace_of(self.nm_id)
 
     @property
     def rating_known(self) -> bool:
@@ -71,6 +109,9 @@ class Card:
             "ratingKnown": self.rating_known,
             "note": self.note,
             "accountId": self.connection_id,
+            "marketplace": self.marketplace,
+            "marketplaceTitle": TITLES.get(self.marketplace, self.marketplace),
+            "platformId": platform_id(self.nm_id),
         }
 
 
@@ -147,7 +188,7 @@ async def stores(config: Settings | None = None) -> list[dict[str, Any]]:
     что править.
     """
     config = config or settings
-    known = {store.id: store.title for store in await connections.load(config)}
+    known = {store.id: store for store in await connections.load(config)}
 
     async with db.connect() as connection:
         cursor = await connection.execute(
@@ -161,15 +202,19 @@ async def stores(config: Settings | None = None) -> list[dict[str, Any]]:
         )
         rows = await cursor.fetchall()
 
-    return [
-        {
+    found = []
+    for row in rows:
+        store = known.get(row["connection_id"])
+        code = store.marketplace if store else ""
+        found.append({
             "id": row["connection_id"],
-            "title": known.get(row["connection_id"], "Кабинет удалён"),
+            "title": store.title if store else "Кабинет удалён",
+            "marketplace": code,
+            "marketplaceTitle": TITLES.get(code, code),
             "cards": int(row["cards"] or 0),
             "parents": int(row["parents"] or 0),
-        }
-        for row in rows
-    ]
+        })
+    return found
 
 
 def _only(account_id: str) -> tuple[str, list[Any]]:
@@ -260,6 +305,9 @@ async def _sales_of(nm_ids: list[str]) -> dict[str, int]:
     площадке не делаем. Возвраты не считаем продажей: у них номер начинается
     с «R». Глубина — та же, что и у выгрузки, около полугода.
     """
+    # Продажи выгружены только по Wildberries. Номера других площадок сюда
+    # не пойдут: иначе совпадение чисел выдало бы чужие продажи за свои.
+    nm_ids = [nm_id for nm_id in nm_ids if marketplace_of(nm_id) == "wildberries"]
     if not nm_ids:
         return {}
 
@@ -364,6 +412,11 @@ async def rating(nm_id: str, config: Settings | None = None) -> Card | None:
     known = await card(nm_id)
     if known is None:
         return None
+
+    if known.marketplace != "wildberries":
+        # У других площадок оценка берётся иначе. Пока не сделано — молчим,
+        # а не показываем чужой ответ за свой.
+        return known
 
     store = await connections.get(known.connection_id, config)
     if store is None:

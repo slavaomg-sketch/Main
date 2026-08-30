@@ -8,8 +8,9 @@
 а площадка отдаёт их по сотне и с ограничением по частоте. Держать на
 этом открытую страницу нельзя.
 
-Сегодня умеем собирать Wildberries. Ozon добавится, когда дойдём до него:
-пустой раздел в справочнике честнее, чем наполовину собранный.
+Собираем Wildberries, Ozon и Яндекс Маркет — каждый кабинет отдельно.
+Кабинет, который отказал, не срывает остальные: его ошибка попадает в
+отчёт о сборе, а прочие кабинеты досчитываются до конца.
 """
 
 from __future__ import annotations
@@ -23,11 +24,17 @@ from typing import Any
 from . import connections, db, inbox, products
 from . import knowledge as знание
 from .config import Settings, settings
+from .connectors.ozon_catalogue import OzonCatalogue
 from .connectors.wb_catalogue import WildberriesCatalogue
+from .connectors.yandex_catalogue import YandexCatalogue
 
 log = logging.getLogger(__name__)
 
-SOURCES = {"wildberries": WildberriesCatalogue}
+SOURCES = {
+    "wildberries": WildberriesCatalogue,
+    "ozon": OzonCatalogue,
+    "yandex": YandexCatalogue,
+}
 
 
 @dataclass

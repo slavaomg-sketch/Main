@@ -188,6 +188,12 @@ def reason(error: BaseException) -> str:
         if code == 429:
             return "площадка просит подождать"
         return f"площадка ответила {code}"
+
+    # Наши собственные ошибки написаны словами и для владельца: «не заполнен
+    # номер бизнеса» понятнее, чем имя класса MissingBusiness.
+    if isinstance(error, (RuntimeError, ValueError)) and str(error).strip():
+        return str(error).strip()
+
     return type(error).__name__
 
 

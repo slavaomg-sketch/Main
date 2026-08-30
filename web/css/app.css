@@ -400,6 +400,16 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .chip.is-active .chip__dot { transform: scale(1.25); }
 .chip:not(.is-active) .chip__dot { opacity: 0.35; }
 
+/* Кабинетов стало несколько площадок: подпись площадки идёт перед именем
+   кабинета мелко и бледно, чтобы имя оставалось главным. */
+.chip__where {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary, var(--text-secondary));
+  opacity: 0.7;
+}
+
 /* Магазины — отдельная группа фильтров, отделена от площадок тонкой чертой. */
 .chips--stores { position: relative; padding-left: 15px; }
 .chips--stores::before {

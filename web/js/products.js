@@ -72,9 +72,18 @@
     все.addEventListener('click', function () { switchStore(''); });
     row.appendChild(все);
 
+    // Кабинетов теперь несколько площадок. Пока площадка одна, подписывать
+    // её на каждой кнопке незачем — это лишний шум.
+    var площадок = {};
+    shops.forEach(function (shop) { площадок[shop.marketplace || ''] = true; });
+    var подписывать = Object.keys(площадок).length > 1;
+
     shops.forEach(function (shop) {
       var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
       chip.type = 'button';
+      if (подписывать && shop.marketplaceTitle) {
+        chip.appendChild(Fmt.el('span', 'chip__where', shop.marketplaceTitle));
+      }
       chip.appendChild(Fmt.el('span', null, shop.title));
       chip.appendChild(Fmt.el('span', 'inbox__count', String(shop.parents)));
       chip.addEventListener('click', function () { switchStore(shop.id); });
@@ -118,8 +127,12 @@
      сохраняется, и во второй раз всё уже на месте. */
   function fillRatings() {
     var мой = поход;
+    // Оценку умеет отдавать пока только Wildberries. Дёргать ради неё
+    // карточки Ozon и Яндекса — это ждать ответа, которого не будет.
     var осталось = (state.list ? state.list.cards : [])
-      .filter(function (card) { return !card.ratingKnown; });
+      .filter(function (card) {
+        return !card.ratingKnown && card.marketplace === 'wildberries';
+      });
 
     function дальше() {
       if (мой !== поход || !осталось.length) return;
@@ -494,7 +507,8 @@
     host.appendChild(head);
 
     var facts = Fmt.el('div', 'card__facts');
-    facts.appendChild(fact('Артикул WB', card.nmId));
+    facts.appendChild(fact('Номер на площадке', card.platformId || card.nmId));
+    facts.appendChild(fact('Площадка', card.marketplaceTitle || 'Wildberries'));
     facts.appendChild(fact('Фотографий', String(card.photoCount)));
     facts.appendChild(fact('Оценка',
       card.ratingKnown ? (card.rating ? '★ ' + card.rating : 'нет оценки') : '—'));
@@ -503,7 +517,8 @@
     facts.appendChild(fact('Продаж', Fmt.number(card.sales || 0)));
     host.appendChild(facts);
 
-    if (!card.ratingKnown) {
+    // Оценку по требованию умеем спрашивать пока только у Wildberries.
+    if (!card.ratingKnown && card.marketplace === 'wildberries') {
       var ask = Fmt.el('button', 'btn btn--ghost');
       ask.type = 'button';
       ask.appendChild(Fmt.el('span', null,

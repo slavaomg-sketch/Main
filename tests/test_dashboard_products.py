@@ -375,3 +375,70 @@ async def test_справочник_показывает_товары_своег
 
     у_славы = {item.parent for item in await knowledge.all_parents(два_кабинета["ВБ Вячеслав"])}
     assert у_славы == {"СЛАВА"}
+
+
+# --- карточки разных площадок в одной таблице -----------------------------------
+
+
+@pytest.mark.parametrize(
+    "nm_id, площадка, номер",
+    [
+        ("123456", "wildberries", "123456"),
+        ("ozon-900001", "ozon", "900001"),
+        ("ya-CAB-(UA-TC-1M-WH)-SAMSUNG", "yandex", "CAB-(UA-TC-1M-WH)-SAMSUNG"),
+    ],
+)
+def test_площадка_узнаётся_по_номеру_карточки(nm_id, площадка, номер):
+    assert products.marketplace_of(nm_id) == площадка
+    assert products.platform_id(nm_id) == номер
+
+
+async def test_продажи_считаются_только_по_вб(кабинет):
+    """Продажи выгружены только с Wildberries. Совпадение чисел не должно
+    приписывать карточке Ozon чужие продажи."""
+    await products.save_cards(кабинет, [
+        карточка(900001, "CAB-(ВБ)-A"),
+        карточка("ozon-900001", "CAB-(ОЗОН)-A"),
+    ])
+    async with db.connect() as connection:
+        await connection.execute(
+            """
+            INSERT INTO marketplace_rows
+                (connection_id, source, row_id, day, payload, updated_at)
+            VALUES (?, 'sales', 'p1', '2026-08-01',
+                    '{"nmId": 900001, "saleID": "S1"}', '2026-08-01')
+            """,
+            (кабинет,),
+        )
+        await connection.commit()
+
+    вб = await products.card_view("900001")
+    озон = await products.card_view("ozon-900001")
+    assert вб["sales"] == 1
+    assert озон["sales"] == 0
+
+
+async def test_оценку_спрашиваем_только_у_вб(кабинет, monkeypatch):
+    """У Ozon и Яндекса оценка берётся другими методами. Пока их нет,
+    молчим, а не показываем ответ Wildberries за чужой."""
+    спросили = []
+
+    async def rating(self, nm_id):
+        спросили.append(nm_id)
+        return 4.8, 277
+
+    monkeypatch.setattr(WildberriesRating, "product_rating", rating)
+    await products.save_cards(кабинет, [карточка("ozon-900001", "CAB-(ОЗОН)-A")])
+
+    карта = await products.rating("ozon-900001", settings)
+    assert спросили == []
+    assert карта.rating_known is False
+
+
+async def test_карточка_знает_свою_площадку(кабинет):
+    await products.save_cards(кабинет, [карточка("ya-ART-1", "CAB-(ЯНДЕКС)-A")])
+    карта = (await products.card_view("ya-ART-1"))
+
+    assert карта["marketplace"] == "yandex"
+    assert карта["marketplaceTitle"] == "Яндекс Маркет"
+    assert карта["platformId"] == "ART-1"
