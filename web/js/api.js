@@ -68,6 +68,8 @@
     inbox: function () { return request('GET', '/api/inbox'); },
     tasks: function () { return request('GET', '/api/tasks'); },
     knowledge: function () { return request('GET', '/api/knowledge'); },
+    refreshKnowledge: function () { return request('POST', '/api/knowledge/refresh'); },
+    knowledgeRefreshStatus: function () { return request('GET', '/api/knowledge/refresh'); },
     saveKnowledge: function (parent, title, facts) {
       return request('PUT', '/api/knowledge/' + encodeURIComponent(parent),
                      { title: title, facts: facts });

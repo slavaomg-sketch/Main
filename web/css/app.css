@@ -1512,3 +1512,32 @@ a.btn--ghost { color: var(--text); }
 .know-card__foot { display: flex; align-items: center; gap: 12px; margin-top: 9px; }
 .know-card__hint { font-size: 11.5px; color: var(--text-tertiary); }
 .know-card__foot .btn { margin-left: auto; height: 32px; font-size: 13px; }
+
+.know__refresh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.know__progress { font-size: 12.5px; color: var(--text-secondary); margin-right: auto; }
+.know__refresh .btn { height: 32px; font-size: 13px; }
+
+.know-card__cards {
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.know-card__sample {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}

@@ -44,12 +44,19 @@ MAX_FACTS = 2000
 
 @dataclass(frozen=True)
 class Facts:
-    """Справка об одном родителе."""
+    """Справка об одном родителе.
+
+    `title` — как товар называет владелец, своими словами. `sample` — как
+    его называет площадка в одной из карточек: по нему товар легко узнать
+    в лицо, но для общения оно не годится.
+    """
 
     parent: str
     title: str = ""
     facts: str = ""
     updated_at: str = ""
+    cards: int = 0
+    sample: str = ""
 
     @property
     def filled(self) -> bool:
@@ -61,6 +68,9 @@ class Facts:
             "title": self.title,
             "facts": self.facts,
             "filled": self.filled,
+            "named": bool(self.title.strip()),
+            "cards": self.cards,
+            "sample": self.sample,
             "updatedAt": self.updated_at,
         }
 
@@ -108,7 +118,10 @@ async def get(parent: str) -> Facts | None:
         return None
     async with db.connect() as connection:
         cursor = await connection.execute(
-            "SELECT parent, title, facts, updated_at FROM product_facts WHERE parent = ?",
+            """
+            SELECT parent, title, facts, updated_at, cards, sample
+            FROM product_facts WHERE parent = ?
+            """,
             (parent,),
         )
         row = await cursor.fetchone()
@@ -117,6 +130,7 @@ async def get(parent: str) -> Facts | None:
     return Facts(
         parent=row["parent"], title=row["title"] or "",
         facts=row["facts"] or "", updated_at=row["updated_at"] or "",
+        cards=int(row["cards"] or 0), sample=row["sample"] or "",
     )
 
 
@@ -153,12 +167,17 @@ async def save(parent: str, title: str, facts: str) -> Facts:
 
 
 async def all_parents() -> list[Facts]:
-    """Все известные родители. Незаполненные — первыми: их и надо закрыть."""
+    """Все известные родители.
+
+    Сверху — те, которым владелец ещё не дал название, и среди них первыми
+    товары с наибольшим числом карточек: их описание окупается сильнее всего.
+    """
     async with db.connect() as connection:
         cursor = await connection.execute(
             """
-            SELECT parent, title, facts, updated_at FROM product_facts
-            ORDER BY CASE WHEN TRIM(facts) = '' THEN 0 ELSE 1 END, parent
+            SELECT parent, title, facts, updated_at, cards, sample FROM product_facts
+            ORDER BY CASE WHEN TRIM(title) = '' THEN 0 ELSE 1 END,
+                     cards DESC, parent
             """
         )
         rows = await cursor.fetchall()
@@ -166,6 +185,7 @@ async def all_parents() -> list[Facts]:
         Facts(
             parent=row["parent"], title=row["title"] or "",
             facts=row["facts"] or "", updated_at=row["updated_at"] or "",
+            cards=int(row["cards"] or 0), sample=row["sample"] or "",
         )
         for row in rows
     ]

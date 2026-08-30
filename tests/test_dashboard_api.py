@@ -711,7 +711,9 @@ def test_main_page_links_to_the_tasks_page(client):
 
 
 def test_knowledge_starts_empty(client):
-    assert client.get("/api/knowledge").json() == {"parents": [], "filled": 0, "total": 0}
+    assert client.get("/api/knowledge").json() == {
+        "parents": [], "filled": 0, "named": 0, "total": 0,
+    }
 
 
 def test_knowledge_is_saved_and_listed(client):

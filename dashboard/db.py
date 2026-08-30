@@ -127,6 +127,12 @@ async def _add_missing_columns(db: aiosqlite.Connection) -> None:
     """Дозаписать столбцы, появившиеся в новых версиях панели."""
     additions = {
         "sync_state": {"covered_from": "TEXT NOT NULL DEFAULT ''"},
+        # Справочник товаров: сколько карточек у родителя и как площадка
+        # называет одну из них — по этому владелец узнаёт товар в лицо.
+        "product_facts": {
+            "cards": "INTEGER NOT NULL DEFAULT 0",
+            "sample": "TEXT NOT NULL DEFAULT ''",
+        },
     }
     for table, columns in additions.items():
         cursor = await db.execute(f"PRAGMA table_info({table})")

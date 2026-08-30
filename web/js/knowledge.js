@@ -20,8 +20,9 @@
     total: 0,
     drafts: {},        // изменённое, но ещё не сохранённое
     saving: {},
-    onlyEmpty: false,
-    search: ''
+    filter: 'all',     // all | unnamed | unfilled
+    search: '',
+    refresh: null      // ход сбора каталога
   };
 
   var host = null;
@@ -34,6 +35,7 @@
     return Api.knowledge().then(function (payload) {
       state.parents = payload.parents || [];
       state.filled = payload.filled || 0;
+      state.named = payload.named || 0;
       state.total = payload.total || 0;
       render();
     });
@@ -67,6 +69,7 @@
           if (state.parents[i].parent === saved.parent) state.parents[i] = saved;
         }
         state.filled = state.parents.filter(function (row) { return row.filled; }).length;
+        state.named = state.parents.filter(function (row) { return row.named; }).length;
         toast('Справка сохранена');
         render();
       })
@@ -76,6 +79,68 @@
         toast(error.message);
       });
     return card;
+  }
+
+  /* --- сбор каталога из кабинетов ------------------------------------------- */
+
+  function startRefresh() {
+    Api.refreshKnowledge()
+      .then(watchRefresh)
+      .catch(function (error) { toast(error.message); });
+  }
+
+  function watchRefresh(run) {
+    state.refresh = run;
+    render();
+
+    if (!run || run.finished) {
+      // Сбор закончился — перечитываем список, там появились новые товары.
+      if (run && run.finished) {
+        load().then(function () {
+          var беды = Object.keys((run.errors) || {});
+          toast(беды.length
+            ? 'Собрано товаров: ' + run.parents + ', но ' + беды.length +
+              ' кабинет(ов) не ответили'
+            : 'Каталог собран: товаров ' + run.parents + ' из ' + run.cards + ' карточек');
+        });
+      }
+      return;
+    }
+
+    setTimeout(function () {
+      Api.knowledgeRefreshStatus()
+        .then(watchRefresh)
+        .catch(function (error) {
+          state.refresh = null;
+          render();
+          toast(error.message);
+        });
+    }, 1500);
+  }
+
+  function refreshBar() {
+    var run = state.refresh;
+    var bar = Fmt.el('div', 'know__refresh');
+
+    if (run && run.running) {
+      bar.appendChild(Fmt.el('span', 'know__progress',
+        'Читаем карточки: кабинет ' + (run.storesDone + 1) + ' из ' + run.storesTotal +
+        (run.store ? ' — ' + run.store : '') +
+        (run.cards ? ', уже ' + Fmt.number(run.cards) + ' карточек' : '')));
+      return bar;
+    }
+
+    bar.appendChild(Fmt.el('span', 'know__progress',
+      state.total
+        ? 'Список можно пересобрать, если добавились новые товары.'
+        : 'Список пуст. Соберите его из карточек ваших кабинетов.'));
+
+    var run_button = Fmt.el('button', 'btn ' + (state.total ? 'btn--ghost' : 'btn--primary'));
+    run_button.type = 'button';
+    run_button.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+    run_button.addEventListener('click', startRefresh);
+    bar.appendChild(run_button);
+    return bar;
   }
 
   /* --- карточка родителя ---------------------------------------------------- */
@@ -89,15 +154,26 @@
 
     var head = Fmt.el('header', 'know-card__head');
     head.appendChild(Fmt.el('span', 'know-card__code', item.parent));
+    if (item.cards) {
+      head.appendChild(Fmt.el('span', 'know-card__cards',
+        item.cards + ' ' + Fmt.plural(item.cards, ['карточка', 'карточки', 'карточек'])));
+    }
     head.appendChild(Fmt.el('span',
       'know-card__state' + (item.filled ? ' is-filled' : ''),
       item.filled ? 'справка есть' : 'справки нет'));
     node.appendChild(head);
 
+    // Как товар называет площадка — чтобы узнать его в лицо. Для общения
+    // это имя не годится: оно про одну карточку из тысячи.
+    if (item.sample) {
+      node.appendChild(Fmt.el('p', 'know-card__sample', 'на площадке: ' + item.sample));
+    }
+
     var title = document.createElement('input');
     title.className = 'know-card__title';
     title.type = 'text';
-    title.placeholder = 'Как называется товар — например, «Кабель USB Type-C 1 м, белый»';
+    title.placeholder = 'Как называть этот товар между собой — ' +
+      'например, «Кабель USB Type-C — Type-C, 1 м, белый»';
     title.value = draft.title || '';
     title.addEventListener('input', function () { change(item, 'title', title.value); });
     node.appendChild(title);
@@ -140,9 +216,11 @@
   function shown() {
     var needle = state.search.trim().toLowerCase();
     return state.parents.filter(function (item) {
-      if (state.onlyEmpty && item.filled) return false;
+      if (state.filter === 'unnamed' && item.named) return false;
+      if (state.filter === 'unfilled' && item.filled) return false;
       if (!needle) return true;
-      return (item.parent + ' ' + (item.title || '')).toLowerCase().indexOf(needle) !== -1;
+      var haystack = item.parent + ' ' + (item.title || '') + ' ' + (item.sample || '');
+      return haystack.toLowerCase().indexOf(needle) !== -1;
     });
   }
 
@@ -150,7 +228,8 @@
     var bar = Fmt.el('div', 'know__bar');
 
     bar.appendChild(Fmt.el('span', 'know__tally',
-      'Товаров: ' + state.total + ' · со справкой: ' + state.filled));
+      'Товаров: ' + state.total + ' · с названием: ' + state.named +
+      ' · со справкой: ' + state.filled));
 
     var search = document.createElement('input');
     search.className = 'know__search';
@@ -163,14 +242,17 @@
     });
     bar.appendChild(search);
 
-    var toggle = Fmt.el('button', 'chip' + (state.onlyEmpty ? ' is-active' : ''));
-    toggle.type = 'button';
-    toggle.appendChild(Fmt.el('span', null, 'Только без справки'));
-    toggle.addEventListener('click', function () {
-      state.onlyEmpty = !state.onlyEmpty;
-      render();
-    });
-    bar.appendChild(toggle);
+    [['all', 'Все'], ['unnamed', 'Без названия'], ['unfilled', 'Без справки']]
+      .forEach(function (pair) {
+        var chip = Fmt.el('button', 'chip' + (state.filter === pair[0] ? ' is-active' : ''));
+        chip.type = 'button';
+        chip.appendChild(Fmt.el('span', null, pair[1]));
+        chip.addEventListener('click', function () {
+          state.filter = pair[0];
+          render();
+        });
+        bar.appendChild(chip);
+      });
 
     return bar;
   }
@@ -186,8 +268,8 @@
       listHost.appendChild(Fmt.el('p', 'inbox__loading',
         state.total
           ? 'Ничего не нашлось.'
-          : 'Список пуст. Он наполнится сам, когда панель увидит ваши товары — ' +
-            'откройте «Задачи» и загрузите вопросы.'));
+          : 'Список пуст. Нажмите «Собрать из кабинетов» — панель прочитает ' +
+            'карточки и соберёт список товаров.'));
       return;
     }
     items.forEach(function (item) { listHost.appendChild(card(item)); });
@@ -200,6 +282,7 @@
       'Помощнику запрещено выдумывать характеристики — поэтому на вопрос ' +
       'о товаре он зовёт вас. Заполните справку один раз на товар, и такие ' +
       'вопросы он начнёт закрывать сам.'));
+    host.appendChild(refreshBar());
     host.appendChild(toolbar());
     listHost = Fmt.el('div', 'know__list');
     host.appendChild(listHost);

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import agent, inbox, knowledge, pipeline, tasks
+from . import agent, catalogue, inbox, knowledge, pipeline, tasks
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -273,8 +273,25 @@ async def read_knowledge() -> dict[str, Any]:
     return {
         "parents": [item.to_dict() for item in found],
         "filled": sum(1 for item in found if item.filled),
+        "named": sum(1 for item in found if item.title.strip()),
         "total": len(found),
     }
+
+
+@guarded.post("/knowledge/refresh")
+async def refresh_knowledge() -> dict[str, Any]:
+    """Собрать полный список товаров из карточек кабинетов.
+
+    Работа долгая: карточки отдаются по сотне и с ограничением по частоте.
+    Поэтому запускаем в фоне и возвращаем ход, а не ждём конца.
+    """
+    return catalogue.start(settings)
+
+
+@guarded.get("/knowledge/refresh")
+async def knowledge_refresh_status() -> dict[str, Any]:
+    """Как идёт сбор каталога."""
+    return catalogue.status() or {"running": False, "finished": False}
 
 
 @guarded.put("/knowledge/{parent}")
