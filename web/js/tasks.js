@@ -81,7 +81,12 @@
   function loadWork() {
     var store = currentStore();
     var task = currentTask();
-    if (!store || !task) return Promise.resolve(null);
+    // Кабинетов или задач нет — показываем это, а не вечное «загружаем».
+    if (!store || !task) {
+      state.loading = false;
+      render();
+      return Promise.resolve(null);
+    }
 
     state.loading = true;
     state.work = null;
@@ -305,7 +310,10 @@
     render();
 
     loadCatalogue()
-      .then(function () { return loadWork(); })
+      .then(function () {
+        render();               // оглавление уже есть — рисуем ряды сразу
+        return loadWork();
+      })
       .catch(function (error) {
         Fmt.clear(host);
         host.appendChild(Fmt.el('p', 'inbox__loading', error.message));

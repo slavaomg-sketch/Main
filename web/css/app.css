@@ -1391,3 +1391,41 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .tasks__total.is-unknown { color: var(--warning); font-weight: 500; }
 .tasks__loaded { color: var(--text-tertiary); }
 .tasks__tally .btn { margin-left: auto; height: 30px; font-size: 12.5px; }
+
+/* ===========================================================================
+   Отдельная страница «Задачи»
+   =========================================================================== */
+
+.page { min-height: 100vh; }
+
+.page__head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--glass);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line);
+}
+.page__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 14px 22px;
+}
+.page__body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 22px 22px 60px;
+}
+
+@media (max-width: 640px) {
+  .page__inner, .page__body { padding-left: 14px; padding-right: 14px; }
+}
+
+/* Ссылки, оформленные как кнопки, не должны выглядеть как текст со ссылкой. */
+a.btn, a.icon-btn { text-decoration: none; color: inherit; }
+a.btn--ghost { color: var(--text); }

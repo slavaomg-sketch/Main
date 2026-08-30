@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager, suppress
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -79,9 +79,36 @@ def create_app() -> FastAPI:
 
     app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
+    @app.middleware("http")
+    async def no_stale_assets(request: Request, call_next):
+        """Заставить браузер проверять свежесть страницы и скриптов.
+
+        Без этого браузер решает сам, и решает плохо: панель обновляется
+        по нескольку раз в день, а он может отдать свежую страницу вместе
+        со старым скриптом. Внешне это выглядит как «кнопка есть, но
+        не работает» — именно так и случилось с разделом «Задачи».
+
+        `no-cache` не запрещает кэш, а требует переспросить сервер. Файл
+        не изменился — приходит короткий ответ «берите из кэша».
+        """
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/assets/") or path in {"/", "/tasks", "/favicon.svg"}:
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
+
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
         return FileResponse(WEB_DIR / "index.html")
+
+    @app.get("/tasks", include_in_schema=False)
+    async def tasks_page() -> FileResponse:
+        """Отдельная страница задач.
+
+        Лёгкая нарочно: она не тянет показатели со всех площадок, поэтому
+        открывается сразу, а не ждёт ответа Ozon.
+        """
+        return FileResponse(WEB_DIR / "tasks.html")
 
     @app.get("/favicon.svg", include_in_schema=False)
     async def favicon() -> FileResponse:

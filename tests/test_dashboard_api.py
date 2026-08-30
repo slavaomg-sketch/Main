@@ -680,3 +680,28 @@ def test_task_page_size_is_capped(client):
 
 def test_task_offset_cannot_be_negative(client):
     assert client.get("/api/tasks/wb1/questions?offset=-1").status_code == 422
+
+
+def test_tasks_page_is_served_separately(client):
+    """«Задачи» — отдельная страница, а не часть основной панели."""
+    page = client.get("/tasks")
+    assert page.status_code == 200
+    assert "Задачи" in page.text
+    # Страница лёгкая: тяжёлых модулей основной панели на ней нет.
+    assert "blocks.js" not in page.text
+    assert "charts.js" not in page.text
+    assert "tasks-page.js" in page.text
+
+
+def test_assets_are_revalidated_by_the_browser(client):
+    """Панель обновляется часто. Браузер обязан переспрашивать, иначе
+    свежая страница уедет к пользователю со старым скриптом — и кнопка
+    будет на месте, но работать не будет."""
+    for path in ("/", "/tasks", "/assets/js/app.js", "/assets/css/app.css"):
+        answer = client.get(path)
+        assert answer.status_code == 200
+        assert "no-cache" in answer.headers.get("cache-control", "")
+
+
+def test_main_page_links_to_the_tasks_page(client):
+    assert 'href="/tasks"' in client.get("/").text

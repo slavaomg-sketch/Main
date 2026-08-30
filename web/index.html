@@ -48,10 +48,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
             <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-moon"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
           </button>
-          <button class="icon-btn" id="btn-tasks" type="button"
-                  title="Задачи по кабинету" aria-label="Задачи">
+          <a class="icon-btn" id="btn-tasks" href="/tasks"
+             title="Задачи по кабинету" aria-label="Задачи">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10M9 12h10M9 19h10M4 5l1.5 1.5L8 4M4 12l1.5 1.5L8 11M4 19l1.5 1.5L8 18"/></svg>
-          </button>
+          </a>
           <button class="icon-btn icon-btn--badged" id="btn-inbox" type="button"
                   title="Входящие: отзывы, вопросы, заявки" aria-label="Входящие">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12h-6l-2 3h-2l-2-3H3M5 5h14l2 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5l2-7z"/></svg>
@@ -124,29 +124,6 @@
     </aside>
   </div>
 
-  <!-- Задачи по кабинету -->
-  <div class="sheet" id="tasks" hidden>
-    <div class="sheet__backdrop" data-close="tasks"></div>
-    <aside class="sheet__panel sheet__panel--wide" role="dialog" aria-label="Задачи">
-      <header class="sheet__head">
-        <div>
-          <h2>Задачи</h2>
-          <p class="sheet__sub">Что ждёт работы в каждом кабинете</p>
-        </div>
-        <div class="sheet__head-actions">
-          <button class="icon-btn" id="btn-tasks-reload" type="button" title="Обновить"
-                  aria-label="Обновить задачи">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
-          </button>
-          <button class="icon-btn" type="button" data-close="tasks" aria-label="Закрыть">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-          </button>
-        </div>
-      </header>
-      <div class="sheet__body" id="tasks-body"></div>
-    </aside>
-  </div>
-
   <!-- Входящие: обращения покупателей -->
   <div class="sheet" id="inbox" hidden>
     <div class="sheet__backdrop" data-close="inbox"></div>
@@ -216,7 +193,6 @@
   <script src="/assets/js/keys.js"></script>
   <script src="/assets/js/reply.js"></script>
   <script src="/assets/js/inbox.js"></script>
-  <script src="/assets/js/tasks.js"></script>
   <script src="/assets/js/app.js"></script>
 </body>
 </html>
