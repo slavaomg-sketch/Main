@@ -1376,3 +1376,18 @@ html[data-theme="auto"] .icon-moon { display: none; }
 }
 .inbox__progress { font-size: 12.5px; color: var(--text-secondary); margin-right: auto; }
 .inbox__conveyor .btn { height: 32px; font-size: 13px; }
+
+/* Задачи: строка «всего у площадки / загружено сейчас». */
+.tasks__tally {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.tasks__total { font-weight: 600; color: var(--text); }
+.tasks__total.is-unknown { color: var(--warning); font-weight: 500; }
+.tasks__loaded { color: var(--text-tertiary); }
+.tasks__tally .btn { margin-left: auto; height: 30px; font-size: 12.5px; }

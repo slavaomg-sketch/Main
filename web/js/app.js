@@ -56,7 +56,8 @@
      'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
      'toasts', 'footer-note', 'brand-sub', 'topbar',
      'btn-keys', 'keys', 'keys-body', 'coverage-note',
-     'btn-inbox', 'inbox', 'inbox-body', 'inbox-badge', 'btn-inbox-reload'].forEach(function (id) {
+     'btn-inbox', 'inbox', 'inbox-body', 'inbox-badge', 'btn-inbox-reload',
+     'btn-tasks', 'tasks', 'tasks-body', 'btn-tasks-reload'].forEach(function (id) {
       dom[id] = $(id);
     });
   }
@@ -834,6 +835,10 @@
     dom['btn-theme'].addEventListener('click', cycleTheme);
     dom['btn-keys'].addEventListener('click', openKeys);
     dom['btn-inbox'].addEventListener('click', openInbox);
+    dom['btn-tasks'].addEventListener('click', openTasks);
+    dom['btn-tasks-reload'].addEventListener('click', function () {
+      global.Tasks.reload();
+    });
     dom['btn-inbox-reload'].addEventListener('click', function () {
       global.Inbox.reload();
     });
@@ -877,7 +882,8 @@
       if (event.key === 'Escape') {
         // Сначала закрываем открытую панель и только потом выходим из настройки,
         // иначе один Escape отменял бы сразу и то и другое.
-        var openPanel = ['library', 'range', 'keys', 'inbox'].filter(function (id) { return !dom[id].hidden; })[0];
+        var openPanel = ['library', 'range', 'keys', 'inbox', 'tasks']
+          .filter(function (id) { return !dom[id].hidden; })[0];
         if (openPanel) {
           closeSheet(openPanel);
         } else if (state.editing) {
@@ -930,6 +936,16 @@
       ? 'Входящие: ' + total + ' ' + Fmt.plural(total, ['обращение', 'обращения', 'обращений']) +
         ' ждёт ответа'
       : 'Входящие: всё закрыто';
+  }
+
+  function openTasks() {
+    openSheet('tasks');
+    // Кнопки помощника показываем, только если мост к Codex на связи.
+    Api.health()
+      .catch(function () { return {}; })
+      .then(function (health) {
+        global.Tasks.mount(dom['tasks-body'], { agent: !!health.agent });
+      });
   }
 
   function openInbox() {
@@ -1008,6 +1024,7 @@
     // Ссылка вида /#keys открывает страницу ключей сразу.
     if (global.location.hash === '#keys') openKeys();
     if (global.location.hash === '#inbox') openInbox();
+    if (global.location.hash === '#tasks') openTasks();
 
     if (state.refreshTimer) clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(function () {

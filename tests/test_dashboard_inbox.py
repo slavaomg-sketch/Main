@@ -421,11 +421,14 @@ async def test_collect_remembers_items_for_the_agent(store, monkeypatch):
     assert inbox.find(store.id, "question", "f1") is None
 
 
-async def test_empty_collect_forgets_previous_items(store, monkeypatch):
+async def test_collect_does_not_wipe_what_another_screen_loaded(store, monkeypatch):
+    """Память помощника — общая на два экрана. Пустой сбор одного из них
+    не имеет права стирать обращения, загруженные другим."""
     mock_inbox(monkeypatch, handler_for(feedbacks=[FEEDBACK]))
     await inbox.collect(settings)
     assert inbox.find(store.id, "feedback", "f1") is not None
 
+    # Кабинет выключили — сбор вернёт пустоту, но чужую память не тронет.
     await conn.update(store.id, enabled=False)
     await inbox.collect(settings)
-    assert inbox.find(store.id, "feedback", "f1") is None
+    assert inbox.find(store.id, "feedback", "f1") is not None

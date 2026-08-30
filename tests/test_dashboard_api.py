@@ -649,3 +649,27 @@ def test_mass_send_reports_what_went_out(client, monkeypatch):
 
     assert payload["sent"] == ["i1"]
     assert payload["failed"] == {"i2": "RuntimeError"}
+
+
+# --- задачи по кабинету ---------------------------------------------------------
+
+
+def test_tasks_catalogue_is_empty_without_keys(client):
+    assert client.get("/api/tasks").json() == {"marketplaces": []}
+
+
+def test_unknown_task_is_not_found(client):
+    assert client.get("/api/tasks/нет-такого/questions").status_code == 404
+
+
+def test_task_page_size_is_capped(client):
+    """Запрос страницы больше разрешённой отвергается, а не молча урезается
+    до чего-то другого."""
+    from dashboard import tasks
+
+    answer = client.get(f"/api/tasks/wb1/questions?limit={tasks.PAGE + 1}")
+    assert answer.status_code == 422
+
+
+def test_task_offset_cannot_be_negative(client):
+    assert client.get("/api/tasks/wb1/questions?offset=-1").status_code == 422

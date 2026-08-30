@@ -138,13 +138,44 @@ class WildberriesInbox(HttpConnector):
         data = body.get("data") if isinstance(body, dict) else {}
         return [self._feedback(row) for row in self.as_list(data, "feedbacks")]
 
-    async def questions(self, take: int = PAGE) -> list[InboxItem]:
-        """Вопросы без ответа, новые сверху."""
+    async def questions(self, take: int = PAGE, skip: int = 0) -> list[InboxItem]:
+        """Вопросы без ответа, новые сверху. Одна страница выдачи.
+
+        Сколько записей площадка отдаёт за раз — в доступной документации не
+        сказано, поэтому размер страницы не выводим из догадки: спрашиваем
+        сколько попросили и смотрим, сколько пришло. Если пришло меньше —
+        значит, это был конец.
+        """
         body = (await self._call("GET", LIST_QUESTIONS, params={
-            "isAnswered": "false", "take": take, "skip": 0, "order": "dateDesc",
+            "isAnswered": "false", "take": take, "skip": skip, "order": "dateDesc",
         })).json()
         data = body.get("data") if isinstance(body, dict) else {}
         return [self._question(row) for row in self.as_list(data, "questions")]
+
+    async def count_questions(self) -> int | None:
+        """Сколько вопросов ждёт ответа по данным самой площадки.
+
+        None означает «узнать не удалось». Ноль и «неизвестно» — разные вещи:
+        показать ноль вместо ошибки значит соврать, что работы нет.
+
+        Форма ответа в открытой документации не зафиксирована, поэтому
+        разбираем все встреченные виды: число прямо в `data`, либо поле
+        `countUnanswered`, либо `count`.
+        """
+        try:
+            body = (await self._call("GET", COUNT_QUESTIONS)).json()
+        except (RateLimited, httpx.HTTPError, ValueError):
+            return None
+
+        data = body.get("data") if isinstance(body, dict) else body
+        if isinstance(data, dict):
+            for field in ("countUnanswered", "count", "unanswered"):
+                if data.get(field) is not None:
+                    return self.to_int(data.get(field))
+            return None
+        if isinstance(data, (int, float, str)):
+            return self.to_int(data)
+        return None
 
     async def claims(self) -> list[InboxItem]:
         """Заявки покупателей на возврат, ожидающие решения."""

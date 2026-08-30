@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import agent, inbox, pipeline
+from . import agent, inbox, pipeline, tasks
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -261,6 +261,31 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
             "rows": sum(probe.get("rows") or 0 for probe in probes),
         },
     }
+
+
+# --- задачи по кабинету ---------------------------------------------------------
+
+
+@guarded.get("/tasks")
+async def read_tasks() -> dict[str, Any]:
+    """Оглавление: площадки, кабинеты и их задачи. Площадки не опрашиваются."""
+    return await tasks.catalogue(settings)
+
+
+@guarded.get("/tasks/{account_id}/{key}")
+async def read_task(
+    account_id: str,
+    key: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(tasks.PAGE, ge=1, le=tasks.PAGE),
+) -> dict[str, Any]:
+    """Рабочий список одной задачи одного кабинета — и только его."""
+    try:
+        return await tasks.load(account_id, key, offset, limit, settings)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # --- входящие: обращения покупателей --------------------------------------------

@@ -41,6 +41,7 @@
 
   global.Api = {
     session: function () { return request('GET', '/api/session'); },
+    health: function () { return request('GET', '/api/health'); },
     login: function (password) { return request('POST', '/api/auth/login', { password: password }); },
     logout: function () { return request('POST', '/api/auth/logout'); },
 
@@ -65,6 +66,11 @@
     },
 
     inbox: function () { return request('GET', '/api/inbox'); },
+    tasks: function () { return request('GET', '/api/tasks'); },
+    task: function (accountId, key, offset) {
+      return request('GET', '/api/tasks/' + encodeURIComponent(accountId) +
+                     '/' + encodeURIComponent(key) + query({ offset: offset }));
+    },
     draftInbox: function (accountId, kind, id) {
       return request('POST', '/api/inbox/draft',
                      { accountId: accountId, kind: kind, id: id });

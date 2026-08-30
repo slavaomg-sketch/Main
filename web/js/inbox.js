@@ -15,22 +15,14 @@
 
   var Fmt = global.Fmt;
   var Api = global.Api;
+  var Reply = global.Reply;
 
   var state = {
     data: null,          // последний ответ /api/inbox
     loading: null,       // текущий запрос, чтобы не дёргать площадки дважды
     place: '',           // выбранная площадка
     store: '',           // выбранный магазин
-    chapter: '',         // выбранная глава
-    drafts: {},          // набранные, но не отправленные ответы
-    sending: {},         // обращения, по которым ответ уже улетел
-    confirming: {},      // нажали «Отправить» — ждём подтверждения
-    answered: {},        // на что уже ответили в этом сеансе
-    drafting: {},        // помощник сейчас пишет черновик
-    hints: {},           // предупреждения помощника «тут нужен человек»
-    batch: null,         // идущий или разобранный конвейер
-    sendingBatch: false, // массовая отправка в пути
-    confirmBatch: false  // нажали «Отправить типовые» — ждём подтверждения
+    chapter: ''          // выбранная глава
   };
 
   var host = null;
@@ -38,10 +30,6 @@
 
   function toast(message) {
     if (global.Toast) global.Toast(message);
-  }
-
-  function key(item) {
-    return item.accountId + ':' + item.kind + ':' + item.id;
   }
 
   /* --- загрузка ------------------------------------------------------------- */
@@ -100,9 +88,7 @@
 
   // Отвеченное в этом сеансе с экрана убираем, не дожидаясь обновления.
   function visible(chapter) {
-    return ((chapter && chapter.items) || []).filter(function (item) {
-      return !state.answered[key(item)];
-    });
+    return Reply.visible((chapter && chapter.items) || []);
   }
 
   function countOf(node) {
@@ -137,400 +123,6 @@
       urgent += counted.urgent;
     });
     onCounts(total, urgent);
-  }
-
-  /* --- мелочи --------------------------------------------------------------- */
-
-  var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-                'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-
-  // «сегодня, 14:30» — понятнее, чем «2026-08-28T14:30:00Z».
-  function moment(iso) {
-    if (!iso) return '';
-    var date = new Date(iso);
-    if (isNaN(date.getTime())) return '';
-
-    var time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    var now = new Date();
-    if (date.toDateString() === now.toDateString()) return 'сегодня, ' + time;
-
-    var yesterday = new Date(now.getTime() - 86400000);
-    if (date.toDateString() === yesterday.toDateString()) return 'вчера, ' + time;
-
-    var label = date.getDate() + ' ' + MONTHS[date.getMonth()];
-    if (date.getFullYear() !== now.getFullYear()) label += ' ' + date.getFullYear();
-    return label + ', ' + time;
-  }
-
-  function stars(rating) {
-    var node = Fmt.el('span', 'inbox__stars');
-    node.title = 'Оценка ' + rating + ' из 5';
-    for (var i = 1; i <= 5; i += 1) {
-      node.appendChild(Fmt.el('span', i <= rating ? 'inbox__star is-on' : 'inbox__star', '★'));
-    }
-    return node;
-  }
-
-  /* --- конвейер: разбор пачки ----------------------------------------------- */
-
-  // Сколько обращений уходит в один заход. Столько же держит сервер.
-  var BATCH = 30;
-
-  function batchScope() {
-    var store = currentStore();
-    var chapter = currentChapter();
-    if (!store || !chapter) return null;
-    return { accountId: store.id, kind: chapter.kind, chapter: chapter };
-  }
-
-  function startBatch() {
-    var scope = batchScope();
-    if (!scope) return;
-
-    var ids = visible(scope.chapter).slice(0, BATCH).map(function (item) { return item.id; });
-    if (!ids.length) return;
-
-    state.batch = { running: true, total: ids.length, done: 0, ready: 0, human: 0, failed: 0 };
-    render();
-
-    Api.startBatch(scope.accountId, scope.kind, ids)
-      .then(function (batch) { watchBatch(batch); })
-      .catch(function (error) {
-        state.batch = null;
-        render();
-        toast(error.message);
-      });
-  }
-
-  function watchBatch(batch) {
-    state.batch = {
-      id: batch.id, running: !batch.finished, total: batch.total, done: batch.done,
-      ready: batch.ready, human: batch.human, failed: batch.failed
-    };
-
-    // Черновики кладём в те же поля, что и при одиночном запросе, —
-    // владелец правит их ровно так же.
-    (batch.drafts || []).forEach(function (draft) {
-      var full = batch.accountId + ':' + batch.kind + ':' + draft.id;
-      if (draft.answer) state.drafts[full] = draft.answer;
-      if (draft.needsHuman) {
-        state.hints[full] = draft.why || 'Помощник не уверен — проверьте сами.';
-      }
-      if (draft.error) state.hints[full] = draft.error;
-    });
-
-    render();
-
-    if (batch.finished) return;
-    setTimeout(function () {
-      Api.readBatch(batch.id)
-        .then(watchBatch)
-        .catch(function (error) {
-          state.batch = null;
-          render();
-          toast(error.message);
-        });
-    }, 1500);
-  }
-
-  // Отправляем то, что помощник счёл типовым и что владелец не стёр.
-  function approvedAnswers() {
-    var scope = batchScope();
-    if (!scope) return {};
-    var answers = {};
-    visible(scope.chapter).forEach(function (item) {
-      var id = key(item);
-      var text = (state.drafts[id] || '').trim();
-      if (!text || state.hints[id]) return;   // с пометкой — только руками
-      answers[item.id] = text;
-    });
-    return answers;
-  }
-
-  // Сколько разобранного ждёт человека. Считаем здесь же, а не берём с
-  // сервера: иначе строка итога могла показать «из одного — два».
-  function needingHuman() {
-    var scope = batchScope();
-    if (!scope) return 0;
-    return visible(scope.chapter).filter(function (item) {
-      return !!state.hints[key(item)];
-    }).length;
-  }
-
-  function sendApproved() {
-    var scope = batchScope();
-    var answers = approvedAnswers();
-    var ids = Object.keys(answers);
-    if (!scope || !ids.length) return;
-
-    state.sendingBatch = true;
-    render();
-
-    Api.sendBatch(scope.accountId, scope.kind, answers)
-      .then(function (result) {
-        state.sendingBatch = false;
-        (result.sent || []).forEach(function (itemId) {
-          var full = scope.accountId + ':' + scope.kind + ':' + itemId;
-          state.answered[full] = state.drafts[full] || '';
-          delete state.drafts[full];
-        });
-        var failed = Object.keys(result.failed || {}).length;
-        toast('Отправлено: ' + (result.sent || []).length +
-              (failed ? ', не удалось: ' + failed : ''));
-        render();
-        announce();
-      })
-      .catch(function (error) {
-        state.sendingBatch = false;
-        render();
-        toast(error.message);
-      });
-  }
-
-  function conveyor() {
-    var scope = batchScope();
-    if (!scope || !(state.data && state.data.agent)) return null;
-
-    var items = visible(scope.chapter);
-    if (!items.length) return null;
-
-    var bar = Fmt.el('div', 'inbox__conveyor');
-    var batch = state.batch;
-
-    if (batch && batch.running) {
-      bar.appendChild(Fmt.el('span', 'inbox__progress',
-        'Помощник пишет: ' + batch.done + ' из ' + batch.total + '…'));
-      return bar;
-    }
-
-    var ready = Object.keys(approvedAnswers()).length;
-
-    if (batch && !batch.running) {
-      bar.appendChild(Fmt.el('span', 'inbox__progress',
-        'Разобрано ' + batch.total + ': типовых ' + ready +
-        ', нужен человек — ' + needingHuman() +
-        (batch.failed ? ', не вышло ' + batch.failed : '')));
-    } else {
-      bar.appendChild(Fmt.el('span', 'inbox__progress',
-        'Ждёт ответа: ' + items.length +
-        (items.length > BATCH ? ' — за раз разбираем ' + BATCH : '')));
-    }
-
-    var run = Fmt.el('button', 'btn btn--ghost');
-    run.type = 'button';
-    run.appendChild(Fmt.el('span', null,
-      'Разобрать ' + Math.min(items.length, BATCH)));
-    run.addEventListener('click', startBatch);
-    bar.appendChild(run);
-
-    if (ready) {
-      var send = Fmt.el('button', 'btn btn--primary');
-      send.type = 'button';
-      var label = Fmt.el('span', null,
-        state.confirmBatch ? 'Точно отправить ' + ready + '?' : 'Отправить типовые (' + ready + ')');
-      if (state.confirmBatch) send.classList.add('btn--danger');
-      if (state.sendingBatch) label.textContent = 'Отправляем…';
-      send.appendChild(label);
-      send.disabled = !!state.sendingBatch;
-      send.addEventListener('click', function () {
-        if (!state.confirmBatch) {
-          // Пачка уходит покупателям и не отзывается — спрашиваем дважды.
-          state.confirmBatch = true;
-          render();
-          return;
-        }
-        state.confirmBatch = false;
-        sendApproved();
-      });
-      bar.appendChild(send);
-    }
-
-    return bar;
-  }
-
-  /* --- черновик от помощника ------------------------------------------------ */
-
-  function askDraft(item) {
-    var id = key(item);
-    state.drafting[id] = true;
-    delete state.hints[id];
-    render();
-
-    Api.draftInbox(item.accountId, item.kind, item.id)
-      .then(function (written) {
-        delete state.drafting[id];
-        state.drafts[id] = written.answer || '';
-        if (written.needsHuman) {
-          state.hints[id] = written.why ||
-            'Помощник не уверен в ответе — проверьте его сами.';
-        }
-        render();
-      })
-      .catch(function (error) {
-        delete state.drafting[id];
-        render();
-        toast(error.message);
-      });
-  }
-
-  /* --- отправка ответа ------------------------------------------------------ */
-
-  function send(item, text) {
-    var id = key(item);
-    state.sending[id] = true;
-    render();
-
-    Api.answerInbox(item.accountId, item.kind, item.id, text)
-      .then(function () {
-        delete state.sending[id];
-        delete state.drafts[id];
-        state.answered[id] = text;
-        toast('Ответ отправлен');
-        render();
-        announce();
-      })
-      .catch(function (error) {
-        delete state.sending[id];
-        render();
-        toast(error.message);
-      });
-  }
-
-  /* --- карточка обращения --------------------------------------------------- */
-
-  function answeredCard(item, text) {
-    var card = Fmt.el('article', 'inbox-card inbox-card--done');
-    card.appendChild(Fmt.el('div', 'inbox-card__done', 'Ответ отправлен'));
-    card.appendChild(Fmt.el('p', 'inbox-card__answer', text));
-    return card;
-  }
-
-  function cardHead(item) {
-    var head = Fmt.el('header', 'inbox-card__head');
-
-    if (item.author) head.appendChild(Fmt.el('span', 'inbox-card__store', item.author));
-    if (item.kind === 'feedback' && item.rating) head.appendChild(stars(item.rating));
-    if (item.urgent) head.appendChild(Fmt.el('span', 'inbox-card__flag', 'нужен человек'));
-
-    head.appendChild(Fmt.el('span', 'inbox-card__when', moment(item.createdAt)));
-    return head;
-  }
-
-  function photos(item) {
-    var row = Fmt.el('div', 'inbox-card__photos');
-    item.photos.slice(0, 6).forEach(function (url) {
-      var link = document.createElement('a');
-      link.className = 'inbox-card__photo';
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noreferrer';
-      var image = document.createElement('img');
-      image.src = url;
-      image.alt = 'Фото покупателя';
-      image.loading = 'lazy';
-      link.appendChild(image);
-      row.appendChild(link);
-    });
-    return row;
-  }
-
-  function answerBox(item) {
-    var id = key(item);
-    var box = Fmt.el('div', 'inbox-card__reply');
-
-    if (state.hints[id]) {
-      var hint = Fmt.el('div', 'inbox-card__hint');
-      hint.appendChild(Fmt.el('strong', null, 'Проверьте сами. '));
-      hint.appendChild(Fmt.el('span', null, state.hints[id]));
-      box.appendChild(hint);
-    }
-
-    var area = document.createElement('textarea');
-    area.className = 'inbox-card__input';
-    area.rows = 3;
-    area.placeholder = item.kind === 'question'
-      ? 'Ответ на вопрос покупателя'
-      : 'Ответ покупателю';
-    area.value = state.drafts[id] || '';
-    area.disabled = !!state.sending[id];
-    area.addEventListener('input', function () {
-      state.drafts[id] = area.value;
-      button.disabled = !area.value.trim();
-      if (state.confirming[id]) {
-        delete state.confirming[id];
-        label.textContent = 'Отправить покупателю';
-        button.classList.remove('btn--danger');
-      }
-    });
-    box.appendChild(area);
-
-    var foot = Fmt.el('div', 'inbox-card__foot');
-
-    if (state.data && state.data.agent) {
-      var ask = Fmt.el('button', 'btn btn--ghost');
-      ask.type = 'button';
-      ask.appendChild(Fmt.el('span', null,
-        state.drafting[id] ? 'Помощник пишет…' : 'Черновик от помощника'));
-      ask.disabled = !!state.drafting[id] || !!state.sending[id];
-      ask.addEventListener('click', function () { askDraft(item); });
-      foot.appendChild(ask);
-    }
-
-    var button = Fmt.el('button', 'btn btn--primary');
-    button.type = 'button';
-    var label = Fmt.el('span', null,
-      state.confirming[id] ? 'Точно отправить?' : 'Отправить покупателю');
-    if (state.confirming[id]) button.classList.add('btn--danger');
-    button.appendChild(label);
-    button.disabled = !(state.drafts[id] || '').trim() || !!state.sending[id];
-    if (state.sending[id]) label.textContent = 'Отправляем…';
-
-    button.addEventListener('click', function () {
-      var text = (state.drafts[id] || '').trim();
-      if (!text) return;
-      if (!state.confirming[id]) {
-        // Первое нажатие только предупреждает: ответ публичный и навсегда.
-        state.confirming[id] = true;
-        label.textContent = 'Точно отправить?';
-        button.classList.add('btn--danger');
-        return;
-      }
-      delete state.confirming[id];
-      send(item, text);
-    });
-    foot.appendChild(button);
-
-    box.appendChild(foot);
-    // Предупреждение отдельной строкой: между кнопками оно сжималось
-    // в столбик из трёх слов и переставало читаться.
-    box.appendChild(Fmt.el('p', 'inbox-card__note',
-      item.kind === 'chat'
-        ? 'Сообщение уйдёт покупателю в чат'
-        : 'Ответ увидят все покупатели, отозвать его нельзя'));
-    return box;
-  }
-
-  function card(item) {
-    var id = key(item);
-    if (state.answered[id]) return answeredCard(item, state.answered[id]);
-
-    var node = Fmt.el('article', 'inbox-card' + (item.urgent ? ' inbox-card--urgent' : ''));
-    node.appendChild(cardHead(item));
-
-    if (item.product || item.article) {
-      var product = Fmt.el('div', 'inbox-card__product');
-      if (item.product) product.appendChild(Fmt.el('span', null, item.product));
-      if (item.article) product.appendChild(Fmt.el('span', 'inbox-card__article', item.article));
-      node.appendChild(product);
-    }
-
-    node.appendChild(Fmt.el('p', 'inbox-card__text',
-      item.text || 'Покупатель написал без текста'));
-
-    if (item.photos && item.photos.length) node.appendChild(photos(item));
-
-    node.appendChild(answerBox(item));
-    return node;
   }
 
   /* --- три ряда навигации --------------------------------------------------- */
@@ -602,8 +194,7 @@
         picked && chapter.kind === picked.kind,
         function () {
           state.chapter = chapter.kind;
-          state.batch = null;
-          state.confirmBatch = false;
+          Reply.resetBatch();
           render();
         }
       ));
@@ -686,7 +277,12 @@
 
     if (!chapter) return;
 
-    var bar = conveyor();
+    var ctx = { agent: !!(state.data && state.data.agent), redraw: render };
+    var scope = {
+      accountId: store.id, kind: chapter.kind, marketplace: place.code
+    };
+
+    var bar = Reply.conveyor(scope, chapter.items || [], ctx);
     if (bar) host.appendChild(bar);
 
     var items = visible(chapter);
@@ -696,7 +292,7 @@
     }
 
     var list = Fmt.el('div', 'inbox__list');
-    items.forEach(function (item) { list.appendChild(card(item)); });
+    items.forEach(function (item) { list.appendChild(Reply.card(item, ctx)); });
     host.appendChild(list);
   }
 

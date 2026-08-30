@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from collections import OrderedDict
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
@@ -60,22 +61,77 @@ CHAPTER_TITLES = {
     "chat": "Сообщения покупателей",
 }
 
-# Последняя выдача `collect`, разложенная по ключу обращения. Нужна, чтобы
-# черновик писался по тексту, который панель получила от площадки сама,
-# а не по тому, что прислал браузер.
-_seen: dict[tuple[str, str, str], InboxItem] = {}
+# Обращения, которые панель недавно показывала. Нужны, чтобы черновик
+# писался по тексту, полученному от площадки самой панелью, а не по тому,
+# что прислал браузер.
+#
+# Это НЕ источник истины и не замена площадке: короткая память, живущая в
+# процессе. Экранов теперь два, поэтому загрузка одного не имеет права
+# стирать обращения другого — записи только добавляются, а лишнее вытесняется
+# по возрасту и количеству.
+_seen: "OrderedDict[tuple[str, str, str, str], tuple[InboxItem, datetime]]" = OrderedDict()
+
+# Сколько обращений держим и как долго. Хватает на несколько кабинетов
+# с полными списками, но памяти не съедает.
+MEMORY_LIMIT = 5000
+MEMORY_TTL = timedelta(hours=2)
+
+
+def _memory_key(marketplace: str, account_id: str, kind: str, item_id: str) -> tuple[str, str, str, str]:
+    """Обращение опознаётся площадкой, кабинетом, главой и номером.
+
+    Номер уникален только внутри своей главы своего кабинета: у вопроса
+    Вячеслава и вопроса Натальи номера вполне могут совпасть.
+    """
+    return (marketplace, account_id, kind, str(item_id))
+
+
+def _prune() -> None:
+    edge = datetime.now() - MEMORY_TTL
+    for key in [key for key, (_, at) in _seen.items() if at < edge]:
+        _seen.pop(key, None)
+    while len(_seen) > MEMORY_LIMIT:
+        _seen.popitem(last=False)
 
 
 def remember(items: list[InboxItem]) -> None:
-    """Запомнить обращения текущей выдачи."""
-    _seen.clear()
+    """Добавить обращения в память, не трогая чужие."""
+    now = datetime.now()
     for item in items:
-        _seen[(item.account_id, item.kind, str(item.id))] = item
+        key = _memory_key(item.marketplace, item.account_id, item.kind, item.id)
+        _seen[key] = (item, now)
+        _seen.move_to_end(key)
+    _prune()
 
 
-def find(account_id: str, kind: str, item_id: str) -> InboxItem | None:
-    """Найти обращение среди тех, что панель показывала последними."""
-    return _seen.get((account_id, kind, str(item_id)))
+def find(
+    account_id: str, kind: str, item_id: str, marketplace: str = ""
+) -> InboxItem | None:
+    """Найти обращение среди недавно показанных.
+
+    Площадку можно не указывать: кабинет и так принадлежит ровно одной.
+    Тогда ищем по остальным трём частям ключа.
+    """
+    if marketplace:
+        found = _seen.get(_memory_key(marketplace, account_id, kind, item_id))
+        return found[0] if found else None
+
+    for (_, account, chapter, number), (item, _at) in _seen.items():
+        if account == account_id and chapter == kind and number == str(item_id):
+            return item
+    return None
+
+
+def forget(account_id: str, kind: str, item_id: str, marketplace: str = "") -> None:
+    """Убрать из памяти одно обращение — например, после ответа."""
+    if marketplace:
+        _seen.pop(_memory_key(marketplace, account_id, kind, item_id), None)
+        return
+    for key in [
+        key for key in _seen
+        if key[1] == account_id and key[2] == kind and key[3] == str(item_id)
+    ]:
+        _seen.pop(key, None)
 
 
 def _source(store: connections.Connection, config: Settings):
@@ -99,7 +155,7 @@ async def _for_store(
         try:
             found = await source.load(kind)
         except Exception as exc:  # noqa: BLE001 — глава могла быть недоступна
-            errors[f"{store.id}:{kind}"] = _reason(exc)
+            errors[f"{store.id}:{kind}"] = reason(exc)
             log.info("Входящие %s, глава %s: %s", store.title, kind, exc)
             found = []
 
@@ -121,7 +177,7 @@ async def _for_store(
     return chapters, errors, collected
 
 
-def _reason(error: BaseException) -> str:
+def reason(error: BaseException) -> str:
     """Короткое человеческое объяснение, почему глава не открылась."""
     if isinstance(error, httpx.HTTPStatusError):
         code = error.response.status_code
@@ -146,7 +202,6 @@ async def collect(config: Settings | None = None) -> dict[str, Any]:
     ]
 
     if not stores:
-        _seen.clear()
         return {"marketplaces": [], "total": 0, "urgent": 0, "errors": {}}
 
     gathered = await asyncio.gather(
@@ -159,7 +214,7 @@ async def collect(config: Settings | None = None) -> dict[str, Any]:
 
     for store, outcome in zip(stores, gathered):
         if isinstance(outcome, BaseException):
-            errors[store.id] = _reason(outcome)
+            errors[store.id] = reason(outcome)
             continue
 
         chapters, store_errors, items = outcome
@@ -207,3 +262,7 @@ async def reply(
         raise LookupError("магазин не найден")
 
     await _source(store, config).answer(kind, item_id, text)
+
+    # Ответ ушёл — держать обращение в памяти незачем. Убираем только его:
+    # соседние экраны и другие кабинеты не трогаем.
+    forget(account_id, kind, item_id, store.marketplace)
