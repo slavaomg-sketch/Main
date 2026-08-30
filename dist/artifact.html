@@ -410,6 +410,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .lv .d.high { background: #45301c; color: #f0b070; }
 .lv .d.top  { background: #4a2222; color: #ff9a9a; }
 .sub.small { font-size: .82em; opacity: .72; margin-top: -.4em; }
+
+#hint.warn { color: #ffb0b0; }
 </style>
 <div id="app">
   <header id="hud">
@@ -424,6 +426,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       <span class="stat hud-grav" id="hud-grav" title="Тяжесть включена" hidden>⬇ тяжесть</span>
       <span class="stat wide-only" title="Ходов"><b id="hud-moves">0</b> ходов</span>
       <span class="stat" title="Время"><b id="hud-time">0.0</b> с</span>
+      <button id="btn-hint" class="chip" title="Совет по нынешнему положению (H)">?</button>
       <button id="btn-rewind" class="chip" title="Отмотать время назад — держи (Backspace)">↶</button>
       <button id="btn-restart" class="chip" title="Начать уровень заново (R)">⟲</button>
       <button id="btn-full" class="chip" title="Во весь экран">⛶</button>
@@ -5537,6 +5540,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.tile = 32;
     this.camX = 0;
     this.camY = 0;
+    this.marks = null;          // метки советчика: куда нельзя и куда стоит
     this.skin = 'murphy';
   }
 
@@ -5685,6 +5689,34 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         g.restore();
       }
     }
+
+    // Метки советчика поверх всего: красным — доказанно смертельные ходы,
+    // зелёным — предложенный. Гаснут сами через несколько секунд.
+    if (this.marks && timeMs < this.marks.until) {
+      var fade = Math.min(1, (this.marks.until - timeMs) / 600);
+      var beat = 0.55 + 0.35 * Math.sin(timeMs / 220);
+      var self = this;
+      this.marks.cells.forEach(function (m) {
+        var mx = m.x * s - self.camX, my = m.y * s - self.camY;
+        g.save();
+        g.globalAlpha = fade * beat;
+        g.strokeStyle = m.bad ? '#ff6b6b' : '#7dffc0';
+        g.lineWidth = Math.max(2, s * 0.1);
+        g.strokeRect(mx + s * 0.1, my + s * 0.1, s * 0.8, s * 0.8);
+        if (m.bad) {
+          g.beginPath();
+          g.moveTo(mx + s * 0.28, my + s * 0.28); g.lineTo(mx + s * 0.72, my + s * 0.72);
+          g.moveTo(mx + s * 0.72, my + s * 0.28); g.lineTo(mx + s * 0.28, my + s * 0.72);
+          g.stroke();
+        }
+        g.restore();
+      });
+    }
+  };
+
+  /** Показать метки на несколько секунд. */
+  Renderer.prototype.setMarks = function (cells, timeMs, ms) {
+    this.marks = cells && cells.length ? { cells: cells, until: timeMs + (ms || 3500) } : null;
   };
 
   global.SP = Object.assign(global.SP, { Renderer: Renderer });
@@ -5846,6 +5878,192 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 </script>
 <script>
 /*
+ * Советчик. Работает не от начала уровня, а от того положения, в котором
+ * игрок сейчас стоит, — потому и умеет то, чего обычная подсказка не умеет.
+ *
+ * Три слоя, и каждый честно знает, насколько он уверен:
+ *
+ *  1. ПРОВАЛ — доказанный. Считаем, до чего Мёрфи вообще может добраться,
+ *     нарочно завышая его возможности: сквозь грунт и валуны, через порты
+ *     в обе стороны, не считаясь с тяжестью. Если даже при таких поблажках
+ *     оставшихся инфотронов не хватает на норму или выход недостижим —
+ *     уровень уже проигран, и это не догадка. Ошибиться в другую сторону
+ *     оценка не может: она щедрая.
+ *  2. СМЕРТЬ — доказанная в пределах горизонта. Для каждого хода ищем, есть
+ *     ли хоть какое-то продолжение, при котором Мёрфи проживёт HORIZON тактов.
+ *     Нет ни одного — ход смертелен. Обход в глубину: удачное продолжение
+ *     находится сразу, а безнадёжное дерево само себя обрубает гибелью.
+ *  3. СОВЕТ — догадка. Ближайшая невзятая добыча по карте, и первый шаг к ней.
+ */
+(function (global) {
+  'use strict';
+  var SP = global.SP || {};
+  var T = SP.Tiles || (typeof require === 'function' ? require('./tiles.js').Tiles : null);
+  var DIRS = SP.DIRS || (typeof require === 'function' ? require('./tiles.js').DIRS : null);
+  var PORT_DIR = SP.PORT_DIR || (typeof require === 'function' ? require('./tiles.js').PORT_DIR : null);
+
+  var HORIZON = 14;          // на столько тактов вперёд доказываем выживание
+  var NODES = 12000;         // потолок обхода, чтобы игра не подвисала
+
+  var ACTIONS = [{ dir: -1, snap: false }];
+  for (var d = 0; d < 4; d++) { ACTIONS.push({ dir: d, snap: false }); ACTIONS.push({ dir: d, snap: true }); }
+
+  /* Есть ли на карте чем взрывать: от этого зависит, считать ли чип стеной. */
+  function canBlast(e) {
+    for (var i = 0; i < e.tiles.length; i++) {
+      var t = e.tiles[i];
+      if (t === T.ORANGE || t === T.RED || t === T.YELLOW || t === T.TERMINAL || t === T.ELECTRON) return true;
+    }
+    return false;
+  }
+
+  /*
+   * Куда Мёрфи мог бы добраться, если ему во всём подыграть: сквозь грунт,
+   * валуны и заряды, через порты в обе стороны. Чип и жука считаем проходимыми
+   * только там, где на карте вообще есть чем взрывать. Под тяжестью не пускаем
+   * вверх — это не поблажка, а закон: наверх оттуда хода нет.
+   */
+  function optimisticReach(e) {
+    var blast = canBlast(e);
+    // Рубильник тяжести отменяет запрет на подъём: выключил — и полез вверх.
+    var canFly = false;
+    for (var g = 0; g < e.tiles.length; g++) if (e.tiles[g] === T.GRAV_OFF) { canFly = true; break; }
+    var noUp = e.gravity && !canFly;
+    var seen = new Uint8Array(e.w * e.h);
+    var q = [e.murphy.y * e.w + e.murphy.x];
+    seen[q[0]] = 1;
+    var info = 0, elec = 0, exit = false;
+    for (var h = 0; h < q.length; h++) {
+      var i = q[h], x = i % e.w, y = (i - x) / e.w;
+      var t = e.tiles[i];
+      // Горящий инфотронный взрыв — это будущие инфотроны, их тоже считаем
+      if (t === T.INFOTRON || t === T.EXPLOSION_INFO) info++;
+      if (t === T.ELECTRON) elec++;
+      if (t === T.EXIT) { exit = true; continue; }
+      for (var k = 0; k < 4; k++) {
+        if (noUp && DIRS[k][1] < 0) continue;                // под тяжестью вверх никак
+        var nx = x + DIRS[k][0], ny = y + DIRS[k][1];
+        if (nx < 0 || ny < 0 || nx >= e.w || ny >= e.h) continue;
+        var j = ny * e.w + nx;
+        if (seen[j]) continue;
+        var tt = e.tiles[j];
+        if (tt === T.WALL) continue;                         // стену не берёт ничто
+        if (!blast && (tt === T.CHIP || tt === T.BUG)) continue;
+        seen[j] = 1;
+        q.push(j);
+      }
+    }
+    // каждый достижимый электрон при удаче даёт до девяти инфотронов
+    return { infotrons: info + (blast ? elec * 9 : 0), exit: exit };
+  }
+
+  /** Доказано ли, что уровень уже не пройти. */
+  function lost(e) {
+    if (e.status === 'dead' || e.status === 'dying') return 'Мёрфи погиб';
+    var r = optimisticReach(e);
+    if (e.collected + r.infotrons < e.needed) {
+      return 'инфотронов больше не набрать: нужно ' + e.needed +
+        ', собрано ' + e.collected + ', а достать можно самое большее ещё ' + r.infotrons;
+    }
+    if (!r.exit) return 'до выхода уже не добраться';
+    return null;
+  }
+
+  /* Есть ли продолжение, при котором Мёрфи проживёт ещё depth тактов. */
+  function survives(e, depth, budget) {
+    if (e.status === 'won') return true;
+    if (e.status !== 'playing') return false;
+    if (depth <= 0) return true;
+    var seen = budget.seen;
+    for (var a = 0; a < ACTIONS.length; a++) {
+      if (budget.left <= 0) return true;          // упёрлись в потолок — не врём, считаем живым
+      var n = e.clone();
+      n.step(ACTIONS[a]);
+      budget.left--;
+      if (n.status === 'dead' || n.status === 'dying') continue;
+      if (n.status === 'won') return true;
+      var key = n.key() + '|' + (n.ticks % 12) + '|' + depth;
+      if (seen[key]) continue;
+      seen[key] = 1;
+      if (survives(n, depth - 1, budget)) return true;
+    }
+    return false;
+  }
+
+  /* Ходы, после которых заведомо не прожить горизонт. */
+  function fatalMoves(e, horizon) {
+    var out = [];
+    for (var d = 0; d < 4; d++) {
+      var n = e.clone();
+      var before = n.key();
+      n.step({ dir: d, snap: false });
+      if (n.key() === before) continue;           // ход невозможен — о нём и говорить нечего
+      var bad = n.status === 'dead' || n.status === 'dying';
+      if (!bad) bad = !survives(n, (horizon || HORIZON) - 1, { seen: {}, left: NODES, });
+      if (bad) out.push(d);
+    }
+    return out;
+  }
+
+  /* Первый шаг к ближайшей невзятой добыче (или к выходу, если норма набрана). */
+  function stepToward(e) {
+    var goalExit = e.collected >= e.needed;
+    var prev = new Int32Array(e.w * e.h).fill(-1);
+    var seen = new Uint8Array(e.w * e.h);
+    var start = e.murphy.y * e.w + e.murphy.x;
+    var q = [start];
+    seen[start] = 1;
+    for (var h = 0; h < q.length; h++) {
+      var i = q[h], x = i % e.w, y = (i - x) / e.w, t = e.tiles[i];
+      if (i !== start && ((goalExit && t === T.EXIT) || (!goalExit && t === T.INFOTRON))) {
+        var cur = i;
+        while (prev[cur] !== start) cur = prev[cur];
+        var cx = cur % e.w, cy = (cur - cx) / e.w;
+        for (var k = 0; k < 4; k++) if (e.murphy.x + DIRS[k][0] === cx && e.murphy.y + DIRS[k][1] === cy) return k;
+        return -1;
+      }
+      for (var d2 = 0; d2 < 4; d2++) {
+        var nx = x + DIRS[d2][0], ny = y + DIRS[d2][1];
+        if (nx < 0 || ny < 0 || nx >= e.w || ny >= e.h) continue;
+        var j = ny * e.w + nx;
+        if (seen[j]) continue;
+        var tt = e.tiles[j];
+        var pass = tt === T.EMPTY || tt === T.BASE || tt === T.INFOTRON ||
+          (tt === T.EXIT && goalExit) || (PORT_DIR && PORT_DIR[tt] === d2);
+        if (!pass) continue;
+        seen[j] = 1; prev[j] = i; q.push(j);
+      }
+    }
+    return -1;
+  }
+
+  /** Полный совет для текущего положения. */
+  function advise(e, opts) {
+    opts = opts || {};
+    var why = lost(e);
+    if (why) return { verdict: 'lost', reason: why };
+    var fatal = fatalMoves(e, opts.horizon || HORIZON);
+    var dir = stepToward(e);
+    if (dir >= 0 && fatal.indexOf(dir) >= 0) dir = -1;
+    if (dir < 0) {
+      for (var d = 0; d < 4; d++) {
+        if (fatal.indexOf(d) >= 0) continue;
+        var n = e.clone(), before = n.key();
+        n.step({ dir: d, snap: false });
+        if (n.key() !== before) { dir = d; break; }
+      }
+    }
+    return { verdict: 'ok', fatal: fatal, dir: dir };
+  }
+
+  var api = { advise: advise, lost: lost, fatalMoves: fatalMoves, stepToward: stepToward,
+              optimisticReach: optimisticReach, HORIZON: HORIZON };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else global.SP = Object.assign(global.SP || {}, api);
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+/*
  * Лента ходов: позволяет отматывать уровень назад по одному такту.
  *
  * Движок детерминированный, поэтому хранить полное состояние на каждый такт не
@@ -5933,7 +6151,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = true; e.preventDefault(); return; }
       var d = KEYS[e.code];
       if (d !== undefined) { press(d); e.preventDefault(); return; }
-      if (e.code === 'KeyR') self.onCommand('restart');
+      if (e.code === 'KeyH') self.onCommand('hint');
+      else if (e.code === 'KeyR') self.onCommand('restart');
       else if (e.code === 'KeyP' || e.code === 'Escape') self.onCommand('pause');
       else if (e.code === 'Enter') self.onCommand('enter');
     });
@@ -6032,7 +6251,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
-  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
+  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart', 'btn-hint',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
    'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n', 'hud-grav'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
@@ -6105,7 +6324,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   var engine = null;
   var history = null;
-  var usedRewind = false;
+  var usedHelp = false;                     // отматывал или спрашивал совета
   var levelIndex = 0;
   var state = 'menu';        // menu | playing | rewinding | paused | won | dead
   var acc = 0;
@@ -6184,7 +6403,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         var tier = r >= 9 ? 'top' : r >= 7 ? 'high' : r >= 4 ? 'mid' : 'low';
         if (m.lv.why) b.title = 'Резкость ' + r + ' из 10: ' + m.lv.why;
         b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') +
-            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки">★</i>' : '') + '</span>' +
+            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки и подсказок">★</i>' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>' +
           (r ? '<span class="d ' + tier + '">' + r + '</span>' : '');
         b.addEventListener('click', function () { startLevel(m.i); });
@@ -6214,7 +6433,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var lv = SP.LEVELS[levelIndex];
     engine = new SP.Engine(lv);
     history = new SP.History(engine);
-    usedRewind = false;
+    usedHelp = false;
     renderer.resize(engine);
     acc = 0;
     state = 'playing';
@@ -6244,7 +6463,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     state = 'won';
     var lv = SP.LEVELS[levelIndex];
     var prev = progress.done[lv.id];
-    var clean = !usedRewind || !!(prev && prev.clean);
+    var clean = !usedHelp || !!(prev && prev.clean);
     var rec = { moves: engine.moves, ticks: engine.ticks, clean: clean };
     if (!prev || rec.moves < prev.moves) progress.done[lv.id] = rec;
     else { prev.clean = clean; progress.done[lv.id] = prev; }
@@ -6273,6 +6492,40 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
        { label: 'К списку', action: showMenu }]);
   }
 
+  /* ---------- советчик ---------- */
+  var hintTimer = null;
+  function sayHint(text, bad) {
+    el.hint.textContent = text;
+    el.hint.classList.toggle('warn', !!bad);
+    if (hintTimer) global.clearTimeout(hintTimer);
+    hintTimer = global.setTimeout(function () {
+      el.hint.textContent = SP.LEVELS[levelIndex].hint || '';
+      el.hint.classList.remove('warn');
+    }, 7000);
+  }
+  var ARROW = ['вверх', 'вправо', 'вниз', 'влево'];
+  function showHint() {
+    if (!engine || (state !== 'playing' && state !== 'dead' && state !== 'paused')) return;
+    usedHelp = true;
+    if (engine.status !== 'playing') { sayHint('Мёрфи погиб — отмотай время назад (Backspace) и попробуй иначе.', true); return; }
+    var a = SP.advise(engine);
+    if (a.verdict === 'lost') {
+      renderer.setMarks([], global.performance.now());
+      sayHint('Отсюда уровень уже не пройти: ' + a.reason + '. Отмотай назад.', true);
+      return;
+    }
+    var cells = [];
+    a.fatal.forEach(function (d) {
+      cells.push({ x: engine.murphy.x + SP.DIRS[d][0], y: engine.murphy.y + SP.DIRS[d][1], bad: true });
+    });
+    if (a.dir >= 0) cells.push({ x: engine.murphy.x + SP.DIRS[a.dir][0], y: engine.murphy.y + SP.DIRS[a.dir][1], bad: false });
+    renderer.setMarks(cells, global.performance.now());
+    var parts = [];
+    if (a.fatal.length) parts.push('красным — ходы, после которых уже не выжить (' + a.fatal.map(function (d) { return ARROW[d]; }).join(', ') + ')');
+    if (a.dir >= 0) parts.push('зелёным — куда, пожалуй, стоит идти');
+    sayHint(parts.length ? parts.join('; ') + '.' : 'Сейчас ни один ход не смертелен — иди куда задумал.', false);
+  }
+
   /* ---------- отмотка ---------- */
   function canRewind() {
     return history && history.length() > 0 &&
@@ -6287,7 +6540,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (!history || !history.length()) return;
     var target = Math.max(0, Math.min(history.length() - n, history.lastSafe() - 4));
     engine = history.seek(target);
-    usedRewind = true;
+    usedHelp = true;
     state = 'playing';
     acc = 0;
     input.held.length = 0;
@@ -6321,7 +6574,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   }
 
   input.onCommand = function (cmd) {
-    if (cmd === 'restart' && (state === 'playing' || state === 'dead' || state === 'paused')) startLevel(levelIndex);
+    if (cmd === 'hint') showHint();
+    else if (cmd === 'restart' && (state === 'playing' || state === 'dead' || state === 'paused')) startLevel(levelIndex);
     else if (cmd === 'pause') {
       if (state === 'menu') return;
       if (state === 'won' || state === 'dead') showMenu();
@@ -6351,6 +6605,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (document.fullscreenElement) (document.exitFullscreen || function () {}).call(document);
     else if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
   });
+  if (el['btn-hint']) el['btn-hint'].addEventListener('click', showHint);
   el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
   global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
 
@@ -6375,7 +6630,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         while (acc >= REWIND_MS && rg++ < 8 && history.length() > 0) {
           acc -= REWIND_MS;
           engine = history.back(1);
-          usedRewind = true;
+          usedHelp = true;
         }
         updateHud();
       }

@@ -8,7 +8,7 @@
   var STORE_KEY = 'infotron.progress.v2';   // v2: стоуровневая нумерация, прогресс начинается заново
 
   var el = {};
-  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart',
+  ['hud-level', 'hud-info', 'hud-need', 'hud-moves', 'hud-time', 'btn-menu', 'btn-restart', 'btn-hint',
    'screen', 'overlay', 'ov-title', 'ov-text', 'ov-buttons', 'menu', 'level-grid', 'hint', 'btn-full', 'btn-unlock',
    'welcome', 'welcome-canvas', 'btn-play', 'skin-welcome', 'skin-menu', 'hud-carry', 'hud-fuse', 'hud-fuse-n', 'hud-grav'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
@@ -81,7 +81,7 @@
 
   var engine = null;
   var history = null;
-  var usedRewind = false;
+  var usedHelp = false;                     // отматывал или спрашивал совета
   var levelIndex = 0;
   var state = 'menu';        // menu | playing | rewinding | paused | won | dead
   var acc = 0;
@@ -160,7 +160,7 @@
         var tier = r >= 9 ? 'top' : r >= 7 ? 'high' : r >= 4 ? 'mid' : 'low';
         if (m.lv.why) b.title = 'Резкость ' + r + ' из 10: ' + m.lv.why;
         b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') +
-            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки">★</i>' : '') + '</span>' +
+            (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки и подсказок">★</i>' : '') + '</span>' +
           '<span class="t">' + m.lv.name + '</span>' +
           (r ? '<span class="d ' + tier + '">' + r + '</span>' : '');
         b.addEventListener('click', function () { startLevel(m.i); });
@@ -190,7 +190,7 @@
     var lv = SP.LEVELS[levelIndex];
     engine = new SP.Engine(lv);
     history = new SP.History(engine);
-    usedRewind = false;
+    usedHelp = false;
     renderer.resize(engine);
     acc = 0;
     state = 'playing';
@@ -220,7 +220,7 @@
     state = 'won';
     var lv = SP.LEVELS[levelIndex];
     var prev = progress.done[lv.id];
-    var clean = !usedRewind || !!(prev && prev.clean);
+    var clean = !usedHelp || !!(prev && prev.clean);
     var rec = { moves: engine.moves, ticks: engine.ticks, clean: clean };
     if (!prev || rec.moves < prev.moves) progress.done[lv.id] = rec;
     else { prev.clean = clean; progress.done[lv.id] = prev; }
@@ -249,6 +249,40 @@
        { label: 'К списку', action: showMenu }]);
   }
 
+  /* ---------- советчик ---------- */
+  var hintTimer = null;
+  function sayHint(text, bad) {
+    el.hint.textContent = text;
+    el.hint.classList.toggle('warn', !!bad);
+    if (hintTimer) global.clearTimeout(hintTimer);
+    hintTimer = global.setTimeout(function () {
+      el.hint.textContent = SP.LEVELS[levelIndex].hint || '';
+      el.hint.classList.remove('warn');
+    }, 7000);
+  }
+  var ARROW = ['вверх', 'вправо', 'вниз', 'влево'];
+  function showHint() {
+    if (!engine || (state !== 'playing' && state !== 'dead' && state !== 'paused')) return;
+    usedHelp = true;
+    if (engine.status !== 'playing') { sayHint('Мёрфи погиб — отмотай время назад (Backspace) и попробуй иначе.', true); return; }
+    var a = SP.advise(engine);
+    if (a.verdict === 'lost') {
+      renderer.setMarks([], global.performance.now());
+      sayHint('Отсюда уровень уже не пройти: ' + a.reason + '. Отмотай назад.', true);
+      return;
+    }
+    var cells = [];
+    a.fatal.forEach(function (d) {
+      cells.push({ x: engine.murphy.x + SP.DIRS[d][0], y: engine.murphy.y + SP.DIRS[d][1], bad: true });
+    });
+    if (a.dir >= 0) cells.push({ x: engine.murphy.x + SP.DIRS[a.dir][0], y: engine.murphy.y + SP.DIRS[a.dir][1], bad: false });
+    renderer.setMarks(cells, global.performance.now());
+    var parts = [];
+    if (a.fatal.length) parts.push('красным — ходы, после которых уже не выжить (' + a.fatal.map(function (d) { return ARROW[d]; }).join(', ') + ')');
+    if (a.dir >= 0) parts.push('зелёным — куда, пожалуй, стоит идти');
+    sayHint(parts.length ? parts.join('; ') + '.' : 'Сейчас ни один ход не смертелен — иди куда задумал.', false);
+  }
+
   /* ---------- отмотка ---------- */
   function canRewind() {
     return history && history.length() > 0 &&
@@ -263,7 +297,7 @@
     if (!history || !history.length()) return;
     var target = Math.max(0, Math.min(history.length() - n, history.lastSafe() - 4));
     engine = history.seek(target);
-    usedRewind = true;
+    usedHelp = true;
     state = 'playing';
     acc = 0;
     input.held.length = 0;
@@ -297,7 +331,8 @@
   }
 
   input.onCommand = function (cmd) {
-    if (cmd === 'restart' && (state === 'playing' || state === 'dead' || state === 'paused')) startLevel(levelIndex);
+    if (cmd === 'hint') showHint();
+    else if (cmd === 'restart' && (state === 'playing' || state === 'dead' || state === 'paused')) startLevel(levelIndex);
     else if (cmd === 'pause') {
       if (state === 'menu') return;
       if (state === 'won' || state === 'dead') showMenu();
@@ -327,6 +362,7 @@
     if (document.fullscreenElement) (document.exitFullscreen || function () {}).call(document);
     else if (root.requestFullscreen) root.requestFullscreen().catch(function () {});
   });
+  if (el['btn-hint']) el['btn-hint'].addEventListener('click', showHint);
   el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
   global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
 
@@ -351,7 +387,7 @@
         while (acc >= REWIND_MS && rg++ < 8 && history.length() > 0) {
           acc -= REWIND_MS;
           engine = history.back(1);
-          usedRewind = true;
+          usedHelp = true;
         }
         updateHud();
       }

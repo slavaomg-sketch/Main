@@ -29,7 +29,8 @@
       if (e.code === 'Backspace' || e.code === 'KeyZ') { self.rewind = true; e.preventDefault(); return; }
       var d = KEYS[e.code];
       if (d !== undefined) { press(d); e.preventDefault(); return; }
-      if (e.code === 'KeyR') self.onCommand('restart');
+      if (e.code === 'KeyH') self.onCommand('hint');
+      else if (e.code === 'KeyR') self.onCommand('restart');
       else if (e.code === 'KeyP' || e.code === 'Escape') self.onCommand('pause');
       else if (e.code === 'Enter') self.onCommand('enter');
     });

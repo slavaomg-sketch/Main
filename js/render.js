@@ -19,6 +19,7 @@
     this.tile = 32;
     this.camX = 0;
     this.camY = 0;
+    this.marks = null;          // метки советчика: куда нельзя и куда стоит
     this.skin = 'murphy';
   }
 
@@ -167,6 +168,34 @@
         g.restore();
       }
     }
+
+    // Метки советчика поверх всего: красным — доказанно смертельные ходы,
+    // зелёным — предложенный. Гаснут сами через несколько секунд.
+    if (this.marks && timeMs < this.marks.until) {
+      var fade = Math.min(1, (this.marks.until - timeMs) / 600);
+      var beat = 0.55 + 0.35 * Math.sin(timeMs / 220);
+      var self = this;
+      this.marks.cells.forEach(function (m) {
+        var mx = m.x * s - self.camX, my = m.y * s - self.camY;
+        g.save();
+        g.globalAlpha = fade * beat;
+        g.strokeStyle = m.bad ? '#ff6b6b' : '#7dffc0';
+        g.lineWidth = Math.max(2, s * 0.1);
+        g.strokeRect(mx + s * 0.1, my + s * 0.1, s * 0.8, s * 0.8);
+        if (m.bad) {
+          g.beginPath();
+          g.moveTo(mx + s * 0.28, my + s * 0.28); g.lineTo(mx + s * 0.72, my + s * 0.72);
+          g.moveTo(mx + s * 0.72, my + s * 0.28); g.lineTo(mx + s * 0.28, my + s * 0.72);
+          g.stroke();
+        }
+        g.restore();
+      });
+    }
+  };
+
+  /** Показать метки на несколько секунд. */
+  Renderer.prototype.setMarks = function (cells, timeMs, ms) {
+    this.marks = cells && cells.length ? { cells: cells, until: timeMs + (ms || 3500) } : null;
   };
 
   global.SP = Object.assign(global.SP, { Renderer: Renderer });
