@@ -555,6 +555,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     'O': Tiles.ZONK,
     '*': Tiles.INFOTRON,
     'M': Tiles.MURPHY,
+    // Напарник. Тот же герой во всём, кроме одного: он второй в очереди хода.
+    'N': Tiles.MURPHY,
     'E': Tiles.EXIT,
     'S': Tiles.SNIKSNAK,
     'e': Tiles.ELECTRON,
@@ -4489,6 +4491,63 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         "######6*####*9##6*8###*8###*######",
         "##################################"
       ]
+    },
+    {
+      id: 141,
+      chapter: 15,
+      name: "Вдвоём",
+      hint: "Клавиша одна на двоих: шаг делают и Мёрфи, и напарник. Кто упёрся в стену — стоит, и это единственный способ их развести. Выйти должны оба, а вышедший пропадает с поля и больше не мешает.",
+      needed: 0,
+      rating: 4,
+      why: "одна клавиша на двоих",
+      map: [
+        "###########",
+        "#N...#...M#",
+        "###.###.###",
+        "#....E....#",
+        "###########"
+      ]
+    },
+    {
+      id: 142,
+      chapter: 15,
+      name: "Две палаты",
+      hint: "Слева кольцо, справа решётка — а клавиша одна. Всякий ход ведёт обоих сразу, и то, что для одного поворот, для другого стена. Собрать надо всё, и выйти обоим.",
+      needed: 4,
+      rating: 5,
+      why: "ходов на такте почти нет, одна клавиша на двоих",
+      map: [
+        "#############",
+        "#  *  #*    #",
+        "# ### # # # #",
+        "#*### #  N  #",
+        "# ### # # # #",
+        "#  M  #    *#",
+        "### ##### ###",
+        "#     E     #",
+        "#############"
+      ]
+    },
+    {
+      id: 143,
+      chapter: 15,
+      name: "Спираль и зигзаг",
+      hint: "Спираль слева, зигзаг справа. Каждый ход, что выводит одного, заводит другого; выход из спирали приходится вымерять по чужому лабиринту. Кто упёрся в стену — стоит, и на этом всё держится.",
+      needed: 4,
+      rating: 4,
+      why: "одна клавиша на двоих",
+      map: [
+        "##############",
+        "#     #      #",
+        "# ### # #### #",
+        "# #*# # #*   #",
+        "# # # #   ## #",
+        "# # # # ##   #",
+        "#M  * #N  ##*#",
+        "## #### ##### ",
+        "#      E     #",
+        "##############"
+      ]
     }
   ];
   var CHAPTERS = [
@@ -4505,7 +4564,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     { n: 11, title: "Проба · вариант ChatGPT", planned: 10 },
     { n: 12, title: "Десять из десяти", planned: 10 },
     { n: 13, title: "Расчёт", planned: 10 },
-    { n: 14, title: "Живой механизм", planned: 10 }
+    { n: 14, title: "Живой механизм", planned: 10 },
+    { n: 15, title: "Вдвоём", planned: 10 }
   ];
   var api = { LEVELS: LEVELS, CHAPTERS: CHAPTERS };
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -4519,6 +4579,19 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
  *
  * Мир пошаговый: один step() = один "тик". Всё двигается ровно на клетку,
  * а отрисовка интерполирует переход по fx/fy.
+ *
+ * Героев может быть двое ('M' и 'N' на карте), и клавиши у них общие: одна
+ * стрелка — идут оба. Отсюда главное правило движка, от которого зависит
+ * вообще всё:
+ *
+ *   ОЧЕРЁДНОСТЬ ХОДА ФИКСИРОВАНА. Сначала полностью ходит 'M', потом 'N'.
+ *
+ * Порядок виден невооружённым глазом: если 'M' освободил клетку, 'N' в неё
+ * входит в тот же тик, а наоборот — уже нет. Менять очередь нельзя: на ней
+ * держатся все записанные решения.
+ *
+ * Гибель любого героя — поражение. Выход требует, чтобы вышли все: вышедший
+ * убирается с поля и больше не мешает, так что порядок выхода — тоже задача.
  */
 (function (global) {
   'use strict';
@@ -4583,7 +4656,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0, falling: 0 };
+    var found = [];
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -4593,12 +4666,24 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         var i = y * this.w + x;
         this.tiles[i] = t;
         if (t === T.INFOTRON) total++;
-        if (t === T.MURPHY) { this.murphy.x = x; this.murphy.y = y; }
+        if (t === T.MURPHY) found.push({ ch: ch, x: x, y: y });
         if (t === T.SNIKSNAK) this.dir[i] = 1;
         if (t === T.ELECTRON) this.dir[i] = 3;
         if (t === T.BUG) this.dir[i] = BUG_PHASE[ch] || 0;   // жук хранит в dir сдвиг фазы
       }
     }
+
+    // 'M' ходит первым, 'N' — вторым; несколько 'N' идут в порядке чтения карты
+    found.sort(function (a, b) { return (a.ch === 'M' ? 0 : 1) - (b.ch === 'M' ? 0 : 1); });
+    this.heroes = found.map(function (f) {
+      return { x: f.x, y: f.y, facing: 2, alive: true, pushing: 0, digging: 0,
+               carry: 0, falling: 0, out: 0, acted: 0 };
+    });
+    if (!this.heroes.length) this.heroes.push({ x: 0, y: 0, facing: 2, alive: true, pushing: 0,
+                                                digging: 0, carry: 0, falling: 0, out: 0, acted: 0 });
+    // Совместимость: весь остальной код (камера, звук, советчик) читает .murphy —
+    // это тот же объект, что heroes[0], а не копия.
+    this.murphy = this.heroes[0];
 
     this.totalInfotrons = total;
     // needed может быть больше, чем инфотронов на карте: недостающие
@@ -4649,9 +4734,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     e.moved = this.moved.slice();
     e.fx = this.fx.slice();
     e.fy = this.fy.slice();
-    e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
-                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
-                 carry: this.murphy.carry, falling: this.murphy.falling };
+    e.heroes = this.heroes.map(function (m) {
+      return { x: m.x, y: m.y, facing: m.facing, alive: m.alive, pushing: m.pushing,
+               digging: m.digging, carry: m.carry, falling: m.falling, out: m.out, acted: m.acted };
+    });
+    e.murphy = e.heroes[0];
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -4670,8 +4757,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse +
-           '|' + this.murphy.carry + '|' + (this.gravity ? 'g' : '0') + this.murphy.falling;
+    s += '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + (this.gravity ? 'g' : '0');
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      s += '|' + m.carry + m.falling + m.out;
+    }
+    return s;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -4706,7 +4797,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
         if (isBlast(t) && !(blast === T.EXPLOSION_INFO && t === T.EXPLOSION)) continue;
         if (t === T.ORANGE || isCharge(t)) chain.push([x, y, 'normal']);
         if (t === T.ELECTRON) chain.push([x, y, 'info']);
-        if (t === T.MURPHY) this.killMurphy(true);
+        if (t === T.MURPHY) this.killAt(x, y, true);
         this.tiles[i] = blast;
         this.falling[i] = 0;
         this.shake[i] = 0;
@@ -4722,12 +4813,26 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     }
   };
 
-  Engine.prototype.killMurphy = function (alreadyInBlast) {
-    if (!this.murphy.alive) return;
-    this.murphy.alive = false;
+  /** Кто из героев стоит в клетке. Вышедшие и погибшие не считаются. */
+  Engine.prototype.heroAt = function (x, y) {
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      if (m.alive && !m.out && m.x === x && m.y === y) return m;
+    }
+    return null;
+  };
+
+  /** Гибель любого героя — поражение: напарник не «остаётся за старшего». */
+  Engine.prototype.killHero = function (m, alreadyInBlast) {
+    if (!m || !m.alive || m.out) return;
+    m.alive = false;
     this.status = 'dying';
     this.deathTimer = DEATH_TICKS;
-    if (!alreadyInBlast) this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+    if (!alreadyInBlast) this.explodeAt(m.x, m.y, 'normal');
+  };
+
+  Engine.prototype.killAt = function (x, y, alreadyInBlast) {
+    this.killHero(this.heroAt(x, y), alreadyInBlast);
   };
 
   Engine.prototype.updateExplosions = function () {
@@ -4746,10 +4851,11 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     return t === T.EMPTY || t === T.BASE || t === T.INFOTRON;
   };
 
-  Engine.prototype.updateMurphy = function (input) {
-    var m = this.murphy;
+  Engine.prototype.updateHero = function (m, input) {
     m.pushing = 0;
     m.digging = 0;
+    m.acted = 0;
+    if (m.out || !m.alive) return;
     if (m.falling) return;                       // в падении Мёрфи не управляется
     var d = input && input.dir !== undefined ? input.dir : -1;
     if (d < 0 || d > 3) return;
@@ -4768,28 +4874,32 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       return;
     }
 
-    if (t === T.BASE) { m.digging = 1; this.stepMurphyTo(nx, ny); this.moves++; return; }
-    if (t === T.EMPTY) { this.stepMurphyTo(nx, ny); this.moves++; return; }
-    if (t === T.INFOTRON) { this.collected++; this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.BASE) { m.digging = 1; this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
+    if (t === T.EMPTY) { this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
+    if (t === T.INFOTRON) { this.collected++; this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
     if (t === T.EXIT) {
+      // Вышедший убирается с поля: он больше не стоит на дороге у напарника.
+      // Победа — когда вышли все, поэтому порядок выхода тоже приходится считать.
       if (this.exitOpen()) {
         this.set(m.x, m.y, T.EMPTY);
         m.x = nx; m.y = ny;
-        this.status = 'won';
-        this.moves++;
+        m.out = 1;
+        m.falling = 0;
+        m.acted = 1;
+        if (this.allOut()) this.status = 'won';
       }
       return;
     }
-    if (isMonster(t)) { this.killMurphy(); return; }
+    if (isMonster(t)) { this.killHero(m); return; }
     // Красный заряд Мёрфи забирает с собой — но только один за раз.
-    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
     // Жёлтый двигается в любую сторону: он не круглый и никуда не скатывается.
     if (t === T.YELLOW) {
       if (this.get(nx + dx, ny + dy) !== T.EMPTY) return;
       this.moveObj(nx, ny, nx + dx, ny + dy);
       m.pushing = 1;
-      this.stepMurphyTo(nx, ny);
-      this.moves++;
+      this.stepHeroTo(m, nx, ny);
+      m.acted = 1;
       return;
     }
     if (t === T.TERMINAL) { this.pressTerminal(); return; }
@@ -4805,8 +4915,8 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       // иначе камень проезжает мимо дыры, пока не отпустишь клавишу
       this.shake[this.idx(nx + dx, ny)] = SHAKE_TICKS;
       m.pushing = 1;
-      this.stepMurphyTo(nx, ny);
-      this.moves++;
+      this.stepHeroTo(m, nx, ny);
+      m.acted = 1;
       return;
     }
     if (PORT_DIR[t] !== undefined) {
@@ -4823,13 +4933,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       this.fy[j] = m.y - fy2;
       this.moved[j] = 1;
       m.x = fx2; m.y = fy2;
-      this.moves++;
+      m.acted = 1;
       return;
     }
   };
 
-  Engine.prototype.stepMurphyTo = function (nx, ny) {
-    var m = this.murphy;
+  Engine.prototype.stepHeroTo = function (m, nx, ny) {
     var i = this.idx(m.x, m.y), j = this.idx(nx, ny);
     this.tiles[i] = T.EMPTY;
     this.falling[i] = 0;
@@ -4866,7 +4975,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
           continue;
         }
         if (this.falling[i]) {
-          if (b === T.MURPHY) { this.killMurphy(); continue; }
+          if (b === T.MURPHY) { this.killAt(x, y + 1); continue; }
           if (isMonster(b) || b === T.BUG) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
           if (b === T.ORANGE) { this.explodeAt(x, y + 1, 'normal'); continue; }
           if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
@@ -4903,7 +5012,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
           var nd = order[k];
           var nx = x + DIRS[nd][0], ny = y + DIRS[nd][1];
           var tt = this.get(nx, ny);
-          if (tt === T.MURPHY) { this.dir[i] = nd; this.killMurphy(); k = 99; break; }
+          if (tt === T.MURPHY) { this.dir[i] = nd; this.killAt(nx, ny); k = 99; break; }
           if (tt === T.EMPTY) {
             this.dir[i] = nd;
             this.moveObj(x, y, nx, ny);
@@ -4918,10 +5027,24 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   /** Под тяжестью Мёрфи падает сам — и вверх ему уже не подняться. */
   Engine.prototype.updateMurphyFall = function () {
-    var m = this.murphy;
-    if (!this.gravity || !m.alive) { m.falling = 0; return; }
-    if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepMurphyTo(m.x, m.y + 1); m.falling = 1; }
-    else m.falling = 0;
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      if (!this.gravity || !m.alive || m.out) { m.falling = 0; continue; }
+      if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepHeroTo(m, m.x, m.y + 1); m.falling = 1; }
+      else m.falling = 0;
+    }
+  };
+
+  /** Все ли вышли: пока хоть один в шахте, выход не засчитан. */
+  Engine.prototype.allOut = function () {
+    for (var k = 0; k < this.heroes.length; k++) if (!this.heroes[k].out) return false;
+    return true;
+  };
+
+  /** Живы ли все герои — лента отмотки помечает такт безопасным по этому. */
+  Engine.prototype.allAlive = function () {
+    for (var k = 0; k < this.heroes.length; k++) if (!this.heroes[k].alive) return false;
+    return true;
   };
 
   /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
@@ -4935,9 +5058,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.fuse--;
     if (this.fuse > 0) return;
     // Заряд в руках слушает тот же сигнал: с бомбой в кармане кнопку не жмут.
-    if (this.murphy.carry && this.murphy.alive) {
-      this.murphy.carry = 0;
-      this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+    for (var h = 0; h < this.heroes.length; h++) {
+      var hero = this.heroes[h];
+      if (hero.carry && hero.alive && !hero.out) {
+        hero.carry = 0;
+        this.explodeAt(hero.x, hero.y, 'normal');
+      }
     }
     var spots = [];
     for (var i = 0; i < this.tiles.length; i++) if (isCharge(this.tiles[i])) spots.push(i);
@@ -4949,12 +5075,15 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 
   /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
   Engine.prototype.updateBugs = function () {
-    var m = this.murphy;
-    for (var k = 0; k < 4; k++) {
-      var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
-      if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
-      var i = this.idx(x, y);
-      if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killMurphy(); return; }
+    for (var h = 0; h < this.heroes.length; h++) {
+      var m = this.heroes[h];
+      if (!m.alive || m.out) continue;
+      for (var k = 0; k < 4; k++) {
+        var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
+        if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+        var i = this.idx(x, y);
+        if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killHero(m); return; }
+      }
     }
   };
 
@@ -4970,7 +5099,18 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.ticks++;
 
     this.updateExplosions();
-    if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    // Очередь хода: сначала 'M', потом 'N'. Каждый ходит целиком, поэтому
+    // освобождённая первым клетка достаётся второму в этом же тике.
+    if (this.status === 'playing') {
+      var act = input || { dir: -1 };
+      for (var h = 0; h < this.heroes.length; h++) {
+        if (this.status !== 'playing') break;
+        this.updateHero(this.heroes[h], act);
+      }
+      var any = false;
+      for (var h2 = 0; h2 < this.heroes.length; h2++) if (this.heroes[h2].acted) any = true;
+      if (any) this.moves++;                    // один такт — не больше одного хода в счётчике
+    }
     if (this.status === 'playing') this.updateMurphyFall();
     this.updateFuse();
     this.updateGravity();
@@ -4988,7 +5128,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var TO_CHAR = base.TO_CHAR, out = [];
     for (var y = 0; y < this.h; y++) {
       var s = '';
-      for (var x = 0; x < this.w; x++) s += TO_CHAR[this.tiles[this.idx(x, y)]] || '?';
+      for (var x = 0; x < this.w; x++) {
+        var ch = TO_CHAR[this.tiles[this.idx(x, y)]] || '?';
+        // напарника в дампе видно отдельно, иначе двух героев не различить
+        if (ch === 'M' && this.heroes.length > 1 && this.heroAt(x, y) !== this.heroes[0]) ch = 'N';
+        s += ch;
+      }
       out.push(s);
     }
     return out.join('\n');
@@ -5554,6 +5699,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     this.camY = 0;
     this.marks = null;          // метки советчика: куда нельзя и куда стоит
     this.skin = 'murphy';
+    this.pack2 = null;          // облик напарника: всегда не такой, как у первого
   }
 
   /** Смена облика героя: спрайты пересобираются под новый скин. */
@@ -5561,6 +5707,14 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (this.skin === id) return;
     this.skin = id;
     this.pack = null;
+    this.pack2 = null;
+  };
+
+  /** Облик напарника — следующий скин по кругу, чтобы двоих не путать. */
+  Renderer.prototype.mateSkin = function () {
+    var all = SP.Sprites.skins, i = 0;
+    for (var k = 0; k < all.length; k++) if (all[k].id === this.skin) i = k;
+    return all[(i + 1) % all.length].id;
   };
 
   Renderer.prototype.resize = function (engine) {
@@ -5584,14 +5738,30 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
     if (!this.pack || this.pack.size !== tile || this.pack.skin !== this.skin) {
       this.pack = SP.Sprites.build(tile, this.skin);
+      this.pack2 = null;
+    }
+    if (engine.heroes && engine.heroes.length > 1 &&
+        (!this.pack2 || this.pack2.size !== tile)) {
+      this.pack2 = SP.Sprites.build(tile, this.mateSkin());
     }
     this.tile = tile;
   };
 
   Renderer.prototype.camera = function (engine, alpha) {
     var s = this.tile;
-    var mx = (engine.murphy.x + engine.fx[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
-    var my = (engine.murphy.y + engine.fy[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
+    // камера смотрит в середину между героями: одного из двоих терять нельзя
+    var sx = 0, sy = 0, n = 0;
+    for (var k = 0; k < engine.heroes.length; k++) {
+      var m = engine.heroes[k];
+      if (m.out) continue;
+      var i = engine.idx(m.x, m.y);
+      sx += m.x + engine.fx[i] * (1 - alpha);
+      sy += m.y + engine.fy[i] * (1 - alpha);
+      n++;
+    }
+    if (!n) { var m0 = engine.murphy; sx = m0.x; sy = m0.y; n = 1; }
+    var mx = (sx / n + 0.5) * s;
+    var my = (sy / n + 0.5) * s;
     var fullW = engine.w * s, fullH = engine.h * s;
     this.camX = fullW <= this.viewW ? (fullW - this.viewW) / 2 : Math.max(0, Math.min(fullW - this.viewW, mx - this.viewW / 2));
     this.camY = fullH <= this.viewH ? (fullH - this.viewH) / 2 : Math.max(0, Math.min(fullH - this.viewH, my - this.viewH / 2));
@@ -5639,7 +5809,12 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
           py += Math.sin(timeMs / 15) * s * 0.018 * engine.shake[i];
         }
 
-        if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
+        if (t === T.MURPHY) {
+          var who = engine.heroAt(x, y) || engine.murphy;
+          var p = (who === engine.heroes[0] || !this.pack2) ? pack : this.pack2;
+          g.drawImage(p.murphy[who.facing], px, py, s, s);
+          continue;
+        }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
         if (t === T.GRAV_ON || t === T.GRAV_OFF) {
@@ -5942,8 +6117,15 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     for (var g = 0; g < e.tiles.length; g++) if (e.tiles[g] === T.GRAV_OFF) { canFly = true; break; }
     var noUp = e.gravity && !canFly;
     var seen = new Uint8Array(e.w * e.h);
-    var q = [e.murphy.y * e.w + e.murphy.x];
-    seen[q[0]] = 1;
+    // разлив идёт от всех героев сразу: добыча, до которой дотянется только
+    // напарник, тоже считается достижимой — иначе советчик соврёт «не пройти»
+    var q = [];
+    for (var hh = 0; hh < e.heroes.length; hh++) {
+      var hm = e.heroes[hh];
+      if (!hm.out && hm.alive) q.push(hm.y * e.w + hm.x);
+    }
+    if (!q.length) q.push(e.murphy.y * e.w + e.murphy.x);
+    for (var s0 = 0; s0 < q.length; s0++) seen[q[s0]] = 1;
     var info = 0, elec = 0, exit = false;
     for (var h = 0; h < q.length; h++) {
       var i = q[h], x = i % e.w, y = (i - x) / e.w;
@@ -6017,8 +6199,14 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     return out;
   }
 
-  /* Первый шаг к ближайшей невзятой добыче (или к выходу, если норма набрана). */
+  /*
+   * Первый шаг к ближайшей невзятой добыче (или к выходу, если норма набрана).
+   * Считается для первого героя. Когда героев двое, один и тот же ход ведёт
+   * обоих, и «ближайшая добыча одного» ничего не говорит про второго — такой
+   * совет был бы не догадкой, а обманом, поэтому вдвоём он не выдаётся вовсе.
+   */
   function stepToward(e) {
+    if (e.heroes.length > 1) return -1;
     var goalExit = e.collected >= e.needed;
     var prev = new Int32Array(e.w * e.h).fill(-1);
     var seen = new Uint8Array(e.w * e.h);
@@ -6096,7 +6284,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   /** Запомнить такт. Вызывается сразу после engine.step(action). */
   History.prototype.record = function (action, engine) {
     this.tape.push({ dir: action.dir, snap: !!action.snap });
-    this.safe.push(engine.status === 'playing' && engine.murphy.alive);
+    this.safe.push(engine.status === 'playing' && engine.allAlive());
     if (this.tape.length % KEY === 0) this.keys.push(engine.clone());
   };
 
@@ -6158,12 +6346,34 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       if (t === T.EXPLOSION || t === T.EXPLOSION_INFO) blast++;
       else if (e.falling[i]) fall++;
     }
+    // Героев может быть двое, а звук один: копал/толкал — если хоть кто-то,
+    // а «дальний прыжок» (порт) считаем по самому дальнему из них.
+    var carry = 0, dig = false, push = false, pos = '';
+    for (var k = 0; k < e.heroes.length; k++) {
+      var m = e.heroes[k];
+      carry += m.carry;
+      if (m.digging) dig = true;
+      if (m.pushing) push = true;
+      pos += (m.out ? 'x' : m.x + ',' + m.y) + ';';
+    }
     return {
-      c: e.collected, st: e.status, fuse: e.fuse, carry: e.murphy.carry,
+      c: e.collected, st: e.status, fuse: e.fuse, carry: carry,
       grav: !!e.gravity, fall: fall, blast: blast,
-      x: e.murphy.x, y: e.murphy.y,
-      dig: !!e.murphy.digging, push: !!e.murphy.pushing
+      pos: pos, hero: e.heroes.map(function (m) { return m.out ? null : [m.x, m.y]; }),
+      dig: dig, push: push
     };
+  }
+
+  /** Насколько далеко шагнул самый быстрый из живых героев. */
+  function jump(a, b) {
+    var best = 0;
+    for (var k = 0; k < b.hero.length; k++) {
+      var p = a.hero[k], q = b.hero[k];
+      if (!p || !q) continue;
+      var d = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+      if (d > best) best = d;
+    }
+    return best;
   }
 
   /**
@@ -6184,10 +6394,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (b.fall < a.fall && b.blast <= a.blast) out.push('land');
     if (b.dig) out.push('dig');
     else if (b.push) out.push('push');
-    else if (b.x !== a.x || b.y !== a.y) {
-      var d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-      out.push(d > 1 ? 'port' : 'step');
-    }
+    else if (b.pos !== a.pos) out.push(jump(a, b) > 1 ? 'port' : 'step');
     return out;
   }
 
@@ -6677,7 +6884,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     el['hud-moves'].textContent = engine.moves;
     el['hud-time'].textContent = (engine.ticks * TICK_MS / 1000).toFixed(1);
     // заряды седьмой главы: что в руках и сколько тиков до подрыва
-    el['hud-carry'].hidden = !engine.murphy.carry;
+    var carry = 0;
+    for (var h = 0; h < engine.heroes.length; h++) carry += engine.heroes[h].carry;
+    el['hud-carry'].hidden = !carry;
     el['hud-fuse'].hidden = !engine.fuse;
     if (engine.fuse) el['hud-fuse-n'].textContent = engine.fuse;
     el['hud-grav'].hidden = !engine.gravity;
@@ -6738,15 +6947,25 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
       sayHint('Отсюда уровень уже не пройти: ' + a.reason + '. Отмотай назад.', true);
       return;
     }
+    // Смертельные ходы советчик считает точно — по настоящим тикам движка,
+    // поэтому метим их у каждого героя. Совет «куда идти» — догадка, и вдвоём
+    // её попросту нет (см. solver.js), поэтому она метится только у первого.
     var cells = [];
     a.fatal.forEach(function (d) {
-      cells.push({ x: engine.murphy.x + SP.DIRS[d][0], y: engine.murphy.y + SP.DIRS[d][1], bad: true });
+      engine.heroes.forEach(function (m) {
+        if (m.out || !m.alive) return;
+        cells.push({ x: m.x + SP.DIRS[d][0], y: m.y + SP.DIRS[d][1], bad: true });
+      });
     });
     if (a.dir >= 0) cells.push({ x: engine.murphy.x + SP.DIRS[a.dir][0], y: engine.murphy.y + SP.DIRS[a.dir][1], bad: false });
     renderer.setMarks(cells, global.performance.now());
     var parts = [];
     if (a.fatal.length) parts.push('красным — ходы, после которых уже не выжить (' + a.fatal.map(function (d) { return ARROW[d]; }).join(', ') + ')');
     if (a.dir >= 0) parts.push('зелёным — куда, пожалуй, стоит идти');
+    else if (engine.heroes.length > 1 && !a.fatal.length) {
+      sayHint('Вдвоём советчик не подсказывает дорогу: ход ведёт обоих сразу, и «ближе к добыче» для одного ничего не значит для другого. Смертельных ходов сейчас нет.', false);
+      return;
+    }
     sayHint(parts.length ? parts.join('; ') + '.' : 'Сейчас ни один ход не смертелен — иди куда задумал.', false);
   }
 
@@ -6860,7 +7079,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     if (state === 'rewinding') {
       if (!input.rewind) {
         // отпустили посреди гибели — доматываем до живого места
-        if (engine.status !== 'playing' || !engine.murphy.alive) engine = history.seek(Math.max(0, history.lastSafe() - 2));
+        if (engine.status !== 'playing' || !engine.allAlive()) engine = history.seek(Math.max(0, history.lastSafe() - 2));
         state = 'playing'; acc = 0; updateHud();
       }
       else {

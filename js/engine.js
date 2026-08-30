@@ -4,6 +4,19 @@
  *
  * Мир пошаговый: один step() = один "тик". Всё двигается ровно на клетку,
  * а отрисовка интерполирует переход по fx/fy.
+ *
+ * Героев может быть двое ('M' и 'N' на карте), и клавиши у них общие: одна
+ * стрелка — идут оба. Отсюда главное правило движка, от которого зависит
+ * вообще всё:
+ *
+ *   ОЧЕРЁДНОСТЬ ХОДА ФИКСИРОВАНА. Сначала полностью ходит 'M', потом 'N'.
+ *
+ * Порядок виден невооружённым глазом: если 'M' освободил клетку, 'N' в неё
+ * входит в тот же тик, а наоборот — уже нет. Менять очередь нельзя: на ней
+ * держатся все записанные решения.
+ *
+ * Гибель любого героя — поражение. Выход требует, чтобы вышли все: вышедший
+ * убирается с поля и больше не мешает, так что порядок выхода — тоже задача.
  */
 (function (global) {
   'use strict';
@@ -68,7 +81,7 @@
     this.fy = new Int8Array(n);
 
     var total = 0;
-    this.murphy = { x: 0, y: 0, facing: 2, alive: true, pushing: 0, digging: 0, carry: 0, falling: 0 };
+    var found = [];
     for (var y = 0; y < this.h; y++) {
       var line = rows[y];
       for (var x = 0; x < this.w; x++) {
@@ -78,12 +91,24 @@
         var i = y * this.w + x;
         this.tiles[i] = t;
         if (t === T.INFOTRON) total++;
-        if (t === T.MURPHY) { this.murphy.x = x; this.murphy.y = y; }
+        if (t === T.MURPHY) found.push({ ch: ch, x: x, y: y });
         if (t === T.SNIKSNAK) this.dir[i] = 1;
         if (t === T.ELECTRON) this.dir[i] = 3;
         if (t === T.BUG) this.dir[i] = BUG_PHASE[ch] || 0;   // жук хранит в dir сдвиг фазы
       }
     }
+
+    // 'M' ходит первым, 'N' — вторым; несколько 'N' идут в порядке чтения карты
+    found.sort(function (a, b) { return (a.ch === 'M' ? 0 : 1) - (b.ch === 'M' ? 0 : 1); });
+    this.heroes = found.map(function (f) {
+      return { x: f.x, y: f.y, facing: 2, alive: true, pushing: 0, digging: 0,
+               carry: 0, falling: 0, out: 0, acted: 0 };
+    });
+    if (!this.heroes.length) this.heroes.push({ x: 0, y: 0, facing: 2, alive: true, pushing: 0,
+                                                digging: 0, carry: 0, falling: 0, out: 0, acted: 0 });
+    // Совместимость: весь остальной код (камера, звук, советчик) читает .murphy —
+    // это тот же объект, что heroes[0], а не копия.
+    this.murphy = this.heroes[0];
 
     this.totalInfotrons = total;
     // needed может быть больше, чем инфотронов на карте: недостающие
@@ -134,9 +159,11 @@
     e.moved = this.moved.slice();
     e.fx = this.fx.slice();
     e.fy = this.fy.slice();
-    e.murphy = { x: this.murphy.x, y: this.murphy.y, facing: this.murphy.facing,
-                 alive: this.murphy.alive, pushing: this.murphy.pushing, digging: this.murphy.digging,
-                 carry: this.murphy.carry, falling: this.murphy.falling };
+    e.heroes = this.heroes.map(function (m) {
+      return { x: m.x, y: m.y, facing: m.facing, alive: m.alive, pushing: m.pushing,
+               digging: m.digging, carry: m.carry, falling: m.falling, out: m.out, acted: m.acted };
+    });
+    e.murphy = e.heroes[0];
     e.totalInfotrons = this.totalInfotrons;
     e.needed = this.needed;
     e.collected = this.collected;
@@ -155,8 +182,12 @@
     for (var i = 0; i < this.tiles.length; i++) {
       s += String.fromCharCode(48 + this.tiles[i] + (this.falling[i] ? 32 : 0) + (this.shake[i] ? 64 : 0));
     }
-    return s + '|' + this.collected + '|' + this.status + '|' + this.fuse +
-           '|' + this.murphy.carry + '|' + (this.gravity ? 'g' : '0') + this.murphy.falling;
+    s += '|' + this.collected + '|' + this.status + '|' + this.fuse + '|' + (this.gravity ? 'g' : '0');
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      s += '|' + m.carry + m.falling + m.out;
+    }
+    return s;
   };
 
   Engine.prototype.moveObj = function (x, y, nx, ny) {
@@ -191,7 +222,7 @@
         if (isBlast(t) && !(blast === T.EXPLOSION_INFO && t === T.EXPLOSION)) continue;
         if (t === T.ORANGE || isCharge(t)) chain.push([x, y, 'normal']);
         if (t === T.ELECTRON) chain.push([x, y, 'info']);
-        if (t === T.MURPHY) this.killMurphy(true);
+        if (t === T.MURPHY) this.killAt(x, y, true);
         this.tiles[i] = blast;
         this.falling[i] = 0;
         this.shake[i] = 0;
@@ -207,12 +238,26 @@
     }
   };
 
-  Engine.prototype.killMurphy = function (alreadyInBlast) {
-    if (!this.murphy.alive) return;
-    this.murphy.alive = false;
+  /** Кто из героев стоит в клетке. Вышедшие и погибшие не считаются. */
+  Engine.prototype.heroAt = function (x, y) {
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      if (m.alive && !m.out && m.x === x && m.y === y) return m;
+    }
+    return null;
+  };
+
+  /** Гибель любого героя — поражение: напарник не «остаётся за старшего». */
+  Engine.prototype.killHero = function (m, alreadyInBlast) {
+    if (!m || !m.alive || m.out) return;
+    m.alive = false;
     this.status = 'dying';
     this.deathTimer = DEATH_TICKS;
-    if (!alreadyInBlast) this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+    if (!alreadyInBlast) this.explodeAt(m.x, m.y, 'normal');
+  };
+
+  Engine.prototype.killAt = function (x, y, alreadyInBlast) {
+    this.killHero(this.heroAt(x, y), alreadyInBlast);
   };
 
   Engine.prototype.updateExplosions = function () {
@@ -231,10 +276,11 @@
     return t === T.EMPTY || t === T.BASE || t === T.INFOTRON;
   };
 
-  Engine.prototype.updateMurphy = function (input) {
-    var m = this.murphy;
+  Engine.prototype.updateHero = function (m, input) {
     m.pushing = 0;
     m.digging = 0;
+    m.acted = 0;
+    if (m.out || !m.alive) return;
     if (m.falling) return;                       // в падении Мёрфи не управляется
     var d = input && input.dir !== undefined ? input.dir : -1;
     if (d < 0 || d > 3) return;
@@ -253,28 +299,32 @@
       return;
     }
 
-    if (t === T.BASE) { m.digging = 1; this.stepMurphyTo(nx, ny); this.moves++; return; }
-    if (t === T.EMPTY) { this.stepMurphyTo(nx, ny); this.moves++; return; }
-    if (t === T.INFOTRON) { this.collected++; this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.BASE) { m.digging = 1; this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
+    if (t === T.EMPTY) { this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
+    if (t === T.INFOTRON) { this.collected++; this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
     if (t === T.EXIT) {
+      // Вышедший убирается с поля: он больше не стоит на дороге у напарника.
+      // Победа — когда вышли все, поэтому порядок выхода тоже приходится считать.
       if (this.exitOpen()) {
         this.set(m.x, m.y, T.EMPTY);
         m.x = nx; m.y = ny;
-        this.status = 'won';
-        this.moves++;
+        m.out = 1;
+        m.falling = 0;
+        m.acted = 1;
+        if (this.allOut()) this.status = 'won';
       }
       return;
     }
-    if (isMonster(t)) { this.killMurphy(); return; }
+    if (isMonster(t)) { this.killHero(m); return; }
     // Красный заряд Мёрфи забирает с собой — но только один за раз.
-    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepMurphyTo(nx, ny); this.moves++; return; }
+    if (t === T.RED && !m.carry) { m.carry = 1; this.set(nx, ny, T.EMPTY); this.stepHeroTo(m, nx, ny); m.acted = 1; return; }
     // Жёлтый двигается в любую сторону: он не круглый и никуда не скатывается.
     if (t === T.YELLOW) {
       if (this.get(nx + dx, ny + dy) !== T.EMPTY) return;
       this.moveObj(nx, ny, nx + dx, ny + dy);
       m.pushing = 1;
-      this.stepMurphyTo(nx, ny);
-      this.moves++;
+      this.stepHeroTo(m, nx, ny);
+      m.acted = 1;
       return;
     }
     if (t === T.TERMINAL) { this.pressTerminal(); return; }
@@ -290,8 +340,8 @@
       // иначе камень проезжает мимо дыры, пока не отпустишь клавишу
       this.shake[this.idx(nx + dx, ny)] = SHAKE_TICKS;
       m.pushing = 1;
-      this.stepMurphyTo(nx, ny);
-      this.moves++;
+      this.stepHeroTo(m, nx, ny);
+      m.acted = 1;
       return;
     }
     if (PORT_DIR[t] !== undefined) {
@@ -308,13 +358,12 @@
       this.fy[j] = m.y - fy2;
       this.moved[j] = 1;
       m.x = fx2; m.y = fy2;
-      this.moves++;
+      m.acted = 1;
       return;
     }
   };
 
-  Engine.prototype.stepMurphyTo = function (nx, ny) {
-    var m = this.murphy;
+  Engine.prototype.stepHeroTo = function (m, nx, ny) {
     var i = this.idx(m.x, m.y), j = this.idx(nx, ny);
     this.tiles[i] = T.EMPTY;
     this.falling[i] = 0;
@@ -351,7 +400,7 @@
           continue;
         }
         if (this.falling[i]) {
-          if (b === T.MURPHY) { this.killMurphy(); continue; }
+          if (b === T.MURPHY) { this.killAt(x, y + 1); continue; }
           if (isMonster(b) || b === T.BUG) { this.explodeAt(x, y + 1, b === T.ELECTRON ? 'info' : 'normal'); continue; }
           if (b === T.ORANGE) { this.explodeAt(x, y + 1, 'normal'); continue; }
           if (t === T.ORANGE) { this.explodeAt(x, y, 'normal'); continue; }
@@ -388,7 +437,7 @@
           var nd = order[k];
           var nx = x + DIRS[nd][0], ny = y + DIRS[nd][1];
           var tt = this.get(nx, ny);
-          if (tt === T.MURPHY) { this.dir[i] = nd; this.killMurphy(); k = 99; break; }
+          if (tt === T.MURPHY) { this.dir[i] = nd; this.killAt(nx, ny); k = 99; break; }
           if (tt === T.EMPTY) {
             this.dir[i] = nd;
             this.moveObj(x, y, nx, ny);
@@ -403,10 +452,24 @@
 
   /** Под тяжестью Мёрфи падает сам — и вверх ему уже не подняться. */
   Engine.prototype.updateMurphyFall = function () {
-    var m = this.murphy;
-    if (!this.gravity || !m.alive) { m.falling = 0; return; }
-    if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepMurphyTo(m.x, m.y + 1); m.falling = 1; }
-    else m.falling = 0;
+    for (var k = 0; k < this.heroes.length; k++) {
+      var m = this.heroes[k];
+      if (!this.gravity || !m.alive || m.out) { m.falling = 0; continue; }
+      if (this.get(m.x, m.y + 1) === T.EMPTY) { this.stepHeroTo(m, m.x, m.y + 1); m.falling = 1; }
+      else m.falling = 0;
+    }
+  };
+
+  /** Все ли вышли: пока хоть один в шахте, выход не засчитан. */
+  Engine.prototype.allOut = function () {
+    for (var k = 0; k < this.heroes.length; k++) if (!this.heroes[k].out) return false;
+    return true;
+  };
+
+  /** Живы ли все герои — лента отмотки помечает такт безопасным по этому. */
+  Engine.prototype.allAlive = function () {
+    for (var k = 0; k < this.heroes.length; k++) if (!this.heroes[k].alive) return false;
+    return true;
   };
 
   /** Нажатие терминала поджигает запал. Повторное нажатие ничего не меняет. */
@@ -420,9 +483,12 @@
     this.fuse--;
     if (this.fuse > 0) return;
     // Заряд в руках слушает тот же сигнал: с бомбой в кармане кнопку не жмут.
-    if (this.murphy.carry && this.murphy.alive) {
-      this.murphy.carry = 0;
-      this.explodeAt(this.murphy.x, this.murphy.y, 'normal');
+    for (var h = 0; h < this.heroes.length; h++) {
+      var hero = this.heroes[h];
+      if (hero.carry && hero.alive && !hero.out) {
+        hero.carry = 0;
+        this.explodeAt(hero.x, hero.y, 'normal');
+      }
     }
     var spots = [];
     for (var i = 0; i < this.tiles.length; i++) if (isCharge(this.tiles[i])) spots.push(i);
@@ -434,12 +500,15 @@
 
   /** Вспышка жука бьёт Мёрфи, если тот стоит с ним бок о бок. */
   Engine.prototype.updateBugs = function () {
-    var m = this.murphy;
-    for (var k = 0; k < 4; k++) {
-      var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
-      if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
-      var i = this.idx(x, y);
-      if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killMurphy(); return; }
+    for (var h = 0; h < this.heroes.length; h++) {
+      var m = this.heroes[h];
+      if (!m.alive || m.out) continue;
+      for (var k = 0; k < 4; k++) {
+        var x = m.x + DIRS[k][0], y = m.y + DIRS[k][1];
+        if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+        var i = this.idx(x, y);
+        if (this.tiles[i] === T.BUG && this.bugHot(i)) { this.killHero(m); return; }
+      }
     }
   };
 
@@ -455,7 +524,18 @@
     this.ticks++;
 
     this.updateExplosions();
-    if (this.status === 'playing') this.updateMurphy(input || { dir: -1 });
+    // Очередь хода: сначала 'M', потом 'N'. Каждый ходит целиком, поэтому
+    // освобождённая первым клетка достаётся второму в этом же тике.
+    if (this.status === 'playing') {
+      var act = input || { dir: -1 };
+      for (var h = 0; h < this.heroes.length; h++) {
+        if (this.status !== 'playing') break;
+        this.updateHero(this.heroes[h], act);
+      }
+      var any = false;
+      for (var h2 = 0; h2 < this.heroes.length; h2++) if (this.heroes[h2].acted) any = true;
+      if (any) this.moves++;                    // один такт — не больше одного хода в счётчике
+    }
     if (this.status === 'playing') this.updateMurphyFall();
     this.updateFuse();
     this.updateGravity();
@@ -473,7 +553,12 @@
     var TO_CHAR = base.TO_CHAR, out = [];
     for (var y = 0; y < this.h; y++) {
       var s = '';
-      for (var x = 0; x < this.w; x++) s += TO_CHAR[this.tiles[this.idx(x, y)]] || '?';
+      for (var x = 0; x < this.w; x++) {
+        var ch = TO_CHAR[this.tiles[this.idx(x, y)]] || '?';
+        // напарника в дампе видно отдельно, иначе двух героев не различить
+        if (ch === 'M' && this.heroes.length > 1 && this.heroAt(x, y) !== this.heroes[0]) ch = 'N';
+        s += ch;
+      }
       out.push(s);
     }
     return out.join('\n');

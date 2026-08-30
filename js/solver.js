@@ -51,8 +51,15 @@
     for (var g = 0; g < e.tiles.length; g++) if (e.tiles[g] === T.GRAV_OFF) { canFly = true; break; }
     var noUp = e.gravity && !canFly;
     var seen = new Uint8Array(e.w * e.h);
-    var q = [e.murphy.y * e.w + e.murphy.x];
-    seen[q[0]] = 1;
+    // разлив идёт от всех героев сразу: добыча, до которой дотянется только
+    // напарник, тоже считается достижимой — иначе советчик соврёт «не пройти»
+    var q = [];
+    for (var hh = 0; hh < e.heroes.length; hh++) {
+      var hm = e.heroes[hh];
+      if (!hm.out && hm.alive) q.push(hm.y * e.w + hm.x);
+    }
+    if (!q.length) q.push(e.murphy.y * e.w + e.murphy.x);
+    for (var s0 = 0; s0 < q.length; s0++) seen[q[s0]] = 1;
     var info = 0, elec = 0, exit = false;
     for (var h = 0; h < q.length; h++) {
       var i = q[h], x = i % e.w, y = (i - x) / e.w;
@@ -126,8 +133,14 @@
     return out;
   }
 
-  /* Первый шаг к ближайшей невзятой добыче (или к выходу, если норма набрана). */
+  /*
+   * Первый шаг к ближайшей невзятой добыче (или к выходу, если норма набрана).
+   * Считается для первого героя. Когда героев двое, один и тот же ход ведёт
+   * обоих, и «ближайшая добыча одного» ничего не говорит про второго — такой
+   * совет был бы не догадкой, а обманом, поэтому вдвоём он не выдаётся вовсе.
+   */
   function stepToward(e) {
+    if (e.heroes.length > 1) return -1;
     var goalExit = e.collected >= e.needed;
     var prev = new Int32Array(e.w * e.h).fill(-1);
     var seen = new Uint8Array(e.w * e.h);

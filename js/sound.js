@@ -24,12 +24,34 @@
       if (t === T.EXPLOSION || t === T.EXPLOSION_INFO) blast++;
       else if (e.falling[i]) fall++;
     }
+    // Героев может быть двое, а звук один: копал/толкал — если хоть кто-то,
+    // а «дальний прыжок» (порт) считаем по самому дальнему из них.
+    var carry = 0, dig = false, push = false, pos = '';
+    for (var k = 0; k < e.heroes.length; k++) {
+      var m = e.heroes[k];
+      carry += m.carry;
+      if (m.digging) dig = true;
+      if (m.pushing) push = true;
+      pos += (m.out ? 'x' : m.x + ',' + m.y) + ';';
+    }
     return {
-      c: e.collected, st: e.status, fuse: e.fuse, carry: e.murphy.carry,
+      c: e.collected, st: e.status, fuse: e.fuse, carry: carry,
       grav: !!e.gravity, fall: fall, blast: blast,
-      x: e.murphy.x, y: e.murphy.y,
-      dig: !!e.murphy.digging, push: !!e.murphy.pushing
+      pos: pos, hero: e.heroes.map(function (m) { return m.out ? null : [m.x, m.y]; }),
+      dig: dig, push: push
     };
+  }
+
+  /** Насколько далеко шагнул самый быстрый из живых героев. */
+  function jump(a, b) {
+    var best = 0;
+    for (var k = 0; k < b.hero.length; k++) {
+      var p = a.hero[k], q = b.hero[k];
+      if (!p || !q) continue;
+      var d = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]);
+      if (d > best) best = d;
+    }
+    return best;
   }
 
   /**
@@ -50,10 +72,7 @@
     if (b.fall < a.fall && b.blast <= a.blast) out.push('land');
     if (b.dig) out.push('dig');
     else if (b.push) out.push('push');
-    else if (b.x !== a.x || b.y !== a.y) {
-      var d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-      out.push(d > 1 ? 'port' : 'step');
-    }
+    else if (b.pos !== a.pos) out.push(jump(a, b) > 1 ? 'port' : 'step');
     return out;
   }
 

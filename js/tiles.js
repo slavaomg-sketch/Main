@@ -43,6 +43,8 @@
     'O': Tiles.ZONK,
     '*': Tiles.INFOTRON,
     'M': Tiles.MURPHY,
+    // Напарник. Тот же герой во всём, кроме одного: он второй в очереди хода.
+    'N': Tiles.MURPHY,
     'E': Tiles.EXIT,
     'S': Tiles.SNIKSNAK,
     'e': Tiles.ELECTRON,

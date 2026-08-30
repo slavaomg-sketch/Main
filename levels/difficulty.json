@@ -127,5 +127,8 @@
  "133": {"ticks":189,"moves":102,"waits":87,"detour":5.25,"lethal":0.855,"width":0.36,"greedy":false,"why":"гибель на каждом шагу, ходов на такте почти нет","rating":9},
  "134": {"ticks":184,"moves":60,"waits":124,"detour":9.2,"lethal":0.445,"width":4.44,"greedy":false,"why":"гибель на каждом шагу, дорога в один конец","rating":6},
  "135": {"ticks":233,"moves":213,"waits":18,"detour":46.6,"lethal":0,"width":2.75,"greedy":false,"why":"ходов на такте почти нет, длинный, дорога в один конец, на зарядах и терминале","rating":7},
- "136": {"ticks":225,"moves":100,"waits":125,"detour":3.75,"lethal":0.938,"width":0.2,"greedy":false,"why":"гибель на каждом шагу, ходов на такте почти нет, длинный","rating":10}
+ "136": {"ticks":225,"moves":100,"waits":125,"detour":3.75,"lethal":0.938,"width":0.2,"greedy":false,"why":"гибель на каждом шагу, ходов на такте почти нет, длинный","rating":10},
+ "141": {"ticks":11,"moves":11,"waits":0,"detour":1.83,"lethal":0,"width":3.82,"greedy":false,"why":"одна клавиша на двоих","rating":4},
+ "142": {"ticks":26,"moves":26,"waits":0,"detour":5.2,"lethal":0,"width":2.08,"greedy":false,"why":"ходов на такте почти нет, одна клавиша на двоих","rating":5},
+ "143": {"ticks":32,"moves":32,"waits":0,"detour":4,"lethal":0.009,"width":3.59,"greedy":false,"why":"одна клавиша на двоих","rating":4}
 }

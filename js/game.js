@@ -212,7 +212,9 @@
     el['hud-moves'].textContent = engine.moves;
     el['hud-time'].textContent = (engine.ticks * TICK_MS / 1000).toFixed(1);
     // заряды седьмой главы: что в руках и сколько тиков до подрыва
-    el['hud-carry'].hidden = !engine.murphy.carry;
+    var carry = 0;
+    for (var h = 0; h < engine.heroes.length; h++) carry += engine.heroes[h].carry;
+    el['hud-carry'].hidden = !carry;
     el['hud-fuse'].hidden = !engine.fuse;
     if (engine.fuse) el['hud-fuse-n'].textContent = engine.fuse;
     el['hud-grav'].hidden = !engine.gravity;
@@ -273,15 +275,25 @@
       sayHint('Отсюда уровень уже не пройти: ' + a.reason + '. Отмотай назад.', true);
       return;
     }
+    // Смертельные ходы советчик считает точно — по настоящим тикам движка,
+    // поэтому метим их у каждого героя. Совет «куда идти» — догадка, и вдвоём
+    // её попросту нет (см. solver.js), поэтому она метится только у первого.
     var cells = [];
     a.fatal.forEach(function (d) {
-      cells.push({ x: engine.murphy.x + SP.DIRS[d][0], y: engine.murphy.y + SP.DIRS[d][1], bad: true });
+      engine.heroes.forEach(function (m) {
+        if (m.out || !m.alive) return;
+        cells.push({ x: m.x + SP.DIRS[d][0], y: m.y + SP.DIRS[d][1], bad: true });
+      });
     });
     if (a.dir >= 0) cells.push({ x: engine.murphy.x + SP.DIRS[a.dir][0], y: engine.murphy.y + SP.DIRS[a.dir][1], bad: false });
     renderer.setMarks(cells, global.performance.now());
     var parts = [];
     if (a.fatal.length) parts.push('красным — ходы, после которых уже не выжить (' + a.fatal.map(function (d) { return ARROW[d]; }).join(', ') + ')');
     if (a.dir >= 0) parts.push('зелёным — куда, пожалуй, стоит идти');
+    else if (engine.heroes.length > 1 && !a.fatal.length) {
+      sayHint('Вдвоём советчик не подсказывает дорогу: ход ведёт обоих сразу, и «ближе к добыче» для одного ничего не значит для другого. Смертельных ходов сейчас нет.', false);
+      return;
+    }
     sayHint(parts.length ? parts.join('; ') + '.' : 'Сейчас ни один ход не смертелен — иди куда задумал.', false);
   }
 
@@ -395,7 +407,7 @@
     if (state === 'rewinding') {
       if (!input.rewind) {
         // отпустили посреди гибели — доматываем до живого места
-        if (engine.status !== 'playing' || !engine.murphy.alive) engine = history.seek(Math.max(0, history.lastSafe() - 2));
+        if (engine.status !== 'playing' || !engine.allAlive()) engine = history.seek(Math.max(0, history.lastSafe() - 2));
         state = 'playing'; acc = 0; updateHud();
       }
       else {

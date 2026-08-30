@@ -21,6 +21,7 @@
     this.camY = 0;
     this.marks = null;          // метки советчика: куда нельзя и куда стоит
     this.skin = 'murphy';
+    this.pack2 = null;          // облик напарника: всегда не такой, как у первого
   }
 
   /** Смена облика героя: спрайты пересобираются под новый скин. */
@@ -28,6 +29,14 @@
     if (this.skin === id) return;
     this.skin = id;
     this.pack = null;
+    this.pack2 = null;
+  };
+
+  /** Облик напарника — следующий скин по кругу, чтобы двоих не путать. */
+  Renderer.prototype.mateSkin = function () {
+    var all = SP.Sprites.skins, i = 0;
+    for (var k = 0; k < all.length; k++) if (all[k].id === this.skin) i = k;
+    return all[(i + 1) % all.length].id;
   };
 
   Renderer.prototype.resize = function (engine) {
@@ -51,14 +60,30 @@
     var tile = Math.max(minTile(w), Math.min(MAX_TILE, fit));
     if (!this.pack || this.pack.size !== tile || this.pack.skin !== this.skin) {
       this.pack = SP.Sprites.build(tile, this.skin);
+      this.pack2 = null;
+    }
+    if (engine.heroes && engine.heroes.length > 1 &&
+        (!this.pack2 || this.pack2.size !== tile)) {
+      this.pack2 = SP.Sprites.build(tile, this.mateSkin());
     }
     this.tile = tile;
   };
 
   Renderer.prototype.camera = function (engine, alpha) {
     var s = this.tile;
-    var mx = (engine.murphy.x + engine.fx[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
-    var my = (engine.murphy.y + engine.fy[engine.idx(engine.murphy.x, engine.murphy.y)] * (1 - alpha) + 0.5) * s;
+    // камера смотрит в середину между героями: одного из двоих терять нельзя
+    var sx = 0, sy = 0, n = 0;
+    for (var k = 0; k < engine.heroes.length; k++) {
+      var m = engine.heroes[k];
+      if (m.out) continue;
+      var i = engine.idx(m.x, m.y);
+      sx += m.x + engine.fx[i] * (1 - alpha);
+      sy += m.y + engine.fy[i] * (1 - alpha);
+      n++;
+    }
+    if (!n) { var m0 = engine.murphy; sx = m0.x; sy = m0.y; n = 1; }
+    var mx = (sx / n + 0.5) * s;
+    var my = (sy / n + 0.5) * s;
     var fullW = engine.w * s, fullH = engine.h * s;
     this.camX = fullW <= this.viewW ? (fullW - this.viewW) / 2 : Math.max(0, Math.min(fullW - this.viewW, mx - this.viewW / 2));
     this.camY = fullH <= this.viewH ? (fullH - this.viewH) / 2 : Math.max(0, Math.min(fullH - this.viewH, my - this.viewH / 2));
@@ -106,7 +131,12 @@
           py += Math.sin(timeMs / 15) * s * 0.018 * engine.shake[i];
         }
 
-        if (t === T.MURPHY) { g.drawImage(pack.murphy[engine.murphy.facing], px, py, s, s); continue; }
+        if (t === T.MURPHY) {
+          var who = engine.heroAt(x, y) || engine.murphy;
+          var p = (who === engine.heroes[0] || !this.pack2) ? pack : this.pack2;
+          g.drawImage(p.murphy[who.facing], px, py, s, s);
+          continue;
+        }
         if (t === T.EXIT) { g.drawImage(open ? pack.exitOpen : pack.tile[T.EXIT], px, py, s, s); continue; }
         if (PORT_INDEX[t] !== undefined) { g.drawImage(pack.port[PORT_INDEX[t]], px, py, s, s); continue; }
         if (t === T.GRAV_ON || t === T.GRAV_OFF) {

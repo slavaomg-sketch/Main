@@ -41,7 +41,7 @@ function parseMoves(str) {
 function same(a, b) {
   return a.c === b.c && a.st === b.st && a.fuse === b.fuse && a.carry === b.carry &&
          a.grav === b.grav && a.fall === b.fall && a.blast === b.blast &&
-         a.x === b.x && a.y === b.y && !b.dig && !b.push;
+         a.pos === b.pos && !b.dig && !b.push;
 }
 
 var only = process.argv.slice(2).filter(function (a) { return /^\d+$/.test(a); }).map(Number);

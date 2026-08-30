@@ -19,7 +19,7 @@
   /** Запомнить такт. Вызывается сразу после engine.step(action). */
   History.prototype.record = function (action, engine) {
     this.tape.push({ dir: action.dir, snap: !!action.snap });
-    this.safe.push(engine.status === 'playing' && engine.murphy.alive);
+    this.safe.push(engine.status === 'playing' && engine.allAlive());
     if (this.tape.length % KEY === 0) this.keys.push(engine.clone());
   };
 

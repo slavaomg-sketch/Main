@@ -41,6 +41,8 @@ var levels = files.map(function (file) {
   var counts = {};
   map.join('').split('').forEach(function (c) { counts[c] = (counts[c] || 0) + 1; });
   if (counts['M'] !== 1) throw new Error(file + ': Мёрфи должен быть ровно один (найдено ' + (counts['M'] || 0) + ')');
+  // 'N' — напарник: тот же герой, но второй в очереди хода. Больше одного пока не делаем.
+  if (counts['N'] > 1) throw new Error(file + ': напарник должен быть один (найдено ' + counts['N'] + ')');
   if (!counts['E']) throw new Error(file + ': нет выхода');
   var total = counts['*'] || 0;
   var needed = meta.needed ? parseInt(meta.needed, 10) : total;
@@ -88,7 +90,7 @@ var chapterDefs = plan.chapters.map(function (c) {
   return { n: c.n, title: c.title, planned: c.levels.length };
 });
 // уровни за пределами плана получают свою главу; у некоторых глав название задано вручную
-var EXTRA_TITLES = { 12: 'Десять из десяти', 13: 'Расчёт', 14: 'Живой механизм' };
+var EXTRA_TITLES = { 12: 'Десять из десяти', 13: 'Расчёт', 14: 'Живой механизм', 15: 'Вдвоём' };
 levels.forEach(function (l) {
   if (l.chapter > chapterDefs.length && !chapterDefs.some(function (c) { return c.n === l.chapter; })) {
     chapterDefs.push({ n: l.chapter, title: EXTRA_TITLES[l.chapter] || 'Проба · вариант ChatGPT', planned: 10 });
