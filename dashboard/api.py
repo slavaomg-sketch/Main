@@ -290,10 +290,10 @@ async def read_product_cards(
 @guarded.get("/products/card/{nm_id}")
 async def read_card(nm_id: str) -> dict[str, Any]:
     """Одна карточка со всеми фотографиями."""
-    found = await products.card(nm_id)
+    found = await products.card_view(nm_id)
     if found is None:
         raise HTTPException(status_code=404, detail="Карточка не найдена")
-    return found.to_dict()
+    return found
 
 
 @guarded.post("/products/card/{nm_id}/rating")
@@ -302,7 +302,7 @@ async def read_card_rating(nm_id: str) -> dict[str, Any]:
     found = await products.rating(nm_id, settings)
     if found is None:
         raise HTTPException(status_code=404, detail="Карточка не найдена")
-    return found.to_dict()
+    return await products.card_view(nm_id)
 
 
 @guarded.put("/products/card/{nm_id}/note")
@@ -313,7 +313,7 @@ async def save_card_note(
     found = await products.save_note(nm_id, str(payload.get("note") or ""))
     if found is None:
         raise HTTPException(status_code=404, detail="Карточка не найдена")
-    return found.to_dict()
+    return await products.card_view(nm_id)
 
 
 @guarded.get("/products/notes/all")

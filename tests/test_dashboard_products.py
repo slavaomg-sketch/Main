@@ -172,3 +172,109 @@ async def test_название_владельца_подставляется_в
     товар = (await products.parents())[0]
     assert товар["title"] == "Кабель Type-C 1 м, белый"
     assert товар["described"] is True
+
+
+# --- полки по категориям --------------------------------------------------------
+
+
+async def test_товары_раскладываются_по_категориям(кабинет):
+    """Провода в одном месте, плёнки в другом — иначе 383 товара это свалка."""
+    провод = Card(article="CAB-(ПРОВОД)-A", name="Кабель", nm_id="1",
+                  brand="UA", subject="Кабели", photos=("https://wb/1.jpg",))
+    плёнка = Card(article="FLM-(ПЛЁНКА)-A", name="Плёнка", nm_id="2",
+                  brand="UA", subject="Защитные плёнки", photos=("https://wb/2.jpg",))
+    await products.save_cards(кабинет, [провод, плёнка])
+
+    по_коду = {item["parent"]: item for item in await products.parents()}
+    assert по_коду["ПРОВОД"]["category"] == "Кабели"
+    assert по_коду["ПЛЁНКА"]["category"] == "Защитные плёнки"
+
+
+async def test_категория_берётся_преобладающая(кабинет):
+    """Одна карточка, отнесённая площадкой не туда, не должна уводить весь
+    товар на чужую полку."""
+    карточки = [
+        Card(article="CAB-(СМЕСЬ)-A", name="1", nm_id="1", brand="UA",
+             subject="Кабели", photos=()),
+        Card(article="CAB-(СМЕСЬ)-B", name="2", nm_id="2", brand="UA",
+             subject="Кабели", photos=()),
+        Card(article="CAB-(СМЕСЬ)-C", name="3", nm_id="3", brand="UA",
+             subject="Перчатки", photos=()),
+    ]
+    await products.save_cards(кабинет, карточки)
+
+    assert (await products.parents())[0]["category"] == "Кабели"
+
+
+async def test_товар_без_категории_не_пропадает(кабинет):
+    await products.save_cards(кабинет, [
+        Card(article="CAB-(БЕЗ)-A", name="Товар", nm_id="1", brand="", subject="", photos=()),
+    ])
+
+    товар = (await products.parents())[0]
+    assert товар["category"] == "Без категории"
+
+
+# --- продажи по карточкам -------------------------------------------------------
+
+
+async def _положить_продажи(кабинет, строки):
+    """Продажи лежат в хранилище так же, как их отдал Wildberries."""
+    import json
+
+    from dashboard import db as база
+
+    async with база.connect() as connection:
+        for number, строка in enumerate(строки):
+            await connection.execute(
+                """
+                INSERT INTO marketplace_rows
+                    (connection_id, source, row_id, day, payload, updated_at)
+                VALUES (?, 'sales', ?, '2026-08-01', ?, '2026-08-01')
+                """,
+                (кабинет, f"r{number}", json.dumps(строка)),
+            )
+        await connection.commit()
+
+
+async def test_продажи_считаются_из_хранилища(кабинет):
+    """Новых запросов к площадке для этого не нужно: продажи уже выгружены."""
+    await products.save_cards(кабинет, [
+        карточка(101, "CAB-(ПРОДАЖИ)-A"), карточка(102, "CAB-(ПРОДАЖИ)-B"),
+    ])
+    await _положить_продажи(кабинет, [
+        {"nmId": 101, "saleID": "S1"},
+        {"nmId": 101, "saleID": "S2"},
+        {"nmId": 102, "saleID": "S3"},
+    ])
+
+    внутри = await products.cards_of("ПРОДАЖИ")
+    по_номеру = {card["nmId"]: card for card in внутри["cards"]}
+    assert по_номеру["101"]["sales"] == 2
+    assert по_номеру["102"]["sales"] == 1
+
+
+async def test_возврат_не_считается_продажей(кабинет):
+    """У возврата номер начинается с R — это не продажа."""
+    await products.save_cards(кабинет, [карточка(103, "CAB-(ВОЗВРАТ)-A")])
+    await _положить_продажи(кабинет, [
+        {"nmId": 103, "saleID": "S1"},
+        {"nmId": 103, "saleID": "R1"},
+    ])
+
+    внутри = await products.cards_of("ВОЗВРАТ")
+    assert внутри["cards"][0]["sales"] == 1
+
+
+async def test_карточка_без_продаж_показывает_ноль(кабинет):
+    await products.save_cards(кабинет, [карточка(104, "CAB-(ТИХИЙ)-A")])
+    внутри = await products.cards_of("ТИХИЙ")
+    assert внутри["cards"][0]["sales"] == 0
+
+
+async def test_продажи_видны_и_в_самой_карточке(кабинет):
+    await products.save_cards(кабинет, [карточка(105, "CAB-(ОДНА)-A")])
+    await _положить_продажи(кабинет, [{"nmId": 105, "saleID": "S1"}])
+
+    вид = await products.card_view("105")
+    assert вид["sales"] == 1

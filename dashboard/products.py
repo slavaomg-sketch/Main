@@ -131,9 +131,37 @@ async def save_cards(connection_id: str, cards: list) -> int:
     return len(cards)
 
 
+async def _categories() -> dict[str, str]:
+    """Категория товара — предмет, к которому площадка отнесла его карточки.
+
+    У товара карточки почти всегда одного предмета, но встречаются
+    исключения. Берём преобладающий: одна ошибка в тысяче карточек не
+    должна уводить весь товар в чужую полку.
+    """
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            """
+            SELECT parent, subject, COUNT(*) AS cards
+              FROM product_cards
+             WHERE parent <> '' AND TRIM(subject) <> ''
+             GROUP BY parent, subject
+            """
+        )
+        rows = await cursor.fetchall()
+
+    best: dict[str, tuple[int, str]] = {}
+    for row in rows:
+        было = best.get(row["parent"])
+        сколько = int(row["cards"] or 0)
+        if было is None or сколько > было[0]:
+            best[row["parent"]] = (сколько, row["subject"])
+    return {parent: subject for parent, (_, subject) in best.items()}
+
+
 async def parents() -> list[dict[str, Any]]:
     """Список товаров с картинкой и числом карточек — верхний уровень."""
     known = {item.parent: item for item in await knowledge.all_parents()}
+    categories = await _categories()
 
     async with db.connect() as connection:
         cursor = await connection.execute(
@@ -159,6 +187,7 @@ async def parents() -> list[dict[str, Any]]:
             "parent": row["parent"],
             "title": facts.title if facts else "",
             "sample": (facts.sample if facts and facts.sample else row["sample"]) or "",
+            "category": categories.get(row["parent"], "Без категории"),
             "cards": int(row["cards"] or 0),
             "withoutPhoto": int(row["without_photo"] or 0),
             "noted": int(row["noted"] or 0),
@@ -166,6 +195,34 @@ async def parents() -> list[dict[str, Any]]:
             "described": bool(facts and facts.filled),
         })
     return found
+
+
+async def _sales_of(nm_ids: list[str]) -> dict[str, int]:
+    """Сколько раз каждая карточка была продана.
+
+    Считаем по уже выгруженным продажам Wildberries — новых запросов к
+    площадке не делаем. Возвраты не считаем продажей: у них номер начинается
+    с «R». Глубина — та же, что и у выгрузки, около полугода.
+    """
+    if not nm_ids:
+        return {}
+
+    места = ",".join("?" for _ in nm_ids)
+    async with db.connect() as connection:
+        cursor = await connection.execute(
+            f"""
+            SELECT json_extract(payload, '$.nmId') AS nm_id, COUNT(*) AS sold
+              FROM marketplace_rows
+             WHERE source = 'sales'
+               AND CAST(json_extract(payload, '$.nmId') AS TEXT) IN ({места})
+               AND COALESCE(json_extract(payload, '$.saleID'), '') NOT LIKE 'R%'
+             GROUP BY nm_id
+            """,
+            nm_ids,
+        )
+        rows = await cursor.fetchall()
+
+    return {str(row["nm_id"]): int(row["sold"] or 0) for row in rows}
 
 
 async def cards_of(parent: str, offset: int = 0, limit: int = PAGE) -> dict[str, Any]:
@@ -191,13 +248,18 @@ async def cards_of(parent: str, offset: int = 0, limit: int = PAGE) -> dict[str,
         )
         rows = await cursor.fetchall()
 
+    cards = [_card(row).to_dict() for row in rows]
+    продажи = await _sales_of([card["nmId"] for card in cards])
+    for card in cards:
+        card["sales"] = продажи.get(card["nmId"], 0)
+
     facts = await knowledge.get(parent)
     return {
         "parent": parent,
         "title": facts.title if facts else "",
         "total": total,
         "offset": offset,
-        "cards": [_card(row).to_dict() for row in rows],
+        "cards": cards,
         "more": offset + len(rows) < total,
     }
 
@@ -209,6 +271,16 @@ async def card(nm_id: str) -> Card | None:
         )
         row = await cursor.fetchone()
     return _card(row) if row else None
+
+
+async def card_view(nm_id: str) -> dict[str, Any] | None:
+    """Карточка для показа — с числом продаж."""
+    found = await card(nm_id)
+    if found is None:
+        return None
+    payload = found.to_dict()
+    payload["sales"] = (await _sales_of([found.nm_id])).get(found.nm_id, 0)
+    return payload
 
 
 async def save_note(nm_id: str, note: str) -> Card | None:

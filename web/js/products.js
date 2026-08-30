@@ -23,6 +23,7 @@
     cards: 0,
     search: '',
     onlyTrouble: false,
+    category: '',       // выбранная полка
 
     parent: null,       // открытый товар
     list: null,         // его карточки
@@ -35,6 +36,11 @@
   };
 
   var host = null;
+
+  // Номер текущего похода за оценками. Уходим с экрана — номер меняется,
+  // и незаконченная дозагрузка сама прекращается.
+  var поход = 0;
+  var tiles = {};
 
   function toast(message) {
     if (global.Toast) global.Toast(message);
@@ -56,14 +62,65 @@
     state.level = 'cards';
     state.parent = parent;
     state.list = null;
+    поход += 1;                     // прежняя дозагрузка оценок больше не нужна
     render();
 
     Api.productCards(parent.parent, 0)
       .then(function (payload) {
         state.list = payload;
         render();
+        fillRatings();
       })
       .catch(function (error) { toast(error.message); });
+  }
+
+  /* Оценки подтягиваются по одной и в фоне.
+
+     У площадки нет метода «оценки списком», а спрашивать по карточке —
+     секунда на запрос. Поэтому не держим владельца перед пустым экраном:
+     плитки появляются сразу, а звёзды доезжают на ходу. Узнанное
+     сохраняется, и во второй раз всё уже на месте. */
+  function fillRatings() {
+    var мой = поход;
+    var осталось = (state.list ? state.list.cards : [])
+      .filter(function (card) { return !card.ratingKnown; });
+
+    function дальше() {
+      if (мой !== поход || !осталось.length) return;
+      var card = осталось.shift();
+
+      Api.cardRating(card.nmId)
+        .then(function (fresh) {
+          if (мой !== поход) return;
+          card.ratingKnown = fresh.ratingKnown;
+          card.rating = fresh.rating;
+          card.feedbacks = fresh.feedbacks;
+          обновить(card);
+          дальше();
+        })
+        .catch(function () {
+          if (мой !== поход) return;
+          дальше();       // одна неудача не должна останавливать остальные
+        });
+    }
+
+    дальше();
+  }
+
+  function обновить(card) {
+    var tile = tiles[card.nmId];
+    if (!tile) return;
+    var строка = tile.querySelector('.ctile__rate');
+    if (!строка) return;
+    Fmt.clear(строка);
+    if (card.ratingKnown) {
+      строка.appendChild(stars(card.rating));
+      строка.appendChild(Fmt.el('span', 'ctile__reviews',
+        Fmt.number(card.feedbacks) + ' ' +
+        Fmt.plural(card.feedbacks, ['отзыв', 'отзыва', 'отзывов'])));
+    } else {
+      строка.appendChild(Fmt.el('span', 'ctile__waiting', 'оценка неизвестна'));
+    }
   }
 
   function loadMoreCards() {
@@ -79,6 +136,7 @@
         list.cards = list.cards.concat(next.cards || []);
         list.more = next.more;
         render();
+        fillRatings();
       })
       .catch(function (error) {
         state.loadingMore = false;
@@ -158,6 +216,17 @@
     return box;
   }
 
+  function stars(rating) {
+    var node = Fmt.el('span', 'ctile__stars');
+    node.title = 'Оценка ' + rating + ' из 5';
+    var целых = Math.round(rating);
+    for (var i = 1; i <= 5; i += 1) {
+      node.appendChild(Fmt.el('span', i <= целых ? 'inbox__star is-on' : 'inbox__star', '★'));
+    }
+    node.appendChild(Fmt.el('span', 'ctile__rating', String(rating)));
+    return node;
+  }
+
   function backButton(text, onBack) {
     var button = Fmt.el('button', 'btn btn--ghost products__back');
     button.type = 'button';
@@ -194,9 +263,50 @@
     return tile;
   }
 
+  function categories() {
+    var counts = {};
+    state.parents.forEach(function (item) {
+      var name = item.category || 'Без категории';
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    return Object.keys(counts)
+      .sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, 'ru'); })
+      .map(function (name) { return { name: name, parents: counts[name] }; });
+  }
+
+  function categoryRow() {
+    var list = categories();
+    if (list.length < 2) return null;   // одна полка — выбирать не из чего
+
+    var row = Fmt.el('div', 'chips products__shelves');
+    var все = Fmt.el('button', 'chip' + (state.category ? '' : ' is-active'));
+    все.type = 'button';
+    все.appendChild(Fmt.el('span', null, 'Все категории'));
+    все.appendChild(Fmt.el('span', 'inbox__count', String(state.parents.length)));
+    все.addEventListener('click', function () {
+      state.category = '';
+      render();
+    });
+    row.appendChild(все);
+
+    list.forEach(function (item) {
+      var chip = Fmt.el('button', 'chip' + (state.category === item.name ? ' is-active' : ''));
+      chip.type = 'button';
+      chip.appendChild(Fmt.el('span', null, item.name));
+      chip.appendChild(Fmt.el('span', 'inbox__count', String(item.parents)));
+      chip.addEventListener('click', function () {
+        state.category = item.name;
+        render();
+      });
+      row.appendChild(chip);
+    });
+    return row;
+  }
+
   function shownParents() {
     var needle = state.search.trim().toLowerCase();
     return state.parents.filter(function (item) {
+      if (state.category && (item.category || 'Без категории') !== state.category) return false;
       if (state.onlyTrouble && !item.withoutPhoto && !item.noted) return false;
       if (!needle) return true;
       var haystack = item.parent + ' ' + (item.title || '') + ' ' + (item.sample || '');
@@ -230,6 +340,8 @@
     bar.appendChild(trouble);
 
     host.appendChild(bar);
+    var shelves = categoryRow();
+    if (shelves) host.appendChild(shelves);
     gridHost = Fmt.el('div', 'products__grid');
     host.appendChild(gridHost);
     renderGrid();
@@ -264,14 +376,26 @@
     var marks = Fmt.el('div', 'ctile__marks');
     marks.appendChild(Fmt.el('span', null,
       card.photoCount + ' ' + Fmt.plural(card.photoCount, ['фото', 'фото', 'фото'])));
-    if (card.ratingKnown) {
-      marks.appendChild(Fmt.el('span', null, '★ ' + card.rating));
-    }
+    marks.appendChild(Fmt.el('span', 'ctile__sales',
+      Fmt.number(card.sales || 0) + ' ' +
+      Fmt.plural(card.sales || 0, ['продажа', 'продажи', 'продаж'])));
     if (card.note) marks.appendChild(Fmt.el('span', 'ctile__noted', 'есть правка'));
     body.appendChild(marks);
 
+    var оценка = Fmt.el('div', 'ctile__rate');
+    if (card.ratingKnown) {
+      оценка.appendChild(stars(card.rating));
+      оценка.appendChild(Fmt.el('span', 'ctile__reviews',
+        Fmt.number(card.feedbacks) + ' ' +
+        Fmt.plural(card.feedbacks, ['отзыв', 'отзыва', 'отзывов'])));
+    } else {
+      оценка.appendChild(Fmt.el('span', 'ctile__waiting', 'оценка загружается…'));
+    }
+    body.appendChild(оценка);
+
     tile.appendChild(body);
     tile.addEventListener('click', function () { openCard(card); });
+    tiles[card.nmId] = tile;
     return tile;
   }
 
@@ -279,6 +403,7 @@
     host.appendChild(backButton('Все товары', function () {
       state.level = 'parents';
       state.parent = null;
+      поход += 1;                   // уходим — дозагрузку оценок прекращаем
       render();
     }));
 
@@ -298,6 +423,7 @@
       'Карточек: ' + Fmt.number(state.list.total) +
       ', показано ' + state.list.cards.length));
 
+    tiles = {};
     var grid = Fmt.el('div', 'products__grid products__grid--cards');
     state.list.cards.forEach(function (card) { grid.appendChild(cardTile(card)); });
     host.appendChild(grid);
@@ -335,6 +461,7 @@
       card.ratingKnown ? (card.rating ? '★ ' + card.rating : 'нет оценки') : '—'));
     facts.appendChild(fact('Отзывов',
       card.ratingKnown ? Fmt.number(card.feedbacks) : '—'));
+    facts.appendChild(fact('Продаж', Fmt.number(card.sales || 0)));
     host.appendChild(facts);
 
     if (!card.ratingKnown) {

@@ -1664,3 +1664,20 @@ a.btn--ghost { color: var(--text); }
 
 .card__note { margin-top: 18px; }
 .card__noteLabel { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; }
+
+.products__shelves { margin-bottom: 14px; }
+
+.ctile__rate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.ctile__stars { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; color: var(--line-strong); }
+.ctile__stars .inbox__star.is-on { color: #f0a500; }
+.ctile__rating { margin-left: 4px; font-weight: 600; color: var(--text); }
+.ctile__reviews { color: var(--text-tertiary); }
+.ctile__waiting { color: var(--text-tertiary); font-style: italic; }
+.ctile__sales { color: var(--positive); font-weight: 600; }
