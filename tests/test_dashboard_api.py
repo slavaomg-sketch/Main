@@ -569,8 +569,15 @@ def test_draft_returns_the_text_and_the_warning(client, monkeypatch):
 # --- конвейер -------------------------------------------------------------------
 
 
-def test_batch_needs_a_working_agent(client):
-    """Без моста разбирать нечем — панель обязана сказать это прямо."""
+def test_batch_needs_a_working_agent(client, monkeypatch):
+    """Без моста разбирать нечем — панель обязана сказать это прямо.
+
+    Мост подменяем явно: иначе тест зависел бы от того, установлен ли он
+    на машине, где идёт прогон, и падал бы прямо на сервере.
+    """
+    from dashboard import agent
+
+    monkeypatch.setattr(agent, "available", lambda config=None: False)
     answer = client.post("/api/inbox/batch", json={
         "accountId": "wb1", "kind": "chat", "ids": ["i1"],
     })
