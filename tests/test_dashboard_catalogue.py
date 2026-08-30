@@ -150,3 +150,97 @@ async def test_товары_с_названием_уходят_вниз(каби
 
     порядок = [item.parent for item in await knowledge.all_parents()]
     assert порядок == ["МНОГО", "МАЛО", "ОПИСАН"]
+
+
+# --- ошибки, найденные на настоящем кабинете ------------------------------------
+
+
+async def test_обход_кончается_по_короткой_странице(кабинет, monkeypatch):
+    """Площадка присылала в курсоре поле total не в том смысле, в каком его
+    понимала панель, и обход не заканчивался: 233 страницы за восемь минут.
+    Признак конца теперь фактический — пришло меньше, чем просили."""
+    полная = [карточка(f"CAB-(P{number})-X") for number in range(100)]
+    короткая = [карточка("CAB-(КОНЕЦ)-Y")]
+
+    страницы = {"n": 0}
+    видел: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        номер = страницы["n"]
+        страницы["n"] += 1
+        видел.append(номер)
+        карточки = полная if номер == 0 else короткая
+        # Площадка настойчиво отдаёт большое total — раньше это зациклило бы.
+        return httpx.Response(200, json={
+            "cards": карточки,
+            "cursor": {"updatedAt": f"2026-08-30T0{номер}:00:00Z",
+                       "nmID": 500 + номер, "total": 9999},
+        })
+
+    подменить(monkeypatch, handler)
+    catalogue.start(settings)
+    await дождаться()
+
+    assert len(видел) == 2      # вторая страница короткая — на ней и встали
+
+
+async def test_застрявший_курсор_не_вешает_обход(кабинет, monkeypatch):
+    """Если площадка перестала двигать курсор, следующая страница повторит
+    эту. Это тоже конец, а не повод ходить кругами."""
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "cards": [карточка(f"CAB-(P{number})-X") for number in range(100)],
+            "cursor": {"updatedAt": "стоит-на-месте", "nmID": 1, "total": 100},
+        })
+
+    подменить(monkeypatch, handler)
+    catalogue.start(settings)
+    await дождаться()
+
+    # Два запроса: первый и повтор, на котором заметили, что курсор тот же.
+    assert catalogue._run.pages == 2
+
+
+async def test_имя_площадки_не_занимает_поле_владельца(кабинет, monkeypatch):
+    """Название товара пишет владелец. Имя карточки с площадки — подсказка,
+    и лежит оно отдельно."""
+    подменить(monkeypatch, сервер([[
+        карточка("CAB-(UA-TC-1M-WH)-SAMSUNG", "Зарядка для Vivo T1 быстрая блок питания"),
+    ]]))
+    catalogue.start(settings)
+    await дождаться()
+
+    товар = await knowledge.get("UA-TC-1M-WH")
+    assert товар.title == ""                      # владелец ещё не называл
+    assert товар.to_dict()["named"] is False      # и экран это покажет
+    assert "Зарядка для Vivo T1" in товар.sample
+
+
+async def test_повторный_сбор_не_удваивает_счётчик(кабинет, monkeypatch):
+    подменить(monkeypatch, сервер([[
+        карточка("CAB-(ОДИН)-A"), карточка("CAB-(ОДИН)-B"),
+    ]]))
+    catalogue.start(settings)
+    await дождаться()
+    assert (await knowledge.get("ОДИН")).cards == 2
+
+    catalogue._run = None
+    подменить(monkeypatch, сервер([[
+        карточка("CAB-(ОДИН)-A"), карточка("CAB-(ОДИН)-B"),
+    ]]))
+    catalogue.start(settings)
+    await дождаться()
+
+    assert (await knowledge.get("ОДИН")).cards == 2
+
+
+async def test_карточки_считаются_через_несколько_страниц(кабинет, monkeypatch):
+    """Один товар может встретиться и на первой странице, и на пятой."""
+    первая = [карточка("CAB-(ОДИН)-A")] + [карточка(f"CAB-(P{n})-X") for n in range(99)]
+    вторая = [карточка("CAB-(ОДИН)-B")]
+    подменить(monkeypatch, сервер([первая, вторая]))
+
+    catalogue.start(settings)
+    await дождаться()
+
+    assert (await knowledge.get("ОДИН")).cards == 2

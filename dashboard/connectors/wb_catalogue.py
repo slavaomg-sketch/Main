@@ -36,8 +36,10 @@ PAGE = 100
 INTERVAL = 1.2
 PATIENCE = 60.0
 
-# Предохранитель от бесконечного хождения по страницам.
-MAX_PAGES = 300
+# Предохранитель от бесконечного хождения по страницам. У владельца один
+# товар продаётся тысячей карточек, поэтому потолок высокий: сто тысяч
+# карточек на кабинет.
+MAX_PAGES = 1000
 
 
 @dataclass(frozen=True)
@@ -87,40 +89,55 @@ class WildberriesCatalogue(HttpConnector):
         body = response.json()
         return body if isinstance(body, dict) else {}
 
-    async def cards(self) -> list[Card]:
-        """Все карточки кабинета, страница за страницей."""
+    async def cards(self, on_page=None) -> list[Card]:
+        """Все карточки кабинета, страница за страницей.
+
+        `on_page` — что делать с каждой страницей сразу, не дожидаясь конца.
+        У кабинета бывают десятки тысяч карточек: копить их в памяти и
+        показывать владельцу неподвижную полосу — плохая идея.
+
+        Когда останавливаться. Раньше здесь смотрели на поле `total` из
+        курсора, и это оказалось ошибкой: площадка трактует его иначе, и
+        обход не заканчивался. Признак конца берём фактический — площадка
+        отдала меньше карточек, чем мы просили. Плюс страховка: если курсор
+        не сдвинулся, следующая страница повторит эту, и это тоже конец.
+        """
         found: list[Card] = []
         cursor: dict[str, Any] = {"limit": PAGE}
+        предыдущий: tuple[Any, Any] | None = None
 
         for _ in range(MAX_PAGES):
             body = await self._page(cursor)
             data = body.get("cards")
-            if data is None:
-                data = (body.get("data") or {}).get("cards") if isinstance(body.get("data"), dict) else None
+            if data is None and isinstance(body.get("data"), dict):
+                data = body["data"].get("cards")
             rows = data if isinstance(data, list) else []
 
+            страница: list[Card] = []
             for row in rows:
                 if not isinstance(row, dict):
                     continue
                 article = str(row.get("vendorCode") or "").strip()
                 if not article:
                     continue
-                found.append(Card(article=article, name=self._name(row)))
+                страница.append(Card(article=article, name=self._name(row)))
 
-            # Курсор для следующей страницы отдаёт сама площадка.
-            answer_cursor = body.get("cursor")
-            answer_cursor = answer_cursor if isinstance(answer_cursor, dict) else {}
-            total = self.to_int(answer_cursor.get("total"))
-            if total < PAGE or not rows:
+            found.extend(страница)
+            if on_page is not None and страница:
+                await on_page(страница)
+
+            # Пришло меньше, чем просили, — это была последняя страница.
+            if len(rows) < PAGE:
                 break
 
-            cursor = {
-                "limit": PAGE,
-                "updatedAt": answer_cursor.get("updatedAt"),
-                "nmID": answer_cursor.get("nmID"),
-            }
-            if not cursor["updatedAt"] and not cursor["nmID"]:
-                break   # без курсора следующая страница повторит эту
+            answer_cursor = body.get("cursor")
+            answer_cursor = answer_cursor if isinstance(answer_cursor, dict) else {}
+            метка = (answer_cursor.get("updatedAt"), answer_cursor.get("nmID"))
+            if not any(метка) or метка == предыдущий:
+                break   # курсор не сдвинулся — дальше пойдут те же карточки
+
+            предыдущий = метка
+            cursor = {"limit": PAGE, "updatedAt": метка[0], "nmID": метка[1]}
 
         return found
 

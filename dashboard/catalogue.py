@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from . import connections, db, inbox, knowledge
+from . import connections, db, inbox
+from . import knowledge as знание
 from .config import Settings, settings
 from .connectors.wb_catalogue import WildberriesCatalogue
 
@@ -39,6 +40,7 @@ class Run:
     stores_total: int = 0
     cards: int = 0
     parents: int = 0
+    pages: int = 0
     store: str = ""
     errors: dict[str, str] = field(default_factory=dict)
 
@@ -51,6 +53,7 @@ class Run:
             "storesTotal": self.stores_total,
             "cards": self.cards,
             "parents": self.parents,
+            "pages": self.pages,
             "errors": self.errors,
             "startedAt": self.started.isoformat(timespec="seconds"),
         }
@@ -76,7 +79,7 @@ async def _save(cards: list) -> tuple[int, int]:
     """
     by_parent: dict[str, tuple[int, str]] = {}
     for card in cards:
-        parent = knowledge.parent_of(card.article)
+        parent = знание.parent_of(card.article)
         if not parent:
             continue
         было = by_parent.get(parent)
@@ -96,8 +99,10 @@ async def _save(cards: list) -> tuple[int, int]:
                 INSERT INTO product_facts (parent, title, facts, updated_at, cards, sample)
                 VALUES (?, '', '', ?, ?, ?)
                 ON CONFLICT(parent) DO UPDATE SET
-                    cards = excluded.cards,
-                    sample = CASE WHEN excluded.sample <> ''
+                    -- Карточки приходят страницами, поэтому счётчик копим.
+                    -- Перед сбором он обнуляется, так что повтор не удваивает.
+                    cards = product_facts.cards + excluded.cards,
+                    sample = CASE WHEN product_facts.sample = ''
                                   THEN excluded.sample ELSE product_facts.sample END
                 """,
                 (parent, now, count, sample),
@@ -119,14 +124,38 @@ async def _collect(config: Settings) -> None:
     ]
     run.stores_total = len(stores)
 
+    # Счётчик карточек копится по страницам — перед новым обходом обнуляем,
+    # иначе повторный сбор удвоил бы числа.
+    async with db.connect() as connection:
+        await connection.execute("UPDATE product_facts SET cards = 0")
+        await connection.commit()
+
+    known: set[str] = set()
+
     for store in stores:
         run.store = store.title
+
+        async def страница(cards: list) -> None:
+            """Каждая прочитанная страница сразу ложится в справочник.
+
+            Так владелец видит движение, а прерванный сбор не пропадает
+            впустую: прочитанное уже сохранено.
+            """
+            _, родители = await _save(cards)
+            run.cards += len(cards)
+            known.update(знание.parent_of(card.article) for card in cards)
+            known.discard("")
+            run.parents = len(known)
+            run.pages += 1
+            log.info(
+                "Каталог %s: страниц %d, карточек %d, товаров %d",
+                store.title, run.pages, run.cards, run.parents,
+            )
+            return родители
+
         try:
             source = SOURCES[store.marketplace](store.credentials(config))
-            cards = await source.cards()
-            got_cards, got_parents = await _save(cards)
-            run.cards += got_cards
-            run.parents += got_parents
+            await source.cards(on_page=страница)
         except Exception as exc:  # noqa: BLE001 — кабинет мог отказать
             run.errors[store.title] = inbox.reason(exc)
             log.info("Каталог %s: %s", store.title, exc)

@@ -84,13 +84,15 @@ def parent_of(article: str) -> str:
     return (found.group(1) if found else article).strip().upper()
 
 
-async def remember(articles: list[str], titles: dict[str, str] | None = None) -> None:
+async def remember(articles: list[str], names: dict[str, str] | None = None) -> None:
     """Отметить, что такие родители существуют.
 
-    Справка при этом не трогается: список наполняется сам по мере того,
-    как панель видит товары, а тексты пишет владелец.
+    Ни справка, ни название владельца не трогаются. Имя, под которым товар
+    известен площадке, кладётся в отдельное поле `sample`: оно помогает
+    узнать товар в лицо, но названием для общения не является — его
+    владелец пишет сам.
     """
-    titles = titles or {}
+    names = names or {}
     parents = {parent_of(article) for article in articles if article}
     parents.discard("")
     if not parents:
@@ -101,13 +103,13 @@ async def remember(articles: list[str], titles: dict[str, str] | None = None) ->
         for parent in sorted(parents):
             await connection.execute(
                 """
-                INSERT INTO product_facts (parent, title, facts, updated_at)
-                VALUES (?, ?, '', ?)
+                INSERT INTO product_facts (parent, title, facts, updated_at, sample)
+                VALUES (?, '', '', ?, ?)
                 ON CONFLICT(parent) DO UPDATE SET
-                    title = CASE WHEN product_facts.title = ''
-                                 THEN excluded.title ELSE product_facts.title END
+                    sample = CASE WHEN product_facts.sample = ''
+                                  THEN excluded.sample ELSE product_facts.sample END
                 """,
-                (parent, titles.get(parent, ""), now),
+                (parent, now, names.get(parent, "")),
             )
         await connection.commit()
 

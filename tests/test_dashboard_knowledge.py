@@ -137,3 +137,29 @@ def test_справка_и_текст_покупателя_лежат_в_раз�
     начало_текста = prompt.index("кабель выдерживает 1000 Вт")
 
     assert конец_справки < начало_охраны < начало_текста
+
+
+async def test_имена_площадки_убираются_из_поля_владельца(база):
+    """Разовая уборка: первая версия писала имя карточки в поле названия.
+    Поле принадлежит владельцу — чужое имя переезжает в подсказку."""
+    async with db.connect() as connection:
+        await connection.execute(
+            """
+            INSERT INTO product_facts (parent, title, facts, updated_at, cards, sample)
+            VALUES ('ЧУЖОЕ-ИМЯ', 'Зарядка для Vivo T1', '', '2026-08-30', 0, ''),
+                   ('МОЁ-ИМЯ', 'Кабель, как я его называю', 'До 60 Вт.', '2026-08-30', 5, '')
+            """
+        )
+        await connection.execute("DELETE FROM preferences WHERE key = ?",
+                                 ("product_names_moved_to_sample",))
+        await connection.commit()
+
+    await db.init_db()
+
+    чужое = await knowledge.get("ЧУЖОЕ-ИМЯ")
+    assert чужое.title == ""
+    assert чужое.sample == "Зарядка для Vivo T1"
+
+    # А то, что владелец описал сам, уборка не трогает.
+    моё = await knowledge.get("МОЁ-ИМЯ")
+    assert моё.title == "Кабель, как я его называю"

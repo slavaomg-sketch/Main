@@ -218,11 +218,38 @@ async def _add_blocks_once(
     )
 
 
+async def _move_platform_names_out_of_title(db: aiosqlite.Connection) -> None:
+    """Разовая уборка справочника.
+
+    Первая версия писала в поле названия имя карточки с площадки. Поле это
+    принадлежит владельцу: он пишет там, как называть товар между собой.
+    Возвращаем чужие имена в поле «как называет площадка» — но только там,
+    где владелец ещё ничего не описывал.
+    """
+    marker = "product_names_moved_to_sample"
+    cursor = await db.execute("SELECT value FROM preferences WHERE key = ?", (marker,))
+    if await cursor.fetchone():
+        return
+
+    await db.execute(
+        """
+        UPDATE product_facts
+           SET sample = CASE WHEN sample = '' THEN title ELSE sample END,
+               title = ''
+         WHERE TRIM(title) <> '' AND TRIM(facts) = '' AND cards = 0
+        """
+    )
+    await db.execute(
+        "INSERT OR REPLACE INTO preferences (key, value) VALUES (?, '1')", (marker,)
+    )
+
+
 async def init_db() -> None:
     async with connect() as db:
         await _drop_pre_release_credentials(db)
         await db.executescript(SCHEMA)
         await _add_missing_columns(db)
+        await _move_platform_names_out_of_title(db)
         await _hide_blocks_without_cost_price(db)
         await _add_blocks_once(db, "reconciliation_blocks_added_3", RECONCILIATION_BLOCKS, size="sm")
         # Заказы и возвраты — в штуках и в деньгах сразу, плюс разрез
