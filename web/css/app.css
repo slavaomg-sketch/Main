@@ -1429,3 +1429,86 @@ html[data-theme="auto"] .icon-moon { display: none; }
 /* Ссылки, оформленные как кнопки, не должны выглядеть как текст со ссылкой. */
 a.btn, a.icon-btn { text-decoration: none; color: inherit; }
 a.btn--ghost { color: var(--text); }
+
+/* ===========================================================================
+   Справочник товаров
+   =========================================================================== */
+
+.know__lead {
+  margin: 0 0 16px;
+  max-width: 640px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.know__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.know__tally { font-size: 12.5px; color: var(--text-secondary); font-weight: 600; }
+.know__search {
+  flex: 1 1 220px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pill);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.know__search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.know__list { display: flex; flex-direction: column; gap: 12px; }
+
+.know-card {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm);
+}
+.know-card--filled { border-color: color-mix(in srgb, var(--positive) 35%, transparent); }
+.know-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.know-card__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+.know-card__state {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 600;
+}
+.know-card__state.is-filled {
+  background: color-mix(in srgb, var(--positive) 14%, transparent);
+  color: var(--positive);
+}
+
+.know-card__title,
+.know-card__facts {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.know-card__title { margin-bottom: 8px; }
+.know-card__facts { resize: vertical; }
+.know-card__title:focus,
+.know-card__facts:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.know-card__foot { display: flex; align-items: center; gap: 12px; margin-top: 9px; }
+.know-card__hint { font-size: 11.5px; color: var(--text-tertiary); }
+.know-card__foot .btn { margin-left: auto; height: 32px; font-size: 13px; }

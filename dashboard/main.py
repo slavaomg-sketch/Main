@@ -93,7 +93,7 @@ def create_app() -> FastAPI:
         """
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/assets/") or path in {"/", "/tasks", "/favicon.svg"}:
+        if path.startswith("/assets/") or path in {"/", "/tasks", "/knowledge", "/favicon.svg"}:
             response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response
 
@@ -109,6 +109,11 @@ def create_app() -> FastAPI:
         открывается сразу, а не ждёт ответа Ozon.
         """
         return FileResponse(WEB_DIR / "tasks.html")
+
+    @app.get("/knowledge", include_in_schema=False)
+    async def knowledge_page() -> FileResponse:
+        """Справочник товаров: что помощник знает о каждом родителе."""
+        return FileResponse(WEB_DIR / "knowledge.html")
 
     @app.get("/favicon.svg", include_in_schema=False)
     async def favicon() -> FileResponse:

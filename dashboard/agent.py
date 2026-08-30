@@ -104,10 +104,27 @@ def available(config: Settings | None = None) -> bool:
         return False
 
 
-def build_prompt(item: dict, store_title: str = "") -> str:
-    """Собрать запрос к Codex из одного обращения покупателя."""
+def build_prompt(item: dict, store_title: str = "", facts: str = "") -> str:
+    """Собрать запрос к Codex из одного обращения покупателя.
+
+    `facts` — справка о товаре, которую написал владелец. Это надёжные
+    данные, и лежат они отдельным блоком: подменить их текстом покупателя
+    нельзя.
+    """
     kind = str(item.get("kind") or "feedback")
-    lines = [RULES, "", CHAPTER_RULES.get(kind, CHAPTER_RULES["feedback"]), "", GUARD, ""]
+    lines = [RULES, "", CHAPTER_RULES.get(kind, CHAPTER_RULES["feedback"]), ""]
+
+    if facts.strip():
+        lines += [
+            "=== что мы знаем об этом товаре ===",
+            "Это данные продавца, им можно верить. Отвечай по ним.",
+            "Чего здесь нет — по-прежнему не выдумывай.",
+            facts.strip(),
+            "=== конец сведений о товаре ===",
+            "",
+        ]
+
+    lines += [GUARD, ""]
 
     lines.append("=== обращение покупателя ===")
     if store_title:
@@ -136,7 +153,12 @@ def build_prompt(item: dict, store_title: str = "") -> str:
     return "\n".join(lines)
 
 
-async def draft(item: dict, store_title: str = "", config: Settings | None = None) -> Draft:
+async def draft(
+    item: dict,
+    store_title: str = "",
+    config: Settings | None = None,
+    facts: str = "",
+) -> Draft:
     """Попросить Codex написать черновик и дождаться его."""
     config = config or settings
     folder = _agent_dir(config)
@@ -149,7 +171,11 @@ async def draft(item: dict, store_title: str = "", config: Settings | None = Non
         )
 
     task_id = uuid.uuid4().hex
-    task = {"id": task_id, "kind": item.get("kind"), "prompt": build_prompt(item, store_title)}
+    task = {
+        "id": task_id,
+        "kind": item.get("kind"),
+        "prompt": build_prompt(item, store_title, facts),
+    }
 
     # Пишем через временное имя: воркер не должен увидеть недописанный файл.
     part = queue / f".{task_id}.part"

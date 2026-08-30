@@ -553,7 +553,7 @@ def test_draft_returns_the_text_and_the_warning(client, monkeypatch):
     inbox.remember([InboxItem(kind="claim", id="c1", text="Верните деньги",
                               account_id="wb1", account_title="ВБ Вячеслав")])
 
-    async def write(item, title, config):
+    async def write(item, title, config, facts=""):
         assert item["text"] == "Верните деньги"
         assert title == "ВБ Вячеслав"
         return agent.Draft(answer="Разберёмся.", needs_human=True, why="речь о деньгах")
@@ -604,7 +604,7 @@ def test_batch_runs_and_can_be_read_back(client, monkeypatch):
                   account_title="ВБ Вячеслав", marketplace="wildberries"),
     ])
 
-    async def write(item, title, config):
+    async def write(item, title, config, facts=""):
         return agent.Draft(answer="Завтра будет у вас.")
 
     monkeypatch.setattr(agent, "available", lambda config=None: True)
@@ -705,3 +705,33 @@ def test_assets_are_revalidated_by_the_browser(client):
 
 def test_main_page_links_to_the_tasks_page(client):
     assert 'href="/tasks"' in client.get("/").text
+
+
+# --- справочник товаров ---------------------------------------------------------
+
+
+def test_knowledge_starts_empty(client):
+    assert client.get("/api/knowledge").json() == {"parents": [], "filled": 0, "total": 0}
+
+
+def test_knowledge_is_saved_and_listed(client):
+    saved = client.put("/api/knowledge/UA-TC-1M-WH", json={
+        "title": "Кабель Type-C 1 м", "facts": "Длина 1 м. До 60 Вт.",
+    }).json()
+    assert saved["filled"] is True
+
+    payload = client.get("/api/knowledge").json()
+    assert payload["total"] == 1
+    assert payload["filled"] == 1
+    assert payload["parents"][0]["parent"] == "UA-TC-1M-WH"
+
+
+def test_knowledge_page_is_served(client):
+    page = client.get("/knowledge")
+    assert page.status_code == 200
+    assert "Справочник товаров" in page.text
+    assert "knowledge-page.js" in page.text
+
+
+def test_tasks_page_links_to_the_knowledge_page(client):
+    assert 'href="/knowledge"' in client.get("/tasks").text

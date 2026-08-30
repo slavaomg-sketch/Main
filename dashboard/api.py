@@ -10,7 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Res
 from . import connections as conn
 from . import db
 from . import warehouse
-from . import agent, inbox, pipeline, tasks
+from . import agent, inbox, knowledge, pipeline, tasks
 from .aggregator import build_snapshot, cache, normalize_codes, normalize_stores
 from .blocks import BLOCK_CATALOG, default_layout, new_block
 from .config import settings
@@ -263,6 +263,34 @@ async def test_connection(connection_id: str) -> dict[str, Any]:
     }
 
 
+# --- справка о товарах ----------------------------------------------------------
+
+
+@guarded.get("/knowledge")
+async def read_knowledge() -> dict[str, Any]:
+    """Все известные родители. Незаполненные — первыми."""
+    found = await knowledge.all_parents()
+    return {
+        "parents": [item.to_dict() for item in found],
+        "filled": sum(1 for item in found if item.filled),
+        "total": len(found),
+    }
+
+
+@guarded.put("/knowledge/{parent}")
+async def save_knowledge(
+    parent: str, payload: dict[str, Any] = Body(default_factory=dict)
+) -> dict[str, Any]:
+    """Записать справку о товаре. Её пишет владелец — это надёжные данные."""
+    try:
+        saved = await knowledge.save(
+            parent, str(payload.get("title") or ""), str(payload.get("facts") or "")
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return saved.to_dict()
+
+
 # --- задачи по кабинету ---------------------------------------------------------
 
 
@@ -317,8 +345,12 @@ async def draft_inbox(payload: dict[str, Any] = Body(default_factory=dict)) -> d
             detail="Обращение не найдено — обновите входящие и попробуйте снова",
         )
 
+    # Справка о товаре даёт помощнику факты, которых нет в обращении.
+    # Без неё он честно зовёт человека — с ней отвечает сам.
+    facts = await knowledge.for_article(item.article)
+
     try:
-        written = await agent.draft(item.to_dict(), item.account_title, settings)
+        written = await agent.draft(item.to_dict(), item.account_title, settings, facts)
     except agent.AgentUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

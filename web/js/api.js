@@ -67,6 +67,11 @@
 
     inbox: function () { return request('GET', '/api/inbox'); },
     tasks: function () { return request('GET', '/api/tasks'); },
+    knowledge: function () { return request('GET', '/api/knowledge'); },
+    saveKnowledge: function (parent, title, facts) {
+      return request('PUT', '/api/knowledge/' + encodeURIComponent(parent),
+                     { title: title, facts: facts });
+    },
     task: function (accountId, key, offset) {
       return request('GET', '/api/tasks/' + encodeURIComponent(accountId) +
                      '/' + encodeURIComponent(key) + query({ offset: offset }));

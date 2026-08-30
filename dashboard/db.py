@@ -50,6 +50,16 @@ CREATE TABLE IF NOT EXISTS credentials (
     PRIMARY KEY (connection_id, field)
 );
 
+-- Справка о товарах: что мы знаем о каждом «родителе».
+-- Один физический товар продаётся тысячей карточек, а характеристики
+-- у него одни — держим их в одном месте (см. dashboard/knowledge.py).
+CREATE TABLE IF NOT EXISTS product_facts (
+    parent     TEXT PRIMARY KEY,
+    title      TEXT NOT NULL DEFAULT '',
+    facts      TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
+
 -- Выгрузка площадок: сырые строки, как их отдал маркетплейс.
 -- Отчёт за любой период считается уже отсюда, без обращения к площадке.
 CREATE TABLE IF NOT EXISTS marketplace_rows (

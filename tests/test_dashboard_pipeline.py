@@ -35,7 +35,7 @@ async def дождаться(batch: pipeline.Batch) -> None:
 async def test_пачка_разбирается_целиком(monkeypatch):
     ids = запомнить(5)
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         return agent.Draft(answer=f"Ответ на {item['id']}")
 
     monkeypatch.setattr(agent, "draft", пишет)
@@ -54,7 +54,7 @@ async def test_пачка_делит_на_типовые_и_требующие_�
     """Смысл конвейера — разложить на две стопки, а не написать всё подряд."""
     ids = запомнить(4)
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         трудный = item["id"] in {"i1", "i3"}
         return agent.Draft(
             answer="Разберёмся", needs_human=трудный,
@@ -75,7 +75,7 @@ async def test_пачка_делит_на_типовые_и_требующие_�
 async def test_сбой_одного_черновика_не_ломает_пачку(monkeypatch):
     ids = запомнить(3)
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         if item["id"] == "i1":
             raise agent.AgentUnavailable("мост не ответил")
         return agent.Draft(answer="Готово")
@@ -96,7 +96,7 @@ async def test_пачка_ограничена_сверху(monkeypatch):
     """Больше тридцати за раз владелец всё равно не просмотрит."""
     ids = запомнить(pipeline.MAX_BATCH + 15)
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         return agent.Draft(answer="Ответ")
 
     monkeypatch.setattr(agent, "draft", пишет)
@@ -111,7 +111,7 @@ async def test_повторный_запуск_возвращает_ту_же_п
     ids = запомнить(3)
     держим = asyncio.Event()
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         await держим.wait()
         return agent.Draft(answer="Ответ")
 
@@ -128,7 +128,7 @@ async def test_исчезнувшее_обращение_не_роняет_ра�
     ids = запомнить(2)
     ids.append("которого-нет")
 
-    async def пишет(item, title, config):
+    async def пишет(item, title, config, facts=""):
         return agent.Draft(answer="Ответ")
 
     monkeypatch.setattr(agent, "draft", пишет)

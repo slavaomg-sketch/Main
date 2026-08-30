@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from . import agent, inbox
+from . import agent, inbox, knowledge
 from .config import Settings, settings
 
 # Сколько черновиков просим одновременно. Мост на сервере разбирает их
@@ -117,8 +117,10 @@ async def _one(batch: Batch, item_id: str, config: Settings) -> None:
         batch.drafts[item_id] = Draft(item_id, error="обращение больше не найдено")
         return
 
+    facts = await knowledge.for_article(item.article)
+
     try:
-        written = await agent.draft(item.to_dict(), item.account_title, config)
+        written = await agent.draft(item.to_dict(), item.account_title, config, facts)
     except agent.AgentUnavailable as exc:
         batch.drafts[item_id] = Draft(item_id, error=str(exc))
         return

@@ -23,7 +23,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from . import connections, inbox
+from . import connections, inbox, knowledge
 from .config import Settings, settings
 from .connectors.inbox_base import QUESTION, InboxItem
 
@@ -172,6 +172,13 @@ async def load(
     # Кладём в общую память — по ней помощник пишет черновики. Чужие
     # обращения при этом не трогаются.
     inbox.remember(items)
+
+    # Заодно пополняем список родителей: справку по ним владелец заполнит
+    # на отдельной странице, и она поедет помощнику.
+    await knowledge.remember(
+        [item.article for item in items],
+        {knowledge.parent_of(item.article): item.product for item in items if item.product},
+    )
 
     return {
         "accountId": store.id,
