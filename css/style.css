@@ -398,3 +398,13 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 /* Отмотка: кнопка в шапке и отметка о прохождении начисто. */
 #btn-rewind.active { transform: translateY(1px); filter: brightness(1.35); }
 .lv .n .clean { font-style: normal; margin-left: .25em; color: #ffd76a; }
+
+/* Измеренная резкость уровня: число в углу кнопки. */
+.lv { position: relative; }
+.lv .d { position: absolute; right: .35em; bottom: .25em; font-size: .72em; font-weight: 700;
+  padding: 0 .35em; border-radius: .5em; line-height: 1.5; opacity: .9; }
+.lv .d.low  { background: #24402c; color: #8fdca6; }
+.lv .d.mid  { background: #3d3a1e; color: #e6d27a; }
+.lv .d.high { background: #45301c; color: #f0b070; }
+.lv .d.top  { background: #4a2222; color: #ff9a9a; }
+.sub.small { font-size: .82em; opacity: .72; margin-top: -.4em; }

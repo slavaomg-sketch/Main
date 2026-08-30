@@ -14,6 +14,8 @@ var path = require('path');
 
 var dir = path.join(__dirname, '..', 'levels');
 var plan = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'plan-100.json'), 'utf8'));
+var diffPath = path.join(__dirname, '..', 'levels', 'difficulty.json');
+var difficulty = fs.existsSync(diffPath) ? JSON.parse(fs.readFileSync(diffPath, 'utf8')) : {};
 var files = fs.readdirSync(dir).filter(function (f) { return /\.txt$/.test(f); }).sort();
 
 var levels = files.map(function (file) {
@@ -71,6 +73,11 @@ levels.forEach(function (lv, n) {
   out.push('      hint: ' + JSON.stringify(lv.hint) + ',');
   out.push('      needed: ' + lv.needed + ',');
   if (lv.gravity) out.push('      gravity: true,');
+  var d = difficulty[String(lv.id)];
+  if (d) {
+    out.push('      rating: ' + d.rating + ',');
+    out.push('      why: ' + JSON.stringify(d.why) + ',');
+  }
   out.push('      map: [');
   out.push(lv.map.map(function (r) { return '        ' + JSON.stringify(r); }).join(',\n'));
   out.push('      ]');

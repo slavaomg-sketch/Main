@@ -4,7 +4,7 @@
   "description": "Головоломка в духе Supaplex: браузерная игра без зависимостей и без сборки",
   "private": true,
   "scripts": {
-    "test": "node tools/verify.js && node tools/verify-history.js",
+    "test": "node tools/verify.js && node tools/verify-history.js && node tools/verify-difficulty.js",
     "levels": "node tools/build-levels.js",
     "play": "node tools/play.js",
     "serve": "http-server -p 8080 -c-1 .",

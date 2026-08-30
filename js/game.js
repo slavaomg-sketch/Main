@@ -131,6 +131,11 @@
     (SP.CHAPTERS || []).forEach(function (ch) {
       var mine = [];
       SP.LEVELS.forEach(function (lv, i) { if (lv.chapter === ch.n) mine.push({ lv: lv, i: i }); });
+      // Первые десять глав — выстроенная лесенка обучения, её порядок трогать нельзя.
+      // Дальше уровни лежали по дате постройки; там сортируем по измеренной резкости.
+      if (ch.n > PLAN_CHAPTERS) {
+        mine.sort(function (a, b) { return (a.lv.rating || 0) - (b.lv.rating || 0) || a.lv.id - b.lv.id; });
+      }
       var done = mine.filter(function (m) { return progress.done[m.lv.id]; }).length;
 
       var head = document.createElement('div');
@@ -151,9 +156,13 @@
         b.className = 'lv' + (progress.done[m.lv.id] ? ' done' : '');
         b.disabled = !progress.all && !isTrial(ch.n) && m.i + 1 > limit;
         var rec = progress.done[m.lv.id];
+        var r = m.lv.rating || 0;
+        var tier = r >= 9 ? 'top' : r >= 7 ? 'high' : r >= 4 ? 'mid' : 'low';
+        if (m.lv.why) b.title = 'Резкость ' + r + ' из 10: ' + m.lv.why;
         b.innerHTML = '<span class="n">№' + m.lv.id + (b.disabled ? ' 🔒' : '') +
             (rec && rec.clean ? '<i class="clean" title="Пройден без отмотки">★</i>' : '') + '</span>' +
-          '<span class="t">' + m.lv.name + '</span>';
+          '<span class="t">' + m.lv.name + '</span>' +
+          (r ? '<span class="d ' + tier + '">' + r + '</span>' : '');
         b.addEventListener('click', function () { startLevel(m.i); });
         row.appendChild(b);
       });
