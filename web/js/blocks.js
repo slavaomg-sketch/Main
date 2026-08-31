@@ -1047,21 +1047,25 @@
     }
   };
 
-  /* На каждой карточке подписан её период — иначе, глядя на цифру, нельзя
-     сказать, за что она: за неделю с сегодняшним неполным днём или без него.
-     У показателей рядом стоит и период сравнения: без него «−69%» непонятно —
-     то ли к полному дню, то ли к тому же часу. */
-  function subtitle(type, data) {
+  /* Период, за который посчитаны все числа на экране.
+
+     Раньше эта строка стояла на каждой карточке — и повторялась одиннадцать
+     раз подряд, слово в слово. Период у всех карточек один, поэтому сказать
+     его нужно один раз и заметно, а не шёпотом в каждой плитке. */
+  function periodLine(data) {
     var period = Fmt.periodLabel(data.period);
     if (data.period && data.period.until) {
       period += ' до ' + Fmt.timeLabel(data.period.until);
     }
+    var label = comparisonLabel(data);
+    return label ? period + '  ·  в сравнении с ' + label : period;
+  }
 
-    if (type.indexOf('kpi.') === 0) {
-      var label = comparisonLabel(data);
-      return label ? period + '  ·  в сравнении с ' + label : period;
-    }
-    return period;
+  /* Подпись самой карточки. Про период она больше не говорит: он общий и
+     написан над доской. Здесь остаётся только то, что относится к этой
+     цифре, — например, «после скидки площадки». */
+  function subtitle(type, data) {
+    return type.indexOf('kpi.') === 0 ? '' : Fmt.periodLabel(data.period);
   }
 
   global.Blocks = {
@@ -1075,6 +1079,7 @@
       renderer(body, ctx);
     },
     subtitle: subtitle,
+    periodLine: periodLine,
     icon: icon,
     has: function (type) { return Boolean(RENDERERS[type]); }
   };

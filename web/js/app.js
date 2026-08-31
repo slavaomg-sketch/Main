@@ -352,6 +352,12 @@
       return state.editing || !block.hidden;
     });
 
+    // Период — общий для всей доски, поэтому сказан один раз и над ней.
+    if (state.data && visible.length) {
+      var линия = Fmt.el('div', 'board__period', Blocks.periodLine(state.data));
+      board.appendChild(линия);
+    }
+
     if (!visible.length) {
       var empty = Fmt.el('div', 'board-empty');
       empty.appendChild(Fmt.el('h2', null, state.editing ? 'Пустая вкладка' : 'Здесь пока пусто'));

@@ -41,6 +41,8 @@
   };
 
   var host = null;
+  var gridHost = null;   // сетка плиток — перерисовывается без остальной страницы
+  var tallyHost = null;  // счётчик «сколько видно из скольких»
 
   // Номер текущего похода за оценками. Уходим с экрана — номер меняется,
   // и незаконченная дозагрузка сама прекращается.
@@ -75,24 +77,27 @@
     все.addEventListener('click', function () { switchStore(''); });
     row.appendChild(все);
 
-    // Кабинетов теперь несколько площадок. Пока площадка одна, подписывать
-    // её на каждой кнопке незачем — это лишний шум.
-    var площадок = {};
-    shops.forEach(function (shop) { площадок[shop.marketplace || ''] = true; });
-    var подписывать = Object.keys(площадок).length > 1;
-
+    // Площадку показывает цветная точка — тем же цветом, что и на странице
+    // показателей. Слово «Wildberries» перед каждым именем только мешало бы
+    // читать сами имена.
     shops.forEach(function (shop) {
       var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
       chip.type = 'button';
-      if (подписывать && shop.marketplaceTitle) {
-        chip.appendChild(Fmt.el('span', 'chip__where', shop.marketplaceTitle));
-      }
+      chip.title = (shop.marketplaceTitle || '') + ' · ' + shop.title;
+      var dot = Fmt.el('span', 'chip__dot');
+      if (shop.marketplace) dot.style.setProperty('--dot', 'var(--' + code(shop.marketplace) + ')');
+      chip.appendChild(dot);
       chip.appendChild(Fmt.el('span', null, shop.title));
-      chip.appendChild(Fmt.el('span', 'inbox__count', String(shop.parents)));
+      chip.appendChild(Fmt.el('span', 'chip__count', Fmt.number(shop.parents)));
       chip.addEventListener('click', function () { switchStore(shop.id); });
       row.appendChild(chip);
     });
     return row;
+  }
+
+  // Названия переменных цвета совпадают с кодами площадок, кроме Яндекса.
+  function code(marketplace) {
+    return marketplace === 'wildberries' ? 'wb' : marketplace;
   }
 
   function switchStore(id) {
@@ -293,7 +298,14 @@
   function parentTile(item) {
     var tile = Fmt.el('button', 'ptile');
     tile.type = 'button';
-    tile.appendChild(photo(item.photo, 'ptile__shot'));
+
+    var shot = photo(item.photo, 'ptile__shot');
+    // Метка на снимке — то, ради чего владелец сюда и смотрит: где непорядок.
+    if (item.withoutPhoto) {
+      shot.appendChild(Fmt.el('span', 'ptile__flag',
+        item.withoutPhoto + ' без фото'));
+    }
+    tile.appendChild(shot);
 
     var body = Fmt.el('div', 'ptile__body');
     body.appendChild(Fmt.el('div', 'ptile__name', item.title || item.sample || item.parent));
@@ -301,12 +313,14 @@
 
     var marks = Fmt.el('div', 'ptile__marks');
     marks.appendChild(Fmt.el('span', 'ptile__count',
-      item.cards + ' ' + Fmt.plural(item.cards, ['карточка', 'карточки', 'карточек'])));
-    if (item.withoutPhoto) {
-      marks.appendChild(Fmt.el('span', 'ptile__warn', 'без фото: ' + item.withoutPhoto));
-    }
+      Fmt.number(item.cards) + ' ' +
+      Fmt.plural(item.cards, ['карточка', 'карточки', 'карточек'])));
     if (item.noted) {
-      marks.appendChild(Fmt.el('span', 'ptile__note', 'правок: ' + item.noted));
+      marks.appendChild(Fmt.el('span', 'ptile__note',
+        Fmt.number(item.noted) + ' ' + Fmt.plural(item.noted, ['правка', 'правки', 'правок'])));
+    }
+    if (!item.described) {
+      marks.appendChild(Fmt.el('span', 'ptile__undescribed', 'нет справки'));
     }
     body.appendChild(marks);
 
@@ -367,28 +381,57 @@
   }
 
   function parentsLevel() {
-    host.appendChild(refreshBar());
-
+    // Порядок сверху вниз: чьи товары → что ищем → сами товары.
+    // Ровно три ступени, каждая в одну строку.
     var shops = storeRow();
     if (shops) host.appendChild(shops);
 
-    var bar = Fmt.el('div', 'know__bar');
-    bar.appendChild(Fmt.el('span', 'know__tally',
-      'Товаров: ' + state.total + ' · карточек: ' + Fmt.number(state.cards)));
+    host.appendChild(toolbar());
+
+    var сбор = refreshBar();
+    if (сбор) host.appendChild(сбор);
+
+    gridHost = Fmt.el('div', 'products__grid');
+    host.appendChild(gridHost);
+    renderGrid();
+  }
+
+  function toolbar() {
+    var bar = Fmt.el('div', 'toolbar');
 
     var search = document.createElement('input');
-    search.className = 'know__search';
+    search.className = 'toolbar__search';
     search.type = 'search';
-    search.placeholder = 'Поиск по коду или названию';
+    search.placeholder = 'Поиск по названию или коду';
     search.value = state.search;
     search.addEventListener('input', function () {
       state.search = search.value;
       renderGrid();
+      updateTally();
     });
     bar.appendChild(search);
 
-    var trouble = Fmt.el('button', 'chip' + (state.onlyTrouble ? ' is-active' : ''));
+    var полки = categories();
+    if (полки.length > 1) {
+      bar.appendChild(Menu.picker({
+        empty: 'Все категории',
+        value: state.category,
+        items: [{ key: '', title: 'Все категории', count: state.parents.length }]
+          .concat(полки.map(function (item) {
+            return { key: item.name, title: item.name, count: item.parents };
+          })),
+        onPick: function (key) {
+          state.category = key;
+          render();
+        }
+      }));
+    }
+
+    // Отдельная кнопка, а не такая же плитка, как у категорий: это не полка,
+    // а взгляд на те же товары под другим углом.
+    var trouble = Fmt.el('button', 'toolbar__toggle' + (state.onlyTrouble ? ' is-active' : ''));
     trouble.type = 'button';
+    trouble.appendChild(Fmt.el('span', 'toolbar__dot'));
     trouble.appendChild(Fmt.el('span', null, 'Требуют внимания'));
     trouble.addEventListener('click', function () {
       state.onlyTrouble = !state.onlyTrouble;
@@ -396,15 +439,32 @@
     });
     bar.appendChild(trouble);
 
-    host.appendChild(bar);
-    var shelves = categoryRow();
-    if (shelves) host.appendChild(shelves);
-    gridHost = Fmt.el('div', 'products__grid');
-    host.appendChild(gridHost);
-    renderGrid();
+    tallyHost = Fmt.el('span', 'toolbar__tally');
+    bar.appendChild(tallyHost);
+    updateTally();
+
+    // Пересборка каталога — работа редкая, поэтому кнопка скромная и стоит
+    // с краю. Но она всегда на месте: искать её по другим страницам не нужно.
+    var собрать = Fmt.el('button', 'toolbar__quiet');
+    собрать.type = 'button';
+    собрать.title = 'Прочитать карточки всех кабинетов заново';
+    собрать.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+    собрать.addEventListener('click', startRefresh);
+    bar.appendChild(собрать);
+
+    return bar;
   }
 
-  var gridHost = null;
+  function updateTally() {
+    if (!tallyHost) return;
+    var видно = shownParents().length;
+    var всего = state.parents.length;
+    Fmt.clear(tallyHost);
+    tallyHost.appendChild(Fmt.el('strong', null, Fmt.number(видно)));
+    tallyHost.appendChild(document.createTextNode(
+      ' ' + Fmt.plural(видно, ['товар', 'товара', 'товаров']) +
+      (видно === всего ? '' : ' из ' + Fmt.number(всего))));
+  }
 
   function renderGrid() {
     if (!gridHost) return;
@@ -412,7 +472,7 @@
     var items = shownParents();
     if (!items.length) {
       gridHost.appendChild(Fmt.el('p', 'inbox__loading',
-        state.total ? 'Ничего не нашлось.'
+        state.total ? 'Ничего не нашлось. Попробуйте другой запрос или снимите фильтры.'
                     : 'Каталог пуст. Нажмите «Собрать из кабинетов» — панель прочитает '
                       + 'карточки всех ваших кабинетов.'));
       return;
@@ -467,6 +527,13 @@
 
   function refreshBar() {
     var run = state.refresh;
+    var беды = state.troubles || {};
+    var список = Object.keys(беды);
+
+    // Пока сбор не идёт и никто не жаловался, полосе тут делать нечего:
+    // кнопка «Собрать из кабинетов» и так стоит в панели над списком.
+    if (!run && !список.length && state.total) return null;
+
     var bar = Fmt.el('div', 'know__refresh');
 
     if (run && run.running) {
@@ -477,21 +544,21 @@
       return bar;
     }
 
-    bar.appendChild(Fmt.el('span', 'know__progress',
-      state.total
-        ? 'Добавили кабинет или новые товары — соберите каталог заново.'
-        : 'Список пуст. Соберите товары из карточек ваших кабинетов.'));
+    if (!state.total) {
+      bar.appendChild(Fmt.el('span', 'know__progress',
+        'Каталог пуст. Соберите товары из карточек ваших кабинетов.'));
+      var кнопка = Fmt.el('button', 'btn btn--primary');
+      кнопка.type = 'button';
+      кнопка.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+      кнопка.addEventListener('click', startRefresh);
+      bar.appendChild(кнопка);
+    } else {
+      bar.appendChild(Fmt.el('span', 'know__progress', 'Последний сбор прошёл не до конца:'));
+    }
 
-    var кнопка = Fmt.el('button', 'btn ' + (state.total ? 'btn--ghost' : 'btn--primary'));
-    кнопка.type = 'button';
-    кнопка.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
-    кнопка.addEventListener('click', startRefresh);
-    bar.appendChild(кнопка);
-
-    // Кабинет, который не ответил, должен остаться на виду: иначе непонятно,
+    // Кабинет, который не ответил, остаётся на виду: иначе непонятно,
     // почему его товаров нет. Причина написана словами.
-    var беды = state.troubles || {};
-    Object.keys(беды).forEach(function (кабинет) {
+    список.forEach(function (кабинет) {
       bar.appendChild(Fmt.el('span', 'know__trouble', кабинет + ' — ' + беды[кабинет]));
     });
     return bar;

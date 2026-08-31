@@ -400,14 +400,100 @@ html[data-theme="auto"] .icon-moon { display: none; }
 .chip.is-active .chip__dot { transform: scale(1.25); }
 .chip:not(.is-active) .chip__dot { opacity: 0.35; }
 
-/* Кабинетов стало несколько площадок: подпись площадки идёт перед именем
-   кабинета мелко и бледно, чтобы имя оставалось главным. */
-.chip__where {
+/* Счётчик рядом с именем кабинета — справка, а не тревога. Красный кружок
+   приберегаем для входящих, где число действительно требует действия. */
+.chip__count {
+  margin-left: 3px;
+  padding: 0 6px;
+  border-radius: var(--pill);
+  background: var(--bg);
+  color: var(--text-tertiary);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-tertiary, var(--text-secondary));
-  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+.chip.is-active .chip__count { color: var(--text-secondary); }
+
+
+/* ---------------------------------------------------------------------------
+   Переключатель разделов. Одно место на всех страницах: где вы сейчас —
+   написано, куда можно уйти — в списке. Ведёт себя как меню в строке заголовка
+   у Mac: нажали, выбрали, оно закрылось.
+   --------------------------------------------------------------------------- */
+
+.navpick { position: relative; }
+
+.navpick__button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s var(--ease-out);
+}
+.navpick__button:hover { background: var(--surface-hover); }
+.navpick__button[aria-expanded="true"] { background: var(--surface-hover); }
+
+.navpick__now { display: flex; flex-direction: column; line-height: 1.2; }
+.navpick__title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+.navpick__sub { font-size: 11px; color: var(--text-tertiary); }
+
+.navpick__chevron {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.24s var(--ease-spring);
+}
+.navpick__button[aria-expanded="true"] .navpick__chevron { transform: rotate(180deg); }
+
+.navpick__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  min-width: 268px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+  animation: navpick-in 0.2s var(--ease-out);
+}
+
+@keyframes navpick-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.navpick__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.16s var(--ease-out);
+}
+.navpick__item:hover { background: var(--surface-hover); }
+.navpick__item.is-current { background: var(--accent-soft); }
+
+.navpick__itemtext { display: flex; flex-direction: column; line-height: 1.25; margin-right: auto; }
+.navpick__itemtitle { font-size: 14px; font-weight: 550; }
+.navpick__itemsub { font-size: 11.5px; color: var(--text-tertiary); }
+.navpick__tick { color: var(--accent); font-weight: 700; }
+
+@media (max-width: 720px) {
+  .navpick__sub { display: none; }
+  .navpick__menu { min-width: 220px; }
 }
 
 /* Магазины — отдельная группа фильтров, отделена от площадок тонкой чертой. */
@@ -510,6 +596,14 @@ html[data-theme="auto"] .icon-moon { display: none; }
 
 @media (max-width: 900px) {
   .notice-strip { padding: 14px 18px 0; }
+}
+
+/* Строка периода занимает всю ширину доски и стоит над карточками. */
+.board__period {
+  grid-column: 1 / -1;
+  margin: -4px 0 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .board {
@@ -1416,21 +1510,27 @@ html[data-theme="auto"] .icon-moon { display: none; }
   backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--line);
 }
+/* Ширина полосы содержимого. Раньше было 900 пикселей на всё подряд: для
+   текста в самый раз, а для сетки из тысяч карточек — половина экрана впустую.
+   Теперь полоса широкая, а текстовые блоки сами держат себя в узде. */
 .page__inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  max-width: 900px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 14px 22px;
 }
 .page__body {
-  max-width: 900px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 22px 22px 60px;
 }
+
+/* Читать длинные строки тяжело, поэтому текстовые списки держат свою ширину. */
+.page__body--reading { max-width: 980px; }
 
 @media (max-width: 640px) {
   .page__inner, .page__body { padding-left: 14px; padding-right: 14px; }
@@ -1560,13 +1660,338 @@ a.btn--ghost { color: var(--text); }
   color: var(--text-tertiary);
 }
 
+
+/* ---------------------------------------------------------------------------
+   Панель над списком: поиск, категория, взгляд «требуют внимания», счётчик.
+   Одна строка вместо четырёх: раньше фильтры съедали первый экран целиком и
+   товаров не было видно вовсе.
+   --------------------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+
+.toolbar__search {
+  flex: 0 1 340px;
+  min-width: 200px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--surface-solid);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.toolbar__search::placeholder { color: var(--text-tertiary); }
+.toolbar__search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.toolbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.22s var(--ease-out);
+}
+.toolbar__toggle:hover { border-color: var(--line-strong); color: var(--text); }
+.toolbar__toggle.is-active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--warning) 16%, var(--surface-solid));
+  color: var(--warning);
+}
+.toolbar__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  opacity: 0.55;
+}
+.toolbar__toggle.is-active .toolbar__dot { opacity: 1; }
+
+.toolbar__tally { margin-left: auto; font-size: 13px; color: var(--text-secondary); }
+.toolbar__tally strong { color: var(--text); font-weight: 600; }
+
+.toolbar__quiet {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.toolbar__quiet:hover { color: var(--text); background: var(--surface-hover); }
+
+/* Выпадающий выбор ---------------------------------------------------------- */
+
+.picker { position: relative; }
+
+.picker__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.22s var(--ease-out);
+}
+.picker__button:hover { border-color: var(--line-strong); color: var(--text); }
+.picker__button.is-set { color: var(--text); border-color: var(--line-strong); }
+.picker__count {
+  padding: 1px 7px;
+  border-radius: var(--pill);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.picker__chevron {
+  width: 15px; height: 15px;
+  fill: none; stroke: var(--text-tertiary);
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.picker__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 55;
+  width: 300px;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-lg);
+  animation: navpick-in 0.2s var(--ease-out);
+}
+
+.picker__search {
+  width: 100%;
+  height: 32px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.picker__search:focus { outline: none; border-color: var(--accent); }
+
+.picker__list { max-height: 340px; overflow-y: auto; }
+
+.picker__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s var(--ease-out);
+}
+.picker__item:hover { background: var(--surface-hover); }
+.picker__item.is-current { background: var(--accent-soft); color: var(--accent); font-weight: 550; }
+.picker__itemtitle { margin-right: auto; }
+.picker__itemcount { font-size: 11.5px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.picker__item.is-current .picker__itemcount { color: var(--accent); }
+
+
+/* Путь до задачи: площадка › кабинет › задача — одной строкой. */
+.path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.path__sep { color: var(--text-tertiary); font-size: 16px; }
+
+/* ---------------------------------------------------------------------------
+   Справочник: очередь, а не стена форм. Строка на товар, открыта одна.
+   --------------------------------------------------------------------------- */
+
+.progress {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+}
+.progress__head { display: flex; align-items: baseline; gap: 8px; }
+.progress__count {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.progress__label { font-size: 13px; color: var(--text-secondary); }
+
+.progress__track {
+  margin: 12px 0 10px;
+  height: 6px;
+  border-radius: var(--pill);
+  background: var(--bg);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  border-radius: var(--pill);
+  background: var(--accent);
+  transition: width 0.5s var(--ease-spring);
+}
+.progress__hint { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-tertiary); }
+
+.know__list { display: flex; flex-direction: column; gap: 8px; }
+
+.know-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  overflow: hidden;
+  transition: box-shadow 0.24s var(--ease-out), border-color 0.24s var(--ease-out);
+}
+.know-row.is-open { border-color: var(--line-strong); box-shadow: var(--shadow-md); }
+
+.know-row__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s var(--ease-out);
+}
+.know-row__head:hover { background: var(--surface-hover); }
+
+.know-row__shot {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  overflow: hidden;
+}
+.know-row__shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.know-row__text { min-width: 0; margin-right: auto; }
+.know-row__name {
+  font-size: 14px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Имя с площадки — подсказка, а не название: показываем его бледнее. */
+.know-row__name.is-empty { color: var(--text-tertiary); font-weight: 400; }
+
+.know-row__meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.know-row__code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.know-row__state {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: var(--pill);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.know-row__state.is-filled {
+  background: color-mix(in srgb, var(--positive) 14%, transparent);
+  color: var(--positive);
+}
+
+.know-row__editor {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
+  animation: row-open 0.26s var(--ease-out);
+}
+@keyframes row-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.know-row__sample { margin: 10px 0 8px; font-size: 12px; color: var(--text-tertiary); }
+
+.know-row__title,
+.know-row__facts {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.know-row__facts { margin-top: 8px; resize: vertical; }
+.know-row__title:focus,
+.know-row__facts:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.know-row__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.know-row__hint { margin-right: auto; font-size: 12px; color: var(--text-tertiary); }
+.know-row__foot .btn { height: 34px; font-size: 13px; }
+
 /* ===========================================================================
    Товары: каталог и карточки
    =========================================================================== */
 
 .products__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  /* Плитка уже: на широком экране помещается шесть в ряд вместо четырёх.
+     Товаров сотни — чем больше видно за раз, тем меньше прокрутки. */
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 14px;
 }
 
@@ -1624,9 +2049,27 @@ a.btn--ghost { color: var(--text); }
   font-size: 11px;
   color: var(--text-secondary);
 }
-.ptile__count { font-weight: 600; color: var(--accent); }
-.ptile__warn, .ctile__noted { color: var(--warning); font-weight: 600; }
+/* Число карточек — справка, а не заголовок: раньше оно было синим и кричало
+   громче названия товара. Кричать должно только то, что требует работы. */
+.ptile__count { color: var(--text-secondary); }
 .ptile__note { color: var(--text-tertiary); }
+.ptile__undescribed { color: var(--text-tertiary); }
+.ctile__noted { color: var(--warning); font-weight: 600; }
+
+/* Метка прямо на снимке: владелец смотрит на картинки, а не читает подписи. */
+.ptile__flag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: var(--pill);
+  background: color-mix(in srgb, var(--warning) 88%, transparent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-sm);
+}
 
 .products__back { margin-bottom: 12px; height: 32px; font-size: 13px; }
 .products__back svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; }

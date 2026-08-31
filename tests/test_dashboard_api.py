@@ -703,8 +703,11 @@ def test_assets_are_revalidated_by_the_browser(client):
         assert "no-cache" in answer.headers.get("cache-control", "")
 
 
-def test_main_page_links_to_the_tasks_page(client):
-    assert 'href="/tasks"' in client.get("/").text
+def test_каждая_страница_умеет_попасть_в_любой_раздел(client):
+    """Переходы больше не самодельные на каждой странице: везде один и тот же
+    переключатель разделов. Проверяем, что он подключён всюду."""
+    for путь in ("/", "/tasks", "/products", "/knowledge"):
+        assert "nav.js" in client.get(путь).text, путь
 
 
 # --- справочник товаров ---------------------------------------------------------
@@ -736,8 +739,10 @@ def test_knowledge_page_is_served(client):
     assert "knowledge-page.js" in page.text
 
 
-def test_tasks_page_links_to_the_knowledge_page(client):
-    assert 'href="/knowledge"' in client.get("/tasks").text
+def test_переключатель_знает_все_четыре_раздела(client):
+    страница = client.get("/assets/js/nav.js").text
+    for путь in ("'/'", "'/tasks'", "'/products'", "'/knowledge'"):
+        assert "path: " + путь in страница, путь
 
 
 # --- товары ---------------------------------------------------------------------
@@ -748,9 +753,8 @@ def test_products_page_is_served(client):
     page = client.get("/products")
     assert page.status_code == 200
     assert "products-page.js" in page.text
-    # И между разделами есть переходы в обе стороны.
-    assert 'href="/knowledge"' in page.text
-    assert 'href="/products"' in client.get("/knowledge").text
+    # Справочник — отдельная страница со своим скриптом.
+    assert "knowledge-page.js" in client.get("/knowledge").text
 
 
 def test_products_start_empty(client):

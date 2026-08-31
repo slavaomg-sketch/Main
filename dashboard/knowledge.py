@@ -57,6 +57,9 @@ class Facts:
     updated_at: str = ""
     cards: int = 0
     sample: str = ""
+    # Главное изображение любой из карточек товара. Назвать своими словами
+    # товар, которого не видишь, нельзя — а именно это справочник и просит.
+    photo: str = ""
 
     @property
     def filled(self) -> bool:
@@ -71,6 +74,7 @@ class Facts:
             "named": bool(self.title.strip()),
             "cards": self.cards,
             "sample": self.sample,
+            "photo": self.photo,
             "updatedAt": self.updated_at,
         }
 
@@ -184,18 +188,21 @@ async def all_parents(account_id: str = "") -> list[Facts]:
     значения: list[str] = []
     if account_id:
         условие = """
-             WHERE parent IN (SELECT DISTINCT parent FROM product_cards
-                               WHERE connection_id = ? AND parent <> '')
+             WHERE f.parent IN (SELECT DISTINCT parent FROM product_cards
+                                 WHERE connection_id = ? AND parent <> '')
         """
         значения = [account_id]
 
     async with db.connect() as connection:
         cursor = await connection.execute(
             f"""
-            SELECT parent, title, facts, updated_at, cards, sample FROM product_facts
+            SELECT f.parent, f.title, f.facts, f.updated_at, f.cards, f.sample,
+                   (SELECT MAX(c.photo) FROM product_cards c
+                     WHERE c.parent = f.parent AND c.photo <> '') AS photo
+              FROM product_facts f
             {условие}
-            ORDER BY CASE WHEN TRIM(title) = '' THEN 0 ELSE 1 END,
-                     cards DESC, parent
+            ORDER BY CASE WHEN TRIM(f.title) = '' THEN 0 ELSE 1 END,
+                     f.cards DESC, f.parent
             """,
             значения,
         )
@@ -205,6 +212,7 @@ async def all_parents(account_id: str = "") -> list[Facts]:
             parent=row["parent"], title=row["title"] or "",
             facts=row["facts"] or "", updated_at=row["updated_at"] or "",
             cards=int(row["cards"] or 0), sample=row["sample"] or "",
+            photo=row["photo"] or "",
         )
         for row in rows
     ]

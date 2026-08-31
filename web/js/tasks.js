@@ -133,61 +133,59 @@
 
   /* --- ряды навигации ------------------------------------------------------- */
 
-  function chip(title, active, onPick, dot) {
-    var node = Fmt.el('button', 'chip' + (active ? ' is-active' : ''));
-    node.type = 'button';
-    if (dot) {
-      var mark = Fmt.el('span', 'chip__dot');
-      mark.style.background = dot;
-      node.appendChild(mark);
-    }
-    node.appendChild(Fmt.el('span', null, title));
-    node.addEventListener('click', onPick);
-    return node;
-  }
+  /* Путь до задачи: площадка → кабинет → задача. Раньше это были три ряда
+     плиток один под другим — три строки экрана на выбор, который делают раз
+     в день. Теперь это одна строка, читается слева направо, как дорога. */
+  function path() {
+    var row = Fmt.el('div', 'path');
+    var place = currentPlace();
+    var store = currentStore();
+    var task = currentTask();
 
-  function placeRow() {
-    var row = Fmt.el('div', 'chips inbox__row');
-    var picked = currentPlace();
-    places().forEach(function (place) {
-      row.appendChild(chip(place.title, picked && place.code === picked.code, function () {
-        state.place = place.code;
+    row.appendChild(Menu.picker({
+      value: place ? place.code : '',
+      items: places().map(function (item) {
+        return { key: item.code, title: item.title };
+      }),
+      onPick: function (key) {
+        state.place = key;
         state.store = '';
         state.task = '';
         loadWork();
-      }, Fmt.colorOf(place.code)));
-    });
-    return row;
-  }
+      }
+    }));
 
-  function storeRow() {
-    var place = currentPlace();
     var shops = (place && place.stores) || [];
-    // Кабинеты показываем всегда, даже если он один: «Задачи» — это про
-    // конкретный кабинет, и владелец должен видеть, в чьём он находится.
-    var row = Fmt.el('div', 'chips chips--stores inbox__row');
-    var picked = currentStore();
-    shops.forEach(function (shop) {
-      row.appendChild(chip(shop.title, picked && shop.id === picked.id, function () {
-        state.store = shop.id;
-        state.task = '';
-        loadWork();
+    if (shops.length) {
+      row.appendChild(Fmt.el('span', 'path__sep', '›'));
+      row.appendChild(Menu.picker({
+        value: store ? store.id : '',
+        items: shops.map(function (shop) {
+          return { key: shop.id, title: shop.title };
+        }),
+        onPick: function (key) {
+          state.store = key;
+          state.task = '';
+          loadWork();
+        }
       }));
-    });
-    return row;
-  }
+    }
 
-  function taskRow() {
-    var store = currentStore();
-    if (!store) return null;
-    var row = Fmt.el('div', 'chips inbox__row inbox__chapters');
-    var picked = currentTask();
-    (store.tasks || []).forEach(function (task) {
-      row.appendChild(chip(task.title, picked && task.key === picked.key, function () {
-        state.task = task.key;
-        loadWork();
+    var tasks = (store && store.tasks) || [];
+    if (tasks.length) {
+      row.appendChild(Fmt.el('span', 'path__sep', '›'));
+      row.appendChild(Menu.picker({
+        value: task ? task.key : '',
+        items: tasks.map(function (item) {
+          return { key: item.key, title: item.title };
+        }),
+        onPick: function (key) {
+          state.task = key;
+          loadWork();
+        }
       }));
-    });
+    }
+
     return row;
   }
 
@@ -241,10 +239,7 @@
       return;
     }
 
-    host.appendChild(placeRow());
-    host.appendChild(storeRow());
-    var row = taskRow();
-    if (row) host.appendChild(row);
+    host.appendChild(path());
 
     var place = currentPlace();
     var store = currentStore();

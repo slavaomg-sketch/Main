@@ -163,3 +163,19 @@ async def test_имена_площадки_убираются_из_поля_вл
     # А то, что владелец описал сам, уборка не трогает.
     моё = await knowledge.get("МОЁ-ИМЯ")
     assert моё.title == "Кабель, как я его называю"
+
+
+async def test_справочник_показывает_фотографию_товара(база):
+    """Назвать своими словами товар, которого не видишь, нельзя — а именно
+    это справочник и просит. Значит, фотография должна быть рядом."""
+    from dashboard import products
+    from dashboard.connectors.wb_catalogue import Card
+
+    await products.save_cards("кабинет", [
+        Card(article="CAB-(UA-TC-1M-WH)-SAMSUNG", name="Кабель", nm_id="1",
+             brand="UA", subject="Кабели", photos=("https://wb/hero.jpg",)),
+    ])
+
+    товар = (await knowledge.all_parents())[0]
+    assert товар.photo == "https://wb/hero.jpg"
+    assert товар.to_dict()["photo"] == "https://wb/hero.jpg"
