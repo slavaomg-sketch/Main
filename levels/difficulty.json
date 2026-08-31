@@ -132,5 +132,8 @@
  "142": {"ticks":26,"moves":26,"waits":0,"detour":5.2,"lethal":0,"width":2.08,"parkings":5,"greedy":false,"why":"ходов на такте почти нет, одна клавиша на двоих, с разведением героев","rating":5},
  "143": {"ticks":32,"moves":32,"waits":0,"detour":4,"lethal":0.009,"width":3.59,"parkings":18,"greedy":false,"why":"одна клавиша на двоих, почти каждый такт разводит героев","rating":6},
  "144": {"ticks":22,"moves":21,"waits":1,"detour":1.29,"lethal":0,"width":4.95,"parkings":15,"greedy":false,"why":"одна клавиша на двоих, почти каждый такт разводит героев","rating":5},
- "145": {"ticks":20,"moves":19,"waits":1,"detour":1.43,"lethal":0.569,"width":3.45,"parkings":5,"greedy":false,"why":"гибель на каждом шагу, одна клавиша на двоих, с разведением героев","rating":8}
+ "145": {"ticks":20,"moves":19,"waits":1,"detour":1.43,"lethal":0.569,"width":3.45,"parkings":5,"greedy":false,"why":"гибель на каждом шагу, одна клавиша на двоих, с разведением героев","rating":8},
+ "146": {"ticks":21,"moves":21,"waits":0,"detour":2.33,"lethal":0.329,"width":2.33,"parkings":9,"greedy":false,"why":"гибель на каждом шагу, ходов на такте почти нет, одна клавиша на двоих, с разведением героев","rating":9},
+ "147": {"ticks":40,"moves":37,"waits":0,"detour":5,"lethal":0,"width":3.02,"parkings":15,"greedy":false,"why":"одна клавиша на двоих, почти каждый такт разводит героев","rating":6},
+ "148": {"ticks":29,"moves":16,"waits":13,"detour":2.07,"lethal":0.857,"width":0.45,"parkings":4,"greedy":false,"why":"гибель на каждом шагу, ходов на такте почти нет, одна клавиша на двоих, с разведением героев","rating":10}
 }

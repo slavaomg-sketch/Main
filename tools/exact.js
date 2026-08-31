@@ -17,6 +17,7 @@
  *
  *   node tools/exact.js 142            кратчайшее решение и тупики
  *   node tools/exact.js 142 --plain    только решение, без дорогой резкости
+ *   node tools/exact.js 142 --gentle   решение с наименьшим числом смен направления
  *   node tools/exact.js --file карта.txt
  */
 var fs = require('fs');
@@ -94,6 +95,75 @@ function solveFrom(state, opts) {
 
 function solve(level, opts) { return solveFrom(new Engine(level), opts); }
 
+/*
+ * Кратчайшее решение — не то же самое, что исполнимое. Такт длится 135 мс, и
+ * если план меняет направление каждый такт, человеку надо попадать в долю
+ * секунды двадцать раз подряд. Поэтому ищем ещё и «мягкое» решение: то же
+ * самое, но с наименьшим числом смен направления. Это Дейкстра с ценой 1 за
+ * смену и 0 за продолжение того же хода — длина уходит на второй план.
+ *
+ * Если мягкое решение не длиннее кратчайшего вдвое, а смен в нём вдвое меньше,
+ * в эталон стоит писать именно его: уровень тот же, а попасть по нему можно
+ * пальцем, а не по секундомеру.
+ */
+function solveGentle(level, opts) {
+  opts = opts || {};
+  var cap = opts.nodes || 400000, maxLen = opts.depth || 200;
+  var until = Date.now() + (opts.ms || 30000);
+  var start = new Engine(level);
+  var key = keyFor(start);
+  // Состояние поиска — (мир, каким ходом в него пришли): цена зависит от того,
+  // придётся ли менять направление на следующем шаге.
+  var best = Object.create(null);
+  var nodes = [{ e: start, from: -1, act: -1, cost: 0, depth: 0 }];
+  // Дейкстра на маленьких целых ценах — два ведра: 0 и 1.
+  var bucket = [[0]], cur = 0, seenNodes = 1;
+  best[key(start) + '|-1'] = 0;
+  while (cur < bucket.length) {
+    var list = bucket[cur] || [];
+    for (var qi = 0; qi < list.length; qi++) {
+      if (seenNodes >= cap) return { ok: false, exhausted: false, seen: seenNodes };
+      if ((qi & 255) === 0 && Date.now() > until) return { ok: false, exhausted: false, seen: seenNodes };
+      var id = list[qi], node = nodes[id];
+      if (node.cost !== cur) continue;                 // устаревшая запись
+      if (node.depth >= maxLen) continue;
+      for (var a = 0; a < ACTS.length; a++) {
+        var n = node.e.clone();
+        var st = n.step(ACTS[a]);
+        if (st === 'dying' || st === 'dead') continue;
+        var add = (a === node.act) ? 0 : 1;
+        var cost = node.cost + add;
+        if (st === 'won') {
+          var out = [LET[a]], q = node;
+          while (q.from >= 0) { out.push(LET[q.act]); q = nodes[q.from]; }
+          out.reverse();
+          return { ok: true, moves: out.join(''), len: out.length, changes: cost, seen: seenNodes };
+        }
+        var k = key(n) + '|' + a;
+        if (best[k] !== undefined && best[k] <= cost) continue;
+        best[k] = cost;
+        nodes.push({ e: n, from: id, act: a, cost: cost, depth: node.depth + 1 });
+        seenNodes++;
+        while (bucket.length <= cost) bucket.push([]);
+        bucket[cost].push(nodes.length - 1);
+      }
+    }
+    cur++;
+  }
+  return { ok: false, exhausted: true, seen: seenNodes };
+}
+
+/** Сколько раз в плане меняется направление: столько раз надо попасть в такт. */
+function changes(moves) {
+  var n = 0, prev = null;
+  for (var i = 0; i < moves.length; i++) {
+    if (LET.indexOf(moves[i]) < 0) continue;
+    if (moves[i] !== prev) n++;
+    prev = moves[i];
+  }
+  return n;
+}
+
 function parseMoves(str) {
   return str.split('').filter(function (c) { return LET.indexOf(c) >= 0; })
             .map(function (c) { return ACTS[LET.indexOf(c)]; });
@@ -139,8 +209,8 @@ function deadEnds(level, moves, opts) {
   return { dead: dead, stuck: stuck, unknown: unknown, all: all };
 }
 
-module.exports = { solve: solve, solveFrom: solveFrom, deadEnds: deadEnds,
-                   parking: parking, parseMoves: parseMoves, ACTS: ACTS, LET: LET };
+module.exports = { solve: solve, solveFrom: solveFrom, solveGentle: solveGentle, changes: changes,
+                   deadEnds: deadEnds, parking: parking, parseMoves: parseMoves, ACTS: ACTS, LET: LET };
 
 /* ---------- запуск из командной строки ---------- */
 if (require.main === module) {
@@ -183,7 +253,14 @@ if (require.main === module) {
         'Скорее всего слишком много грунта — каждая выеденная клетка удваивает счёт.');
     process.exit(r.exhausted ? 1 : 3);
   }
-  console.log('кратчайшее: ' + r.len + ' тактов за ' + ((Date.now() - t0) / 1000).toFixed(1) + ' с  ' + r.moves);
+  console.log('кратчайшее: ' + r.len + ' тактов, смен направления ' + changes(r.moves) +
+              ', за ' + ((Date.now() - t0) / 1000).toFixed(1) + ' с  ' + r.moves);
+  if (args.indexOf('--gentle') >= 0) {
+    var g = solveGentle(level, { depth: 200, nodes: 400000, ms: 60000 });
+    console.log(g.ok
+      ? 'мягкое:     ' + g.len + ' тактов, смен направления ' + g.changes + '  ' + g.moves
+      : 'мягкое:     не нашлось (' + g.seen + ')');
+  }
   var pk = parking(level, r.moves);
   if (level.map.join('').indexOf('N') >= 0) {
     console.log('парковок: ' + pk.n + ' из ' + r.len + ' тактов' + (pk.n ? ' (на тактах ' + pk.at.join(',') + ')' : ''));

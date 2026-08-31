@@ -192,6 +192,12 @@
     engine = new SP.Engine(lv);
     history = new SP.History(engine);
     usedHelp = false;
+    // Подсказку ставим ДО замера сцены: строка подсказки — часть колонки, и
+    // длинная подсказка сцену ужимает. Замерив сцену раньше, холст получался
+    // выше неё и закрывал собой первую строку.
+    el['hud-level'].textContent = '#' + lv.id + ' ' + lv.name;
+    el.hint.textContent = lv.hint || '';
+    el.hint.classList.remove('warn');
     renderer.resize(engine);
     acc = 0;
     state = 'playing';
@@ -199,8 +205,6 @@
     el.menu.classList.add('hidden');
     el.overlay.classList.add('hidden');
     document.body.classList.remove('in-menu');
-    el['hud-level'].textContent = '#' + lv.id + ' ' + lv.name;
-    el.hint.textContent = lv.hint || '';
     sound.play('level');
     updateHud();
   }
@@ -395,6 +399,16 @@
   });
   el['btn-restart'].addEventListener('click', function () { if (engine) startLevel(levelIndex); });
   global.addEventListener('resize', function () { if (engine) renderer.resize(engine); });
+  // Строка подсказки меняется и по ходу игры — советчик пишет своё, и оно бывает
+  // длиннее. Высота сцены при этом плывёт, поэтому следим за ней, а не только за окном.
+  if (global.ResizeObserver) {
+    var pending = false;
+    new global.ResizeObserver(function () {
+      if (pending || !engine) return;
+      pending = true;
+      global.requestAnimationFrame(function () { pending = false; if (engine) renderer.resize(engine); });
+    }).observe(document.getElementById('stage'));
+  }
 
   /* ---------- цикл ---------- */
   function frame(ts) {
