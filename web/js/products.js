@@ -65,43 +65,14 @@
     });
   }
 
-  function storeRow() {
-    var shops = state.stores || [];
-    if (shops.length < 2) return null;   // один кабинет — выбирать не из чего
-
-    var row = Fmt.el('div', 'chips chips--stores products__cabinets');
-    var все = Fmt.el('button', 'chip' + (state.account ? '' : ' is-active'));
-    все.type = 'button';
-    все.appendChild(Fmt.el('span', null, 'Все кабинеты'));
-    все.addEventListener('click', function () { switchStore(''); });
-    row.appendChild(все);
-
-    // Площадку показывает цветная точка — тем же цветом, что и на странице
-    // показателей. Слово «Wildberries» перед каждым именем только мешало бы
-    // читать сами имена.
-    shops.forEach(function (shop) {
-      var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
-      chip.type = 'button';
-      chip.title = (shop.marketplaceTitle || '') + ' · ' + shop.title;
-      var dot = Fmt.el('span', 'chip__dot');
-      if (shop.marketplace) dot.style.setProperty('--dot', 'var(--' + code(shop.marketplace) + ')');
-      chip.appendChild(dot);
-      chip.appendChild(Fmt.el('span', null, shop.title));
-      chip.appendChild(Fmt.el('span', 'chip__count', Fmt.number(shop.parents)));
-      chip.addEventListener('click', function () { switchStore(shop.id); });
-      row.appendChild(chip);
-    });
-    return row;
-  }
-
-  // Названия переменных цвета совпадают с кодами площадок, кроме Яндекса.
-  function code(marketplace) {
-    return marketplace === 'wildberries' ? 'wb' : marketplace;
-  }
-
+  /* Выбор кабинета переехал в верхнюю полосу оболочки и живёт в адресе
+     страницы. Здесь остаётся только отзываться на его смену: держать
+     второй такой же переключатель у себя — значит развести два разных
+     ответа на вопрос «чей кабинет открыт». */
   function switchStore(id) {
+    if (state.account === (id || '')) return;
     // Кабинет сменился — прежний товар и его карточки к нему не относятся.
-    state.account = id;
+    state.account = id || '';
     state.category = '';
     state.parent = null;
     state.card = null;
@@ -380,11 +351,8 @@
   }
 
   function parentsLevel() {
-    // Порядок сверху вниз: чьи товары → что ищем → сами товары.
-    // Ровно три ступени, каждая в одну строку.
-    var shops = storeRow();
-    if (shops) host.appendChild(shops);
-
+    // Чей кабинет — сказано в верхней полосе. Здесь только «что ищем»
+    // и сами товары.
     host.appendChild(toolbar());
 
     var сбор = refreshBar();
@@ -802,5 +770,10 @@
       .catch(function () { /* сбора не было — обычное дело */ });
   }
 
-  global.Products = { mount: mount, reload: loadParents };
+  global.Products = {
+    mount: mount,
+    reload: loadParents,
+    // Оболочка сообщает о смене кабинета — источник правды один, и он в адресе.
+    setAccount: switchStore
+  };
 })(window);

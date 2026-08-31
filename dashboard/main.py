@@ -79,6 +79,24 @@ def create_app() -> FastAPI:
 
     app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
+    # Разделы панели. Все они — один и тот же файл оболочки: какой раздел
+    # показать, решает уже браузер по адресу. Список явный, а не «всё
+    # подряд»: иначе он проглотил бы /api и /assets.
+    SECTIONS = (
+        "/", "/actions", "/catalog", "/customers", "/finance",
+        "/automations", "/settings",
+        # Старые адреса. Оболочка сама переведёт их на новые, но сервер
+        # обязан отдать по ним страницу: на них есть закладки и ссылки.
+        "/products", "/knowledge", "/tasks",
+    )
+
+    def is_section(path: str) -> bool:
+        """Адрес раздела или что-то внутри него — например /catalog/p/UA-TC."""
+        return any(
+            path == section or path.startswith(section.rstrip("/") + "/")
+            for section in SECTIONS
+        )
+
     @app.middleware("http")
     async def no_stale_assets(request: Request, call_next):
         """Заставить браузер проверять свежесть страницы и скриптов.
@@ -93,36 +111,28 @@ def create_app() -> FastAPI:
         """
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/assets/") or path in {"/", "/tasks", "/knowledge", "/products", "/favicon.svg"}:
+        if path.startswith("/assets/") or path == "/favicon.svg" or is_section(path):
             response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response
-
-    @app.get("/", include_in_schema=False)
-    async def index() -> FileResponse:
-        return FileResponse(WEB_DIR / "index.html")
-
-    @app.get("/tasks", include_in_schema=False)
-    async def tasks_page() -> FileResponse:
-        """Отдельная страница задач.
-
-        Лёгкая нарочно: она не тянет показатели со всех площадок, поэтому
-        открывается сразу, а не ждёт ответа Ozon.
-        """
-        return FileResponse(WEB_DIR / "tasks.html")
-
-    @app.get("/knowledge", include_in_schema=False)
-    async def knowledge_page() -> FileResponse:
-        """Справочник товаров: что помощник знает о каждом родителе."""
-        return FileResponse(WEB_DIR / "knowledge.html")
-
-    @app.get("/products", include_in_schema=False)
-    async def products_page() -> FileResponse:
-        """Товары: каталог и карточки глазами владельца."""
-        return FileResponse(WEB_DIR / "products.html")
 
     @app.get("/favicon.svg", include_in_schema=False)
     async def favicon() -> FileResponse:
         return FileResponse(WEB_DIR / "favicon.svg")
+
+    # Ловит всё, что осталось, поэтому объявлен последним: до него уже
+    # разобраны /api, /assets и значок.
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def shell(full_path: str) -> FileResponse:
+        """Оболочка панели: слева разделы, сверху контекст, внутри — раздел.
+
+        Один файл на все адреса. Раздел выбирается в браузере по адресу,
+        поэтому перезагрузка, «назад» и прямая ссылка работают сами собой,
+        а переход между разделами не перезагружает страницу.
+
+        Неизвестный адрес — тоже оболочка: она покажет «раздел не найден»
+        и предложит вернуться. Молча ронять 404 в лицо владельцу незачем.
+        """
+        return FileResponse(WEB_DIR / "app.html")
 
     return app
 

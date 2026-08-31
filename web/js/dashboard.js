@@ -1,4 +1,12 @@
-/* Сборка панели: состояние, загрузка данных, режим настройки, перетаскивание. */
+/* Раздел «Главная»: показатели, графики, настраиваемая доска.
+
+   Раньше этот файл был хозяином всей страницы: он же вход по паролю, он же
+   тема, он же тосты, он же верхняя панель. Теперь всё это принадлежит
+   оболочке, а здесь осталась только доска — её состояние, загрузка данных,
+   режим настройки и перетаскивание блоков.
+
+   Сама доска не переписана: логика показателей, раскладок и блоков та же,
+   что и была. Изменилось только то, кто рисует рамку вокруг неё. */
 (function (global) {
   'use strict';
 
@@ -50,65 +58,23 @@
   function $(id) { return document.getElementById(id); }
 
   function cacheDom() {
-    ['gate', 'gate-form', 'gate-password', 'gate-error', 'app', 'tabs', 'periods',
-     'marketplaces', 'stores', 'skip-today', 'board', 'editbar', 'btn-edit', 'btn-done', 'btn-library',
-     'btn-reset', 'btn-refresh', 'btn-theme', 'btn-new-tab', 'library', 'library-body',
-     'range', 'range-form', 'range-from', 'range-to', 'status-dot', 'status-text',
-     'toasts', 'footer-note', 'brand-sub', 'topbar',
-     'btn-keys', 'keys', 'keys-body', 'coverage-note',
-     'btn-inbox', 'inbox', 'inbox-body', 'inbox-badge', 'btn-inbox-reload'].forEach(function (id) {
+    ['tabs', 'periods', 'marketplaces', 'stores', 'skip-today', 'board', 'editbar',
+     'btn-edit', 'btn-done', 'btn-library', 'btn-reset', 'btn-new-tab',
+     'library', 'library-body', 'range', 'range-form', 'range-from', 'range-to',
+     'status-dot', 'status-text', 'footer-note', 'coverage-note'].forEach(function (id) {
       dom[id] = $(id);
     });
   }
 
   /* --- Мелочи интерфейса ---------------------------------------------------- */
 
-  function toast(message) {
-    var node = Fmt.el('div', 'toast', message);
-    dom.toasts.appendChild(node);
-    setTimeout(function () {
-      node.classList.add('is-leaving');
-      setTimeout(function () { node.remove(); }, 320);
-    }, 2400);
-  }
+  // Уведомления и запоминание настроек — общие для всей панели.
+  function toast(message) { global.Shell.toast(message); }
+  function readStorage(key, fallback) { return global.Shell.read(key, fallback); }
+  function writeStorage(key, value) { global.Shell.write(key, value); }
 
-  function openSheet(id) {
-    dom[id].hidden = false;
-  }
-
-  // Страница ключей пользуется теми же уведомлениями, что и панель.
-  global.Toast = toast;
-
-  function closeSheet(id) {
-    dom[id].hidden = true;
-  }
-
-  function readStorage(key, fallback) {
-    try {
-      var value = localStorage.getItem(key);
-      return value === null ? fallback : value;
-    } catch (error) {
-      return fallback;
-    }
-  }
-
-  function writeStorage(key, value) {
-    try { localStorage.setItem(key, value); } catch (error) { /* приватный режим */ }
-  }
-
-  /* --- Тема ----------------------------------------------------------------- */
-
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    writeStorage('dashboard.theme', theme);
-  }
-
-  function cycleTheme() {
-    var current = document.documentElement.getAttribute('data-theme') || 'auto';
-    var next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
-    applyTheme(next);
-    toast(next === 'auto' ? 'Тема — как в системе' : next === 'light' ? 'Светлая тема' : 'Тёмная тема');
-  }
+  function openSheet(id) { dom[id].hidden = false; }
+  function closeSheet(id) { dom[id].hidden = true; }
 
   /* --- Фильтры -------------------------------------------------------------- */
 
@@ -687,8 +653,6 @@
     state.editing = value;
     dom.editbar.hidden = !value;
     dom['btn-edit'].hidden = value;
-    document.documentElement.style.setProperty('--topbar-height',
-      dom.topbar.offsetHeight + 'px');
     renderTabs();
     renderBoard();
   }
@@ -778,9 +742,13 @@
       }
 
       renderCoverageNote(data);
+      // Период и выбранный кабинет показывает верхняя полоса оболочки:
+      // это контекст, а не часть доски.
       var scope = state.store ? storeTitle(state.store) : '';
-      dom['brand-sub'].textContent = Fmt.periodLabel(data.period) +
-        (scope ? ' · ' + scope : '');
+      global.Topbar.set({
+        note: Fmt.periodLabel(data.period) + (scope ? ' · ' + scope : ''),
+        updated: data.generatedAt ? new Date(data.generatedAt) : new Date()
+      });
       var syncedAt = state.sync && state.sync.syncedAt;
       dom['footer-note'].textContent = 'Период: ' + Fmt.periodLabel(data.period) +
         ' · подключено площадок: ' + live.length + ' из ' + data.marketplaces.length +
@@ -790,7 +758,7 @@
     }).catch(function (error) {
       state.loading = false;
       if (error.status === 401) {
-        showGate();
+        global.Shell.showGate();
         return;
       }
       setStatus('is-error', 'ошибка загрузки');
@@ -813,17 +781,6 @@
 
   /* --- Экран входа -------------------------------------------------------------- */
 
-  function showGate() {
-    dom.gate.hidden = false;
-    dom.app.hidden = true;
-    dom['gate-password'].focus();
-  }
-
-  function hideGate() {
-    dom.gate.hidden = true;
-    dom.app.hidden = false;
-  }
-
   /* --- Инициализация ------------------------------------------------------------ */
 
   function bindEvents() {
@@ -837,35 +794,6 @@
       openSheet('library');
     });
     dom['btn-new-tab'].addEventListener('click', createTab);
-    dom['btn-theme'].addEventListener('click', cycleTheme);
-    dom['btn-keys'].addEventListener('click', openKeys);
-    dom['btn-inbox'].addEventListener('click', openInbox);
-    dom['btn-inbox-reload'].addEventListener('click', function () {
-      global.Inbox.reload();
-    });
-
-    dom['btn-refresh'].addEventListener('click', function () {
-      if (state.syncing) return;
-      state.syncing = true;
-      dom['btn-refresh'].disabled = true;
-      dom['btn-refresh'].classList.add('is-spinning');
-      toast('Скачиваю свежие данные с площадок — это займёт до минуты');
-
-      // Выгрузка идёт на сервере; страница потом читает уже готовое.
-      Api.sync().then(function (payload) {
-        state.sync = payload.status || state.sync;
-        return loadData(true);
-      }).then(function () {
-        toast('Данные обновлены');
-      }).catch(function (error) {
-        toast('Не удалось обновить: ' + error.message);
-      }).then(function () {
-        state.syncing = false;
-        dom['btn-refresh'].disabled = false;
-        dom['btn-refresh'].classList.remove('is-spinning');
-      });
-    });
-
     dom['btn-reset'].addEventListener('click', function () {
       var layout = activeLayout();
       if (!layout || !confirm('Вернуть стандартный набор блоков на вкладке «' + layout.name + '»?')) return;
@@ -883,8 +811,8 @@
       if (event.key === 'Escape') {
         // Сначала закрываем открытую панель и только потом выходим из настройки,
         // иначе один Escape отменял бы сразу и то и другое.
-        var openPanel = ['library', 'range', 'keys', 'inbox']
-          .filter(function (id) { return !dom[id].hidden; })[0];
+        var openPanel = ['library', 'range']
+          .filter(function (id) { return dom[id] && !dom[id].hidden; })[0];
         if (openPanel) {
           closeSheet(openPanel);
         } else if (state.editing) {
@@ -909,58 +837,9 @@
       renderPeriods();
       loadData();
     });
-
-    dom['gate-form'].addEventListener('submit', function (event) {
-      event.preventDefault();
-      dom['gate-error'].hidden = true;
-      Api.login(dom['gate-password'].value).then(function () {
-        hideGate();
-        start();
-      }).catch(function (error) {
-        dom['gate-error'].textContent = error.message;
-        dom['gate-error'].hidden = false;
-      });
-    });
-
-    global.addEventListener('resize', function () {
-      document.documentElement.style.setProperty('--topbar-height', dom.topbar.offsetHeight + 'px');
-    });
-  }
-
-  /* Значок на кнопке «Входящие»: сколько обращений ждёт ответа. */
-  function showInboxCount(total, urgent) {
-    var badge = dom['inbox-badge'];
-    badge.hidden = !total;
-    badge.textContent = total > 99 ? '99+' : String(total);
-    badge.style.background = urgent ? 'var(--negative)' : 'var(--accent)';
-    dom['btn-inbox'].title = total
-      ? 'Входящие: ' + total + ' ' + Fmt.plural(total, ['обращение', 'обращения', 'обращений']) +
-        ' ждёт ответа'
-      : 'Входящие: всё закрыто';
-  }
-
-  function openInbox() {
-    openSheet('inbox');
-    global.Inbox.mount(dom['inbox-body'], { onCounts: showInboxCount });
-  }
-
-  function openKeys() {
-    openSheet('keys');
-    global.Keys.mount(dom['keys-body'], {
-      onSaved: function () {
-        // Ключи изменились — площадки могли перестать быть демонстрационными.
-        Api.marketplaces()
-          .then(function (payload) {
-            renderMarketplaceChips(payload.marketplaces);
-            renderStoreChips(payload.stores);
-          })
-          .then(function () { return loadData(true); });
-      }
-    });
   }
 
   function restoreFilters() {
-    applyTheme(readStorage('dashboard.theme', 'auto'));
     state.preset = readStorage('dashboard.preset', '30d');
     var range = readStorage('dashboard.range', '');
     if (state.preset === 'custom' && range.indexOf('|') !== -1) {
@@ -1003,18 +882,17 @@
     }).then(function () {
       return loadData();
     }).then(function () {
-      document.documentElement.style.setProperty('--topbar-height', dom.topbar.offsetHeight + 'px');
     }).catch(function (error) {
-      if (error.status === 401) { showGate(); return; }
+      if (error.status === 401) { global.Shell.showGate(); return; }
       toast(error.message);
     });
 
-    // Значок «Входящих» должен быть виден сразу, не открывая экран.
-    global.Inbox.prefetch(showInboxCount);
-
-    // Ссылка вида /#keys открывает страницу ключей сразу.
-    if (global.location.hash === '#keys') openKeys();
-    if (global.location.hash === '#inbox') openInbox();
+    // Число обращений нужно навигации, а не доске: значок стоит у пункта
+    // «Покупатели». Спрашиваем один раз, экран при этом не открывается.
+    global.Inbox.prefetch(function (total, urgent) {
+      global.Sidebar.setCount('customers', total, urgent);
+      global.Sidebar.render(global.Router.read());
+    });
 
     if (state.refreshTimer) clearInterval(state.refreshTimer);
     state.refreshTimer = setInterval(function () {
@@ -1022,29 +900,115 @@
     }, AUTO_REFRESH_MS);
   }
 
-  function init() {
+  /* Разметка доски. Раньше она лежала в index.html; теперь раздел приносит
+     её с собой — оболочка о доске ничего не знает и знать не должна. */
+  var РАЗМЕТКА = [
+    '<div class="filters">',
+    '  <div class="segmented" id="periods" role="tablist" aria-label="Период"></div>',
+    '  <div class="chips" id="skip-today" aria-label="Учитывать сегодня" hidden></div>',
+    '  <div class="chips" id="marketplaces" aria-label="Площадки"></div>',
+    '  <div class="chips chips--stores" id="stores" aria-label="Магазины" hidden></div>',
+    '  <div class="filters__meta">',
+    '    <span class="meta__dot" id="status-dot" aria-hidden="true"></span>',
+    '    <span id="status-text">загрузка…</span>',
+    '  </div>',
+    '  <nav class="tabs" id="tabs" aria-label="Раскладки"></nav>',
+    '  <button class="btn btn--ghost filters__edit" id="btn-edit" type="button">',
+    '    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16v4z"/></svg>',
+    '    <span>Настроить</span>',
+    '  </button>',
+    '</div>',
+    '<div class="editbar" id="editbar" hidden>',
+    '  <div class="editbar__inner">',
+    '    <span class="editbar__hint"><strong>Режим настройки.</strong> ',
+    '      Перетаскивайте блоки, меняйте размер, скрывайте лишнее.</span>',
+    '    <div class="editbar__actions">',
+    '      <button class="btn btn--ghost" id="btn-library" type="button">',
+    '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    '        <span>Показатели</span></button>',
+    '      <button class="btn btn--ghost" id="btn-new-tab" type="button">Новая вкладка</button>',
+    '      <button class="btn btn--ghost" id="btn-reset" type="button">Сбросить</button>',
+    '      <button class="btn btn--primary" id="btn-done" type="button">Готово</button>',
+    '    </div>',
+    '  </div>',
+    '</div>',
+    '<p class="notice-strip" id="coverage-note" hidden></p>',
+    '<main class="board" id="board" aria-live="polite"></main>',
+    '<footer class="footer"><span id="footer-note"></span></footer>',
+    '<div class="sheet" id="library" hidden>',
+    '  <div class="sheet__backdrop" data-close="library"></div>',
+    '  <aside class="sheet__panel" role="dialog" aria-label="Библиотека блоков">',
+    '    <header class="sheet__head"><h2>Показатели панели</h2>',
+    '      <button class="icon-btn" type="button" data-close="library" aria-label="Закрыть">',
+    '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    '      </button></header>',
+    '    <p class="sheet__hint">Нажмите «Показать», чтобы вывести показатель на панель, ',
+    '      и «Убрать» — чтобы скрыть. Порядок и размер настраиваются прямо на карточках.</p>',
+    '    <div class="sheet__body" id="library-body"></div>',
+    '  </aside>',
+    '</div>',
+    '<div class="sheet sheet--center" id="range" hidden>',
+    '  <div class="sheet__backdrop" data-close="range"></div>',
+    '  <form class="dialog" id="range-form" role="dialog" aria-label="Произвольный период">',
+    '    <h2 class="dialog__title">Свой период</h2>',
+    '    <label class="field"><span>С</span><input type="date" id="range-from" required /></label>',
+    '    <label class="field"><span>По</span><input type="date" id="range-to" required /></label>',
+    '    <div class="dialog__actions">',
+    '      <button class="btn btn--ghost" type="button" data-close="range">Отмена</button>',
+    '      <button class="btn btn--primary" type="submit">Показать</button>',
+    '    </div>',
+    '  </form>',
+    '</div>'
+  ].join('');
+
+  /* Выгрузка с площадок. Раньше висела на отдельной кнопке в шапке; теперь
+     её зовёт строка «обновлено N минут назад» в полосе контекста. */
+  function sync() {
+    if (state.syncing) return Promise.resolve();
+    state.syncing = true;
+    toast('Скачиваю свежие данные с площадок — это займёт до минуты');
+
+    return Api.sync().then(function (payload) {
+      state.sync = payload.status || state.sync;
+      return loadData(true);
+    }).then(function () {
+      toast('Данные обновлены');
+    }).catch(function (error) {
+      toast('Не удалось обновить: ' + error.message);
+    }).then(function () {
+      state.syncing = false;
+    });
+  }
+
+  function mount(node) {
+    node.className = 'section section--dashboard';
+    node.innerHTML = РАЗМЕТКА;
+
+    global.Topbar.set({
+      title: 'Главная',
+      note: '',
+      // У доски свой, более богатый выбор площадок и магазинов — сразу с
+      // периодом. Дублировать его в полосе контекста незачем.
+      scoped: false,
+      onRefresh: sync
+    });
+
     cacheDom();
     restoreFilters();
     bindEvents();
     setupDragging();
-
-    Api.session().then(function (session) {
-      state.session = session;
-      if (session.authEnabled && !session.authenticated) {
-        showGate();
-        return;
-      }
-      hideGate();
-      start();
-    }).catch(function () {
-      hideGate();
-      start();
-    });
+    start();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  function unmount() {
+    if (state.refreshTimer) clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
+    if (state.saveTimer) { clearTimeout(state.saveTimer); state.saveTimer = null; }
   }
+
+  global.Shell.register('dashboard', {
+    mount: mount,
+    unmount: unmount,
+    refresh: function () { return loadData(true); }
+  });
 })(window);

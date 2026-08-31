@@ -31,7 +31,8 @@ def test_health_is_open(client):
 def test_index_and_static_assets_are_served(client):
     assert client.get("/").status_code == 200
     assert client.get("/assets/css/app.css").status_code == 200
-    assert client.get("/assets/js/app.js").status_code == 200
+    assert client.get("/assets/css/shell.css").status_code == 200
+    assert client.get("/assets/js/shell.js").status_code == 200
     assert client.get("/assets/js/inbox.js").status_code == 200
     assert client.get("/favicon.svg").status_code == 200
 
@@ -682,32 +683,47 @@ def test_task_offset_cannot_be_negative(client):
     assert client.get("/api/tasks/wb1/questions?offset=-1").status_code == 422
 
 
-def test_tasks_page_is_served_separately(client):
-    """«Задачи» — отдельная страница, а не часть основной панели."""
-    page = client.get("/tasks")
-    assert page.status_code == 200
-    assert "Задачи" in page.text
-    # Страница лёгкая: тяжёлых модулей основной панели на ней нет.
-    assert "blocks.js" not in page.text
-    assert "charts.js" not in page.text
-    assert "tasks-page.js" in page.text
+def test_разделы_отдаются_одной_оболочкой(client):
+    """Панель стала одной страницей: слева навигация, внутри — раздел.
+    Какой именно, решает адрес, поэтому сервер по всем ним отдаёт оболочку."""
+    for путь in ("/", "/actions", "/catalog", "/catalog/knowledge",
+                 "/customers", "/settings/accounts", "/mp/wildberries"):
+        страница = client.get(путь)
+        assert страница.status_code == 200, путь
+        assert "shell.js" in страница.text, путь
+
+
+def test_старые_адреса_продолжают_работать(client):
+    """На /products, /knowledge и /tasks есть закладки и ссылки в переписке.
+    Сервер обязан отдать по ним страницу, а оболочка — перевести на новый
+    адрес уже в браузере."""
+    for путь in ("/products", "/knowledge", "/tasks"):
+        assert client.get(путь).status_code == 200, путь
+
+
+def test_неизвестный_адрес_не_роняет_панель(client):
+    """Опечатка в ссылке — не повод показывать владельцу голую ошибку."""
+    страница = client.get("/такого-раздела-нет")
+    assert страница.status_code == 200
+    assert "shell.js" in страница.text
 
 
 def test_assets_are_revalidated_by_the_browser(client):
     """Панель обновляется часто. Браузер обязан переспрашивать, иначе
     свежая страница уедет к пользователю со старым скриптом — и кнопка
     будет на месте, но работать не будет."""
-    for path in ("/", "/tasks", "/assets/js/app.js", "/assets/css/app.css"):
+    for path in ("/", "/tasks", "/catalog", "/assets/js/shell.js", "/assets/css/app.css"):
         answer = client.get(path)
         assert answer.status_code == 200
         assert "no-cache" in answer.headers.get("cache-control", "")
 
 
-def test_каждая_страница_умеет_попасть_в_любой_раздел(client):
-    """Переходы больше не самодельные на каждой странице: везде один и тот же
-    переключатель разделов. Проверяем, что он подключён всюду."""
-    for путь in ("/", "/tasks", "/products", "/knowledge"):
-        assert "nav.js" in client.get(путь).text, путь
+def test_навигация_собрана_в_одном_месте(client):
+    """Раньше переходы были самодельные на каждой странице. Теперь навигация
+    одна на всю панель и лежит в оболочке."""
+    оболочка = client.get("/").text
+    for скрипт in ("sidebar.js", "topbar.js", "router.js", "scope.js", "sections.js"):
+        assert скрипт in оболочка, скрипт
 
 
 # --- справочник товаров ---------------------------------------------------------
@@ -732,29 +748,18 @@ def test_knowledge_is_saved_and_listed(client):
     assert payload["parents"][0]["parent"] == "UA-TC-1M-WH"
 
 
-def test_knowledge_page_is_served(client):
-    page = client.get("/knowledge")
-    assert page.status_code == 200
-    assert "Справочник ответов" in page.text
-    assert "knowledge-page.js" in page.text
-
-
-def test_переключатель_знает_все_четыре_раздела(client):
-    страница = client.get("/assets/js/nav.js").text
-    for путь in ("'/'", "'/tasks'", "'/products'", "'/knowledge'"):
-        assert "path: " + путь in страница, путь
+def test_знания_подключены_к_оболочке(client):
+    assert "knowledge.js" in client.get("/catalog/knowledge").text
 
 
 # --- товары ---------------------------------------------------------------------
 
 
-def test_products_page_is_served(client):
-    """«Товары» — отдельный раздел, не часть справочника ответов."""
-    page = client.get("/products")
-    assert page.status_code == 200
-    assert "products-page.js" in page.text
-    # Справочник — отдельная страница со своим скриптом.
-    assert "knowledge-page.js" in client.get("/knowledge").text
+def test_товары_подключены_к_оболочке(client):
+    """«Товары» — раздел каталога, не часть справочника ответов."""
+    страница = client.get("/catalog")
+    assert страница.status_code == 200
+    assert "products.js" in страница.text
 
 
 def test_products_start_empty(client):

@@ -390,49 +390,18 @@
     items.forEach(function (item) { listHost.appendChild(row(item)); });
   }
 
-  function storeRow() {
-    var shops = state.stores || [];
-    if (shops.length < 2) return null;
-
-    var row_ = Fmt.el('div', 'chips chips--stores products__cabinets');
-    var все = Fmt.el('button', 'chip' + (state.account ? '' : ' is-active'));
-    все.type = 'button';
-    все.appendChild(Fmt.el('span', null, 'Все кабинеты'));
-    все.addEventListener('click', function () {
-      state.account = '';
-      state.open = '';
-      load().catch(function (error) { toast(error.message); });
-    });
-    row_.appendChild(все);
-
-    shops.forEach(function (shop) {
-      var chip = Fmt.el('button', 'chip' + (state.account === shop.id ? ' is-active' : ''));
-      chip.type = 'button';
-      chip.title = (shop.marketplaceTitle || '') + ' · ' + shop.title;
-      var dot = Fmt.el('span', 'chip__dot');
-      if (shop.marketplace) {
-        dot.style.setProperty('--dot', 'var(--' +
-          (shop.marketplace === 'wildberries' ? 'wb' : shop.marketplace) + ')');
-      }
-      chip.appendChild(dot);
-      chip.appendChild(Fmt.el('span', null, shop.title));
-      chip.appendChild(Fmt.el('span', 'chip__count', Fmt.number(shop.parents)));
-      chip.addEventListener('click', function () {
-        state.account = shop.id;
-        state.open = '';
-        load().catch(function (error) { toast(error.message); });
-      });
-      row_.appendChild(chip);
-    });
-    return row_;
+  /* Кабинет выбирается в верхней полосе оболочки. Справка при этом общая:
+     товар физически один, в каком бы кабинете он ни продавался. */
+  function switchStore(id) {
+    if (state.account === (id || '')) return;
+    state.account = id || '';
+    state.open = '';
+    return load().catch(function (error) { toast(error.message); });
   }
 
   function render() {
     if (!host) return;
     Fmt.clear(host);
-
-    var shops = storeRow();
-    if (shops) host.appendChild(shops);
 
     host.appendChild(progress());
 
@@ -455,5 +424,5 @@
     });
   }
 
-  global.Knowledge = { mount: mount, reload: load };
+  global.Knowledge = { mount: mount, reload: load, setAccount: switchStore };
 })(window);
