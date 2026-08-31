@@ -31,6 +31,9 @@
     list: null,         // его карточки
     loadingMore: false,
 
+    refresh: null,      // идущий сбор каталога из кабинетов
+    troubles: null,     // кабинеты, которые в прошлый сбор не ответили
+
     card: null,         // открытая карточка
     note: null,         // правка, набранная но не сохранённая
     savingNote: false,
@@ -364,6 +367,8 @@
   }
 
   function parentsLevel() {
+    host.appendChild(refreshBar());
+
     var shops = storeRow();
     if (shops) host.appendChild(shops);
 
@@ -595,6 +600,12 @@
       Fmt.clear(host);
       host.appendChild(Fmt.el('p', 'inbox__loading', error.message));
     });
+
+    // Сбор мог быть запущен раньше и идти прямо сейчас — например, со
+    // страницы справочника. Тогда показываем его ход, а не кнопку.
+    Api.knowledgeRefreshStatus()
+      .then(function (run) { if (run && run.running) watchRefresh(run); })
+      .catch(function () { /* сбора нет — обычное дело */ });
   }
 
   global.Products = { mount: mount, reload: loadParents };

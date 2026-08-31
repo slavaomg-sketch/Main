@@ -1537,6 +1537,14 @@ a.btn--ghost { color: var(--text); }
 .know__progress { font-size: 12.5px; color: var(--text-secondary); margin-right: auto; }
 .know__refresh .btn { height: 32px; font-size: 13px; }
 
+/* Кабинет, который не ответил при сборе. Остаётся на виду до следующего
+   сбора: без этого непонятно, почему его товаров нет. */
+.know__trouble {
+  flex-basis: 100%;
+  font-size: 12.5px;
+  color: var(--negative);
+}
+
 .know-card__cards {
   padding: 2px 8px;
   border-radius: var(--pill);
