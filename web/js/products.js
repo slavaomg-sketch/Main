@@ -413,10 +413,88 @@
     if (!items.length) {
       gridHost.appendChild(Fmt.el('p', 'inbox__loading',
         state.total ? 'Ничего не нашлось.'
-                    : 'Каталог пуст. Соберите его на странице «Справочник ответов».'));
+                    : 'Каталог пуст. Нажмите «Собрать из кабинетов» — панель прочитает '
+                      + 'карточки всех ваших кабинетов.'));
       return;
     }
     items.forEach(function (item) { gridHost.appendChild(parentTile(item)); });
+  }
+
+  /* --- сбор каталога из кабинетов -------------------------------------------
+
+     Кнопка сбора стояла только в справочнике ответов, и это было ошибкой:
+     за товарами владелец приходит сюда. Обход один и тот же — он наполняет
+     и товары, и справочник. */
+
+  function startRefresh() {
+    Api.refreshKnowledge()
+      .then(watchRefresh)
+      .catch(function (error) { toast(error.message); });
+  }
+
+  function watchRefresh(run) {
+    state.refresh = run;
+
+    if (!run || run.finished) {
+      if (run && run.finished) {
+        // Сбор закончился — перечитываем список: там появились новые
+        // кабинеты, товары и карточки.
+        state.troubles = run.errors || {};
+        loadParents().then(function () {
+          var беды = Object.keys(run.errors || {});
+          toast(беды.length
+            ? 'Собрано товаров: ' + run.parents + ', но не ответили: ' + беды.join(', ')
+            : 'Собрано: товаров ' + run.parents + ' из ' +
+              Fmt.number(run.cards) + ' карточек');
+        }).catch(function (error) { toast(error.message); });
+        return;
+      }
+      render();
+      return;
+    }
+
+    render();
+    setTimeout(function () {
+      Api.knowledgeRefreshStatus()
+        .then(watchRefresh)
+        .catch(function (error) {
+          state.refresh = null;
+          render();
+          toast(error.message);
+        });
+    }, 1500);
+  }
+
+  function refreshBar() {
+    var run = state.refresh;
+    var bar = Fmt.el('div', 'know__refresh');
+
+    if (run && run.running) {
+      bar.appendChild(Fmt.el('span', 'know__progress',
+        'Читаем карточки: кабинет ' + (run.storesDone + 1) + ' из ' + run.storesTotal +
+        (run.store ? ' — ' + run.store : '') +
+        (run.cards ? ', уже ' + Fmt.number(run.cards) + ' карточек' : '')));
+      return bar;
+    }
+
+    bar.appendChild(Fmt.el('span', 'know__progress',
+      state.total
+        ? 'Добавили кабинет или новые товары — соберите каталог заново.'
+        : 'Список пуст. Соберите товары из карточек ваших кабинетов.'));
+
+    var кнопка = Fmt.el('button', 'btn ' + (state.total ? 'btn--ghost' : 'btn--primary'));
+    кнопка.type = 'button';
+    кнопка.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+    кнопка.addEventListener('click', startRefresh);
+    bar.appendChild(кнопка);
+
+    // Кабинет, который не ответил, должен остаться на виду: иначе непонятно,
+    // почему его товаров нет. Причина написана словами.
+    var беды = state.troubles || {};
+    Object.keys(беды).forEach(function (кабинет) {
+      bar.appendChild(Fmt.el('span', 'know__trouble', кабинет + ' — ' + беды[кабинет]));
+    });
+    return bar;
   }
 
   /* --- уровень 2: карточки товара ------------------------------------------- */
