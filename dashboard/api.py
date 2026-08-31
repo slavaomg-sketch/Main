@@ -361,8 +361,12 @@ async def refresh_knowledge() -> dict[str, Any]:
 
 @guarded.get("/knowledge/refresh")
 async def knowledge_refresh_status() -> dict[str, Any]:
-    """Как идёт сбор каталога."""
-    return catalogue.status() or {"running": False, "finished": False}
+    """Как идёт сбор каталога — или чем кончился последний.
+
+    Итог последнего сбора отдаётся и после перезапуска службы: иначе
+    непрочитанный кабинет выглядит просто как отсутствующий.
+    """
+    return await catalogue.last_run() or {"running": False, "finished": False}
 
 
 @guarded.put("/knowledge/{parent}")

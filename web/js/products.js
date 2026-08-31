@@ -31,8 +31,7 @@
     list: null,         // его карточки
     loadingMore: false,
 
-    refresh: null,      // идущий сбор каталога из кабинетов
-    troubles: null,     // кабинеты, которые в прошлый сбор не ответили
+    refresh: null,      // сбор каталога: идущий сейчас или последний прошедший
 
     card: null,         // открытая карточка
     note: null,         // правка, набранная но не сохранённая
@@ -445,10 +444,16 @@
 
     // Пересборка каталога — работа редкая, поэтому кнопка скромная и стоит
     // с краю. Но она всегда на месте: искать её по другим страницам не нужно.
+    //
+    // И она обязана отвечать на нажатие. Раньше кнопка не менялась ничем, а
+    // сбор шёл своим чередом внизу — со стороны это выглядело так, будто
+    // нажатие не сработало.
+    var идёт = !!(state.refresh && state.refresh.running);
     var собрать = Fmt.el('button', 'toolbar__quiet');
     собрать.type = 'button';
     собрать.title = 'Прочитать карточки всех кабинетов заново';
-    собрать.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+    собрать.appendChild(Fmt.el('span', null, идёт ? 'Идёт сбор…' : 'Собрать из кабинетов'));
+    собрать.disabled = идёт;
     собрать.addEventListener('click', startRefresh);
     bar.appendChild(собрать);
 
@@ -487,9 +492,19 @@
      и товары, и справочник. */
 
   function startRefresh() {
+    // Отклик до ответа сервера: запрос идёт секунду-другую, и всё это время
+    // экран не должен выглядеть так, будто нажатия не было.
+    state.refresh = { running: true, storesDone: 0, storesTotal: 0, cards: 0, store: '' };
+    render();
+    toast('Сбор запущен. Это надолго: кабинеты читаются по очереди.');
+
     Api.refreshKnowledge()
       .then(watchRefresh)
-      .catch(function (error) { toast(error.message); });
+      .catch(function (error) {
+        state.refresh = null;
+        render();
+        toast(error.message);
+      });
   }
 
   function watchRefresh(run) {
@@ -499,7 +514,7 @@
       if (run && run.finished) {
         // Сбор закончился — перечитываем список: там появились новые
         // кабинеты, товары и карточки.
-        state.troubles = run.errors || {};
+        state.refresh = run;
         loadParents().then(function () {
           var беды = Object.keys(run.errors || {});
           toast(беды.length
@@ -525,42 +540,71 @@
     }, 1500);
   }
 
+  var СОСТОЯНИЯ = {
+    done: { знак: '✓', текст: 'прочитан', класс: 'is-done' },
+    running: { знак: '•', текст: 'читаем сейчас', класс: 'is-running' },
+    waiting: { знак: '·', текст: 'в очереди', класс: 'is-waiting' },
+    error: { знак: '!', текст: 'не ответил', класс: 'is-error' },
+    interrupted: { знак: '!', текст: 'прочитан не до конца', класс: 'is-error' },
+    skipped: { знак: '!', текст: 'очередь не дошла', класс: 'is-error' }
+  };
+
   function refreshBar() {
     var run = state.refresh;
-    var беды = state.troubles || {};
-    var список = Object.keys(беды);
 
-    // Пока сбор не идёт и никто не жаловался, полосе тут делать нечего:
-    // кнопка «Собрать из кабинетов» и так стоит в панели над списком.
-    if (!run && !список.length && state.total) return null;
+    // Пока сбор не запускали и жаловаться не на что, полосе тут делать
+    // нечего: кнопка «Собрать из кабинетов» и так стоит в панели.
+    if (!run) return state.total ? null : пустойКаталог();
+    if (run.finished && !run.interrupted && !Object.keys(run.errors || {}).length) {
+      return null;
+    }
 
     var bar = Fmt.el('div', 'know__refresh');
 
-    if (run && run.running) {
+    if (run.running) {
       bar.appendChild(Fmt.el('span', 'know__progress',
-        'Читаем карточки: кабинет ' + (run.storesDone + 1) + ' из ' + run.storesTotal +
-        (run.store ? ' — ' + run.store : '') +
-        (run.cards ? ', уже ' + Fmt.number(run.cards) + ' карточек' : '')));
-      return bar;
-    }
-
-    if (!state.total) {
+        run.storesTotal
+          ? 'Читаем карточки: кабинет ' + (run.storesDone + 1) + ' из ' + run.storesTotal +
+            (run.store ? ' — ' + run.store : '') +
+            (run.cards ? ', уже ' + Fmt.number(run.cards) + ' карточек' : '')
+          : 'Запускаем сбор…'));
+    } else if (run.interrupted) {
       bar.appendChild(Fmt.el('span', 'know__progress',
-        'Каталог пуст. Соберите товары из карточек ваших кабинетов.'));
-      var кнопка = Fmt.el('button', 'btn btn--primary');
-      кнопка.type = 'button';
-      кнопка.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
-      кнопка.addEventListener('click', startRefresh);
-      bar.appendChild(кнопка);
+        'Прошлый сбор не закончился: панель обновлялась и прервала его. ' +
+        'Нажмите «Собрать из кабинетов» ещё раз.'));
     } else {
       bar.appendChild(Fmt.el('span', 'know__progress', 'Последний сбор прошёл не до конца:'));
     }
 
-    // Кабинет, который не ответил, остаётся на виду: иначе непонятно,
-    // почему его товаров нет. Причина написана словами.
-    список.forEach(function (кабинет) {
-      bar.appendChild(Fmt.el('span', 'know__trouble', кабинет + ' — ' + беды[кабинет]));
-    });
+    // Список кабинетов — прямой ответ на вопрос «а где мой второй Озон».
+    var кабинеты = run.shops || [];
+    if (кабинеты.length) {
+      var список = Fmt.el('div', 'shops');
+      кабинеты.forEach(function (shop) {
+        var вид = СОСТОЯНИЯ[shop.state] || СОСТОЯНИЯ.waiting;
+        var строка = Fmt.el('div', 'shops__item ' + вид.класс);
+        строка.appendChild(Fmt.el('span', 'shops__mark', вид.знак));
+        строка.appendChild(Fmt.el('span', 'shops__title', shop.title));
+        строка.appendChild(Fmt.el('span', 'shops__state',
+          shop.error || (shop.cards
+            ? вид.текст + ', ' + Fmt.number(shop.cards) + ' карточек'
+            : вид.текст)));
+        список.appendChild(строка);
+      });
+      bar.appendChild(список);
+    }
+    return bar;
+  }
+
+  function пустойКаталог() {
+    var bar = Fmt.el('div', 'know__refresh');
+    bar.appendChild(Fmt.el('span', 'know__progress',
+      'Каталог пуст. Соберите товары из карточек ваших кабинетов.'));
+    var кнопка = Fmt.el('button', 'btn btn--primary');
+    кнопка.type = 'button';
+    кнопка.appendChild(Fmt.el('span', null, 'Собрать из кабинетов'));
+    кнопка.addEventListener('click', startRefresh);
+    bar.appendChild(кнопка);
     return bar;
   }
 
@@ -746,11 +790,16 @@
       host.appendChild(Fmt.el('p', 'inbox__loading', error.message));
     });
 
-    // Сбор мог быть запущен раньше и идти прямо сейчас — например, со
-    // страницы справочника. Тогда показываем его ход, а не кнопку.
+    // Сбор мог идти прямо сейчас — или оборваться на обновлении панели.
+    // И то и другое нужно показать сразу при открытии страницы, иначе
+    // непрочитанный кабинет выглядит просто как отсутствующий.
     Api.knowledgeRefreshStatus()
-      .then(function (run) { if (run && run.running) watchRefresh(run); })
-      .catch(function () { /* сбора нет — обычное дело */ });
+      .then(function (run) {
+        if (!run || (!run.running && !run.shops)) return;
+        if (run.running) watchRefresh(run);
+        else { state.refresh = run; render(); }
+      })
+      .catch(function () { /* сбора не было — обычное дело */ });
   }
 
   global.Products = { mount: mount, reload: loadParents };

@@ -1832,6 +1832,20 @@ a.btn--ghost { color: var(--text); }
 .picker__item.is-current .picker__itemcount { color: var(--accent); }
 
 
+/* Кабинеты в сборе: до кого дошла очередь и чем кончилось. Прямой ответ
+   на вопрос «а где мой второй Озон» — без чтения журналов сервера. */
+.shops { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.shops__item { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
+.shops__mark { width: 12px; text-align: center; font-weight: 700; }
+.shops__title { color: var(--text); }
+.shops__state { color: var(--text-tertiary); }
+.shops__item.is-done .shops__mark { color: var(--positive); }
+.shops__item.is-running .shops__mark { color: var(--accent); }
+.shops__item.is-waiting .shops__mark { color: var(--text-tertiary); }
+.shops__item.is-waiting .shops__title { color: var(--text-secondary); }
+.shops__item.is-error .shops__mark,
+.shops__item.is-error .shops__state { color: var(--warning); }
+
 /* Путь до задачи: площадка › кабинет › задача — одной строкой. */
 .path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .path__sep { color: var(--text-tertiary); font-size: 16px; }

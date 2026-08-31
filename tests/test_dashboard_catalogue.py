@@ -470,3 +470,53 @@ async def test_кабинеты_разных_площадок_считаются
     только_вб = await products.cards_of("ОБЩИЙ", account_id=кабинет)
     assert только_вб["total"] == 1
     assert только_вб["cards"][0]["marketplace"] == "wildberries"
+
+
+# --- ход сбора: где какой кабинет ----------------------------------------------
+
+
+async def test_видно_до_какого_кабинета_дошла_очередь(кабинет, кабинет_озон, monkeypatch):
+    """Владелец спрашивает не «сколько страниц прочитано», а «где мой второй
+    Озон». Ответить на это можно только списком кабинетов с их состоянием."""
+    подменить(monkeypatch, сервер([[dict(карточка("CAB-(ВБ)-A"), nmID=1)]]))
+    подменить_класс(monkeypatch, OzonCatalogue, озон_сервер([[товар_озон(1)]]))
+
+    catalogue.start(settings)
+    await дождаться()
+
+    состояния = {shop["title"]: shop for shop in catalogue.status()["shops"]}
+    assert состояния["ВБ Вячеслав"]["state"] == "done"
+    assert состояния["ВБ Вячеслав"]["cards"] == 1
+    assert состояния["Озон Вячеслав"]["state"] == "done"
+
+
+async def test_отказавший_кабинет_виден_в_списке(кабинет, monkeypatch):
+    подменить(monkeypatch, lambda request: httpx.Response(403, json={}))
+    catalogue.start(settings)
+    await дождаться()
+
+    кабинеты = catalogue.status()["shops"]
+    assert кабинеты[0]["state"] == "error"
+    assert кабинеты[0]["error"] == "нет прав в ключе"
+
+
+async def test_оборванный_сбор_помнится_после_перезапуска(кабинет, monkeypatch):
+    """Служба перезапускается при каждом обновлении панели, и незаконченный
+    сбор пропадает вместе с ней. Владелец должен видеть, что кабинет остался
+    непрочитанным не просто так."""
+    подменить(monkeypatch, сервер([[dict(карточка("CAB-(A)-X"), nmID=1)]]))
+    catalogue.start(settings)
+    await дождаться()
+
+    # Это и есть перезапуск: память процесса чистая, база — нет.
+    catalogue._run = None
+    async with db.connect() as connection:
+        await connection.execute(
+            "UPDATE preferences SET value = REPLACE(value, '\"running\": false', '\"running\": true') "
+            "WHERE key = ?", (catalogue.LAST_RUN,),
+        )
+        await connection.commit()
+
+    было = await catalogue.last_run()
+    assert было["interrupted"] is True
+    assert было["running"] is False
