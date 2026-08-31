@@ -748,6 +748,19 @@ def test_knowledge_is_saved_and_listed(client):
     assert payload["parents"][0]["parent"] == "UA-TC-1M-WH"
 
 
+def test_контекст_кабинета_объявлен_только_там_где_читается(client):
+    """Панель не имеет права показывать один контекст, а считать другой.
+
+    Общий выбор площадки и кабинета пока читают только каталог и знания.
+    Главная работает на своих фильтрах, поэтому в её адресе `mp` и
+    `account` появляться не должны — иначе ссылка закрепила бы расхождение.
+    """
+    оболочка = client.get("/assets/js/shell.js").text
+    assert "ЧИТАЮТ_КОНТЕКСТ = { catalog: 1, knowledge: 1 }" in оболочка
+    # И адрес чистится, а не просто игнорируется.
+    assert "route.params.mp || route.params.account" in оболочка
+
+
 def test_знания_подключены_к_оболочке(client):
     assert "knowledge.js" in client.get("/catalog/knowledge").text
 
