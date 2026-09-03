@@ -132,11 +132,8 @@
     (SP.CHAPTERS || []).forEach(function (ch) {
       var mine = [];
       SP.LEVELS.forEach(function (lv, i) { if (lv.chapter === ch.n) mine.push({ lv: lv, i: i }); });
-      // Первые десять глав — выстроенная лесенка обучения, её порядок трогать нельзя.
-      // Дальше уровни лежали по дате постройки; там сортируем по измеренной резкости.
-      if (ch.n > PLAN_CHAPTERS) {
-        mine.sort(function (a, b) { return (a.lv.rating || 0) - (b.lv.rating || 0) || a.lv.id - b.lv.id; });
-      }
+      // Порядок задаёт сборка (tools/build-levels.js): массив LEVELS уже лежит
+      // в порядке прохождения, и меню, кнопка «Следующий» и открытие уровней согласны.
       var done = mine.filter(function (m) { return progress.done[m.lv.id]; }).length;
 
       var head = document.createElement('div');
