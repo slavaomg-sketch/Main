@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ЖК «Гранд Марина» — апартаменты у моря в Хосте, Сочи</title>
+<meta name="description" content="Апартаменты в ЖК «Гранд Марина», Хоста, Сочи. 5 минут до моря, готовая отделка, инфраструктура курорта. Рассрочка от застройщика. Оставьте заявку и получите подборку планировок с ценами.">
+<meta property="og:title" content="ЖК «Гранд Марина» — апартаменты у моря в Хосте, Сочи">
+<meta property="og:description" content="Апартаменты для жизни и дохода в Хосте. Подборка планировок с ценами за 15 минут.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0b1f33;
+    --navy-2:#122c47;
+    --sea:#1a6f8f;
+    --sea-light:#3aa3c4;
+    --sand:#f4efe6;
+    --sand-2:#e9e0d1;
+    --gold:#c9a55c;
+    --gold-2:#b08f47;
+    --text:#1c2530;
+    --muted:#5b6673;
+    --white:#ffffff;
+    --radius:18px;
+    --shadow:0 20px 50px rgba(11,31,51,.14);
+    --font:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Playfair Display",Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font);color:var(--text);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased}
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  ul{list-style:none}
+  .container{width:min(1180px,92%);margin:0 auto}
+  h1,h2,h3{font-family:var(--serif);line-height:1.15;font-weight:600}
+  h2{font-size:clamp(30px,4vw,44px);color:var(--navy);margin-bottom:16px}
+  .lead{font-size:18px;color:var(--muted);max-width:640px}
+  section{padding:96px 0}
+  @media (max-width:768px){section{padding:64px 0}}
+  .eyebrow{display:inline-block;font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:var(--sea);margin-bottom:14px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:16px 30px;border-radius:999px;font-weight:700;font-size:15px;border:2px solid transparent;cursor:pointer;transition:.25s;font-family:var(--font);white-space:nowrap}
+  .btn-gold{background:var(--gold);color:var(--navy)}
+  .btn-gold:hover{background:var(--gold-2);transform:translateY(-2px)}
+  .btn-outline{border-color:rgba(255,255,255,.5);color:#fff;background:transparent}
+  .btn-outline:hover{background:rgba(255,255,255,.12)}
+  .btn-navy{background:var(--navy);color:#fff}
+  .btn-navy:hover{background:var(--navy-2);transform:translateY(-2px)}
+  .btn-block{width:100%}
+
+  /* Header */
+  header{position:fixed;inset:0 0 auto 0;z-index:100;padding:18px 0;transition:.3s;color:#fff}
+  header.scrolled{background:rgba(11,31,51,.96);backdrop-filter:blur(10px);padding:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .logo{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:22px;font-weight:700;letter-spacing:.02em}
+  .logo span{display:block;font-family:var(--font);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:600;opacity:.75}
+  .logo svg{width:38px;height:38px}
+  .menu{display:flex;gap:28px;font-size:14px;font-weight:600}
+  .menu a{opacity:.85;transition:.2s}
+  .menu a:hover{opacity:1;color:var(--gold)}
+  .nav-phone{font-weight:700;font-size:15px}
+  .nav-phone small{display:block;font-weight:500;font-size:12px;opacity:.7}
+  .burger{display:none;background:none;border:0;color:#fff;cursor:pointer;width:40px;height:40px}
+  .burger svg{width:28px;height:28px}
+  @media (max-width:960px){
+    .menu,.nav-phone,.nav .btn{display:none}
+    .burger{display:block}
+  }
+  .mobile-menu{position:fixed;inset:0;background:var(--navy);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;font-size:22px;font-weight:600;color:#fff;transform:translateX(100%);transition:.35s}
+  .mobile-menu.open{transform:none}
+  .mobile-menu a:hover{color:var(--gold)}
+
+  /* Hero */
+  .hero{position:relative;min-height:100vh;display:flex;align-items:center;color:#fff;overflow:hidden;padding:140px 0 80px;
+    background:
+      radial-gradient(1200px 600px at 80% 110%, rgba(58,163,196,.45), transparent 60%),
+      radial-gradient(800px 500px at 10% 20%, rgba(201,165,92,.25), transparent 60%),
+      linear-gradient(160deg,#0b1f33 0%,#122c47 45%,#1a6f8f 100%)}
+  .hero::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='700' viewBox='0 0 1400 700'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.5'%3E%3Cpath d='M0 520 Q350 470 700 520 T1400 520'/%3E%3Cpath d='M0 560 Q350 510 700 560 T1400 560'/%3E%3Cpath d='M0 600 Q350 550 700 600 T1400 600'/%3E%3Cpath d='M0 640 Q350 590 700 640 T1400 640'/%3E%3C/g%3E%3Cg fill='rgba(255,255,255,0.06)'%3E%3Crect x='960' y='180' width='90' height='340'/%3E%3Crect x='1070' y='120' width='120' height='400'/%3E%3Crect x='1210' y='220' width='80' height='300'/%3E%3Crect x='860' y='260' width='80' height='260'/%3E%3C/g%3E%3C/svg%3E") no-repeat right bottom/cover;pointer-events:none}
+  .hero .container{position:relative;display:grid;grid-template-columns:1.2fr .8fr;gap:60px;align-items:center}
+  @media (max-width:960px){.hero .container{grid-template-columns:1fr}}
+  .hero h1{font-size:clamp(38px,5.6vw,68px);margin:18px 0 22px;font-weight:600}
+  .hero h1 em{font-style:italic;color:var(--gold)}
+  .hero p{font-size:19px;max-width:560px;opacity:.9;margin-bottom:36px}
+  .hero-actions{display:flex;gap:16px;flex-wrap:wrap}
+  .hero-badge{display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600}
+  .hero-badge i{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;box-shadow:0 0 0 4px rgba(201,165,92,.3)}
+  .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:56px;padding-top:32px;border-top:1px solid rgba(255,255,255,.2)}
+  .hero-stats b{display:block;font-family:var(--serif);font-size:36px;color:var(--gold);line-height:1}
+  .hero-stats span{font-size:13px;opacity:.8;display:block;margin-top:8px}
+  @media (max-width:560px){.hero-stats{grid-template-columns:1fr 1fr}}
+
+  .card-form{background:#fff;color:var(--text);border-radius:24px;padding:36px;box-shadow:var(--shadow)}
+  .card-form h3{font-size:24px;color:var(--navy);margin-bottom:8px}
+  .card-form p{font-size:14px;color:var(--muted);margin-bottom:22px;opacity:1}
+  .field{margin-bottom:14px}
+  .field input,.field select,.field textarea{width:100%;padding:15px 18px;border:1.5px solid var(--sand-2);border-radius:12px;font-family:var(--font);font-size:15px;background:var(--sand);transition:.2s;color:var(--text)}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sea);background:#fff}
+  .consent{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.5}
+  .consent a{text-decoration:underline}
+
+  /* Advantages */
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+  @media (max-width:960px){.grid-3,.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:600px){.grid-3,.grid-4,.grid-2{grid-template-columns:1fr}}
+  .adv{background:var(--sand);border-radius:var(--radius);padding:32px 28px;transition:.25s;border:1px solid transparent}
+  .adv:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:var(--shadow);background:#fff}
+  .adv .ico{width:52px;height:52px;border-radius:14px;background:var(--navy);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+  .adv .ico svg{width:26px;height:26px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .adv h3{font-size:20px;color:var(--navy);margin-bottom:10px;font-family:var(--font);font-weight:700}
+  .adv p{color:var(--muted);font-size:15px}
+
+  /* Location */
+  .location{background:var(--navy);color:#fff}
+  .location h2{color:#fff}
+  .location .lead{color:rgba(255,255,255,.75)}
+  .loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+  @media (max-width:960px){.loc-grid{grid-template-columns:1fr}}
+  .loc-list li{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:16px}
+  .loc-list li b{color:var(--gold);font-family:var(--serif);font-size:22px;white-space:nowrap;margin-left:16px}
+  .map-card{background:linear-gradient(145deg,#122c47,#1a6f8f);border-radius:24px;padding:8px;box-shadow:var(--shadow)}
+  .map-card .map{border-radius:18px;overflow:hidden;background:#0e2740;aspect-ratio:1/1;position:relative}
+  .map-card svg{width:100%;height:100%;display:block}
+  .map-note{padding:18px 20px;font-size:14px;opacity:.85}
+  .map-note b{display:block;color:var(--gold);font-size:15px;margin-bottom:4px}
+
+  /* Layouts */
+  .tabs{display:flex;gap:10px;flex-wrap:wrap;margin:32px 0}
+  .tab{padding:12px 22px;border-radius:999px;border:1.5px solid var(--sand-2);background:#fff;cursor:pointer;font-weight:600;font-family:var(--font);font-size:14px;transition:.2s;color:var(--text)}
+  .tab.active,.tab:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .plan{background:#fff;border:1px solid var(--sand-2);border-radius:var(--radius);overflow:hidden;transition:.25s;display:flex;flex-direction:column}
+  .plan:hover{box-shadow:var(--shadow);transform:translateY(-4px)}
+  .plan-img{background:var(--sand);aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;padding:24px}
+  .plan-img svg{width:100%;height:100%;max-height:220px}
+  .plan-body{padding:22px 24px 26px;flex:1;display:flex;flex-direction:column}
+  .plan-body h3{font-family:var(--font);font-size:19px;font-weight:700;color:var(--navy)}
+  .plan-meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:14px;margin:10px 0 16px}
+  .plan-meta span::before{content:"•";margin-right:8px;color:var(--gold)}
+  .plan-meta span:first-child::before{content:none}
+  .plan-price{font-family:var(--serif);font-size:24px;color:var(--navy);margin-top:auto;margin-bottom:14px}
+  .plan-price small{font-family:var(--font);font-size:13px;color:var(--muted);display:block}
+  .plan .btn{padding:13px 20px;font-size:14px}
+  .hidden{display:none!important}
+
+  /* Gallery */
+  .gallery{background:var(--sand)}
+  .g-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:220px;gap:14px}
+  .g-item{border-radius:16px;overflow:hidden;position:relative;color:#fff;display:flex;align-items:flex-end;padding:20px;font-weight:600;font-size:15px;cursor:default;transition:.3s}
+  .g-item:hover{transform:scale(1.02)}
+  .g-item::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(11,31,51,.75),transparent 60%)}
+  .g-item span{position:relative;z-index:1}
+  .g-item.big{grid-column:span 2;grid-row:span 2}
+  .g1{background:linear-gradient(135deg,#1a6f8f,#0b1f33)}
+  .g2{background:linear-gradient(135deg,#c9a55c,#8a6d2f)}
+  .g3{background:linear-gradient(135deg,#3aa3c4,#1a6f8f)}
+  .g4{background:linear-gradient(135deg,#e9e0d1,#b8a684)}
+  .g5{background:linear-gradient(135deg,#122c47,#3aa3c4)}
+  .g6{background:linear-gradient(135deg,#0b1f33,#c9a55c)}
+  @media (max-width:960px){.g-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}}
+  @media (max-width:560px){.g-grid{grid-template-columns:1fr;grid-auto-rows:200px}.g-item.big{grid-column:span 1;grid-row:span 1}}
+
+  /* Invest */
+  .invest-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+  @media (max-width:960px){.invest-grid{grid-template-columns:1fr}}
+  .calc{background:var(--navy);color:#fff;border-radius:24px;padding:36px;box-shadow:var(--shadow)}
+  .calc h3{font-family:var(--font);font-size:20px;margin-bottom:24px;font-weight:700}
+  .calc label{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;opacity:.85}
+  .calc label output{color:var(--gold);font-weight:700}
+  .calc input[type=range]{width:100%;margin:0 0 26px;accent-color:var(--gold)}
+  .calc-result{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-top:22px;border-top:1px solid rgba(255,255,255,.15)}
+  .calc-result b{display:block;font-family:var(--serif);font-size:28px;color:var(--gold)}
+  .calc-result span{font-size:13px;opacity:.75}
+  .calc-foot{font-size:12px;opacity:.6;margin-top:18px}
+  .check-list li{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px;font-size:16px}
+  .check-list li::before{content:"";flex:none;width:26px;height:26px;border-radius:50%;background:var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b1f33' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center/14px no-repeat;margin-top:2px}
+
+  /* Purchase options */
+  .option{background:#fff;border:1.5px solid var(--sand-2);border-radius:var(--radius);padding:30px 28px;position:relative}
+  .option.hot{border-color:var(--gold);background:linear-gradient(180deg,#fff,var(--sand))}
+  .option .tag{position:absolute;top:-13px;left:24px;background:var(--gold);color:var(--navy);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px}
+  .option h3{font-family:var(--font);font-size:19px;font-weight:700;color:var(--navy);margin-bottom:6px}
+  .option .big{font-family:var(--serif);font-size:32px;color:var(--sea);margin:10px 0 12px}
+  .option p{font-size:14px;color:var(--muted)}
+
+  /* Steps */
+  .steps{background:var(--sand)}
+  .step{position:relative;padding:28px 24px 28px 24px;background:#fff;border-radius:var(--radius)}
+  .step b{font-family:var(--serif);font-size:44px;color:var(--gold);line-height:1;display:block;margin-bottom:14px}
+  .step h3{font-family:var(--font);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px}
+  .step p{font-size:14px;color:var(--muted)}
+
+  /* FAQ */
+  .faq-item{border-bottom:1px solid var(--sand-2)}
+  .faq-q{width:100%;text-align:left;background:none;border:0;padding:22px 0;font-family:var(--font);font-size:18px;font-weight:700;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:20px}
+  .faq-q::after{content:"+";font-size:28px;color:var(--gold);font-weight:400;flex:none;transition:.25s}
+  .faq-item.open .faq-q::after{transform:rotate(45deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease;color:var(--muted);font-size:15px}
+  .faq-a p{padding-bottom:22px;max-width:760px}
+  .faq-item.open .faq-a{max-height:400px}
+
+  /* CTA */
+  .cta{background:linear-gradient(135deg,#0b1f33,#1a6f8f);color:#fff;position:relative;overflow:hidden}
+  .cta::before{content:"";position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(rgba(201,165,92,.35),transparent 65%);top:-200px;right:-150px}
+  .cta .container{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+  @media (max-width:960px){.cta .container{grid-template-columns:1fr}}
+  .cta h2{color:#fff}
+  .cta .lead{color:rgba(255,255,255,.8)}
+  .cta ul li{margin-bottom:10px;display:flex;gap:10px;font-size:15px;opacity:.9}
+  .cta ul li::before{content:"—";color:var(--gold)}
+
+  /* Footer */
+  footer{background:#071523;color:rgba(255,255,255,.7);padding:50px 0 30px;font-size:13px}
+  .f-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:36px}
+  @media (max-width:768px){.f-grid{grid-template-columns:1fr}}
+  footer h4{color:#fff;font-size:14px;margin-bottom:14px;font-family:var(--font)}
+  footer li{margin-bottom:8px}
+  footer a:hover{color:var(--gold)}
+  .f-bottom{border-top:1px solid rgba(255,255,255,.1);padding-top:22px;font-size:12px;opacity:.6}
+
+  /* Sticky mobile CTA */
+  .sticky-cta{position:fixed;bottom:0;left:0;right:0;z-index:90;display:none;padding:12px 16px;background:rgba(11,31,51,.96);backdrop-filter:blur(10px);gap:10px}
+  .sticky-cta .btn{flex:1;padding:14px 12px;font-size:14px}
+  @media (max-width:768px){.sticky-cta{display:flex}body{padding-bottom:70px}}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(7,21,35,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;visibility:hidden;transition:.25s}
+  .modal.open{opacity:1;visibility:visible}
+  .modal .card-form{max-width:440px;width:100%;position:relative}
+  .modal-close{position:absolute;top:14px;right:16px;background:none;border:0;font-size:28px;color:var(--muted);cursor:pointer;line-height:1}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:16px 24px;border-radius:14px;box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:.3s;z-index:300;font-weight:600;max-width:90%;text-align:center}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:.7s ease}
+  .reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div class="container nav">
+    <a href="#top" class="logo" aria-label="Гранд Марина">
+      <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" stroke="#c9a55c" stroke-width="1.5"/><path d="M8 26c4-3 8-3 12 0s8 3 12 0" stroke="#c9a55c" stroke-width="2" stroke-linecap="round"/><path d="M20 8v14M14 14l6-6 6 6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>Гранд Марина<span>Хоста · Сочи</span></div>
+    </a>
+    <nav class="menu">
+      <a href="#about">О комплексе</a>
+      <a href="#location">Расположение</a>
+      <a href="#plans">Планировки</a>
+      <a href="#invest">Доходность</a>
+      <a href="#terms">Условия</a>
+      <a href="#faq">Вопросы</a>
+    </nav>
+    <a href="tel:+78620000000" class="nav-phone">+7 (862) 000-00-00<small>ежедневно 9:00–21:00</small></a>
+    <button class="btn btn-gold" data-open-modal style="padding:12px 22px;font-size:14px">Получить цены</button>
+    <button class="burger" id="burger" aria-label="Меню"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+</header>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#about">О комплексе</a>
+  <a href="#location">Расположение</a>
+  <a href="#plans">Планировки</a>
+  <a href="#invest">Доходность</a>
+  <a href="#terms">Условия</a>
+  <a href="#faq">Вопросы</a>
+  <a href="tel:+78620000000" style="color:var(--gold)">+7 (862) 000-00-00</a>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="container">
+    <div>
+      <div class="hero-badge"><i></i>Старт продаж · рассрочка от застройщика</div>
+      <h1>Апартаменты у моря в Хосте — <em>для жизни</em> и дохода</h1>
+      <p>ЖК «Гранд Марина»: тихий курортный район Сочи, море в пешей доступности, готовая отделка и управляющая компания, которая сдаёт апартаменты за вас.</p>
+      <div class="hero-actions">
+        <button class="btn btn-gold" data-open-modal>Подобрать апартаменты</button>
+        <a href="#plans" class="btn btn-outline">Смотреть планировки</a>
+      </div>
+      <div class="hero-stats">
+        <div><b>7 мин</b><span>пешком до пляжа</span></div>
+        <div><b>25–90 м²</b><span>студии и апартаменты 1–3 комнаты</span></div>
+        <div><b>0%</b><span>рассрочка до конца строительства</span></div>
+      </div>
+    </div>
+    <form class="card-form" data-form>
+      <h3>Подборка планировок с ценами</h3>
+      <p>Отправим актуальный прайс и свободные лоты за 15 минут</p>
+      <div class="field"><input type="text" name="name" placeholder="Ваше имя" required></div>
+      <div class="field"><input type="tel" name="phone" placeholder="+7 (___) ___-__-__" required></div>
+      <div class="field">
+        <select name="goal">
+          <option value="">Цель покупки</option>
+          <option>Для себя — жить / отдыхать</option>
+          <option>Инвестиции — сдавать в аренду</option>
+          <option>Ещё не решил(а)</option>
+        </select>
+      </div>
+      <button class="btn btn-navy btn-block" type="submit">Получить подборку</button>
+      <div class="consent">Нажимая кнопку, вы соглашаетесь с <a href="#">политикой обработки персональных данных</a>. Без спама, только по делу.</div>
+    </form>
+  </div>
+</section>
+
+<!-- ABOUT / ADVANTAGES -->
+<section id="about">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">О комплексе</span>
+      <h2>Почему «Гранд Марина», а не другой ЖК в Сочи</h2>
+      <p class="lead">Хоста — район, где нет толп Центрального Сочи и суеты Адлера, а до моря, аэропорта и Красной Поляны всё равно близко.</p>
+    </div>
+    <div class="grid-3" style="margin-top:48px">
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 21c2-2 4-2 6 0s4 2 6 0 4-2 6 0M12 3v8M8 7l4-4 4 4"/></svg></div>
+        <h3>Море рядом</h3>
+        <p>7 минут пешком до пляжа Хосты. Не через трассу и не через рынок — по спокойным улицам с зеленью.</p>
+      </div>
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg></div>
+        <h3>Готовая отделка</h3>
+        <p>Апартаменты сдаются с чистовой отделкой, сантехникой и кухней. Заезжайте или сдавайте с первого дня.</p>
+      </div>
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></div>
+        <h3>Инфраструктура курорта</h3>
+        <p>Бассейн, спа-зона, лобби с ресепшн, ресторан, фитнес и подземный паркинг на территории комплекса.</p>
+      </div>
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <h3>Управляющая компания</h3>
+        <p>УК берёт на себя поиск гостей, заселение, уборку и отчётность. Вы получаете доход, а не вторую работу.</p>
+      </div>
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M12 22c5-2 8-6 8-12V5l-8-3-8 3v5c0 6 3 10 8 12z"/></svg></div>
+        <h3>Сделка по 214-ФЗ</h3>
+        <p>Договор долевого участия, эскроу-счёт. Деньги у банка до сдачи дома, а не у застройщика.</p>
+      </div>
+      <div class="adv reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-4 3 3 6-6M20 8V4h-4"/></svg></div>
+        <h3>Рост цены</h3>
+        <p>Цена растёт с каждым этапом стройки. Покупка на старте — это доходность ещё до получения ключей.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOCATION -->
+<section class="location" id="location">
+  <div class="container loc-grid">
+    <div class="reveal">
+      <span class="eyebrow" style="color:var(--gold)">Расположение</span>
+      <h2>Хоста: тихий центр Большого Сочи</h2>
+      <p class="lead" style="margin-bottom:30px">Между Центральным Сочи и Адлером. Свой пляж, свой тисо-самшитовый заповедник, а всё остальное — в 20–40 минутах.</p>
+      <ul class="loc-list">
+        <li>Пляж Хосты <b>7 мин пешком</b></li>
+        <li>Ж/д станция Хоста <b>10 мин</b></li>
+        <li>Тисо-самшитовая роща <b>12 мин</b></li>
+        <li>Центр Сочи <b>25 мин</b></li>
+        <li>Аэропорт Сочи (Адлер) <b>25 мин</b></li>
+        <li>Сириус и Олимпийский парк <b>30 мин</b></li>
+        <li>Красная Поляна <b>60 мин</b></li>
+      </ul>
+    </div>
+    <div class="map-card reveal">
+      <div class="map" role="img" aria-label="Схема расположения ЖК Гранд Марина в Хосте">
+        <svg viewBox="0 0 400 400" fill="none">
+          <defs><linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a6f8f"/><stop offset="1" stop-color="#3aa3c4"/></linearGradient></defs>
+          <rect width="400" height="400" fill="#0e2740"/>
+          <path d="M0 250 Q100 230 200 260 T400 240 V400 H0z" fill="url(#sea)" opacity=".9"/>
+          <g stroke="rgba(255,255,255,.12)" stroke-width="1"><path d="M0 250 Q100 230 200 260 T400 240"/><path d="M0 290 Q100 270 200 300 T400 280"/><path d="M0 330 Q100 310 200 340 T400 320"/></g>
+          <path d="M0 200 Q120 170 220 210 T400 190" stroke="rgba(255,255,255,.35)" stroke-width="3" stroke-dasharray="6 6"/>
+          <text x="12" y="192" fill="rgba(255,255,255,.5)" font-size="10" font-family="Manrope,sans-serif">Курортный проспект</text>
+          <g stroke="rgba(255,255,255,.2)" stroke-width="1.5"><path d="M60 40v160M150 30v170M260 60v140M330 20v170"/></g>
+          <g fill="rgba(255,255,255,.08)"><rect x="70" y="80" width="30" height="50"/><rect x="110" y="60" width="30" height="70"/><rect x="170" y="90" width="40" height="60"/><rect x="280" y="70" width="30" height="80"/><rect x="345" y="100" width="35" height="50"/></g>
+          <circle cx="30" cy="330" r="22" fill="rgba(255,255,255,.08)"/><text x="18" y="334" fill="#fff" font-size="9" font-family="Manrope,sans-serif">Сочи</text>
+          <circle cx="370" cy="350" r="22" fill="rgba(255,255,255,.08)"/><text x="352" y="354" fill="#fff" font-size="9" font-family="Manrope,sans-serif">Адлер</text>
+          <text x="150" y="365" fill="rgba(255,255,255,.7)" font-size="13" font-family="Playfair Display,serif" font-style="italic">Чёрное море</text>
+          <g transform="translate(215,195)">
+            <circle r="38" fill="rgba(201,165,92,.15)"><animate attributeName="r" values="28;44;28" dur="3s" repeatCount="indefinite"/></circle>
+            <circle r="14" fill="#c9a55c"/><path d="M0 -6v9M-4 -2l4-4 4 4" stroke="#0b1f33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <rect x="150" y="140" width="130" height="30" rx="15" fill="#c9a55c"/>
+          <text x="215" y="160" text-anchor="middle" fill="#0b1f33" font-size="12" font-weight="700" font-family="Manrope,sans-serif">ЖК «Гранд Марина»</text>
+          <text x="215" y="248" text-anchor="middle" fill="#fff" font-size="10" font-family="Manrope,sans-serif">пляж · 7 мин</text>
+        </svg>
+      </div>
+      <div class="map-note"><b>Сочи, Хостинский район, микрорайон Хоста</b>Точный адрес и схему проезда отправим вместе с прайсом. Организуем показ с трансфером от аэропорта.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section id="plans">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">Планировки и цены</span>
+      <h2>Выберите формат под свою задачу</h2>
+      <p class="lead">Студии для сдачи посуточно, семейные форматы для жизни, видовые апартаменты с террасами для тех, кто едет к морю за настроением.</p>
+    </div>
+    <div class="tabs reveal">
+      <button class="tab active" data-filter="all">Все</button>
+      <button class="tab" data-filter="studio">Студии</button>
+      <button class="tab" data-filter="one">1-комнатные</button>
+      <button class="tab" data-filter="two">2-комнатные</button>
+      <button class="tab" data-filter="three">3-комнатные и террасы</button>
+    </div>
+    <div class="grid-3" id="plansGrid">
+      <div class="plan reveal" data-type="studio">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="20" width="200" height="140" fill="#fff"/><path d="M20 110h80M100 110v50M170 20v40M170 60h50"/><rect x="30" y="30" width="60" height="40" stroke-dasharray="4 3"/><rect x="180" y="30" width="30" height="25" stroke-dasharray="4 3"/><text x="45" y="140" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">санузел</text><text x="120" y="95" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">жилая + кухня</text><text x="35" y="55" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">кровать</text></svg></div>
+        <div class="plan-body">
+          <h3>Студия «Бриз»</h3>
+          <div class="plan-meta"><span>25,4 м²</span><span>2–6 этаж</span><span>балкон</span></div>
+          <div class="plan-price">от 6,9 млн ₽<small>≈ 272 000 ₽/м² · рассрочка от 115 000 ₽/мес</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="Студия «Бриз», 25,4 м²">Узнать цену лота</button>
+        </div>
+      </div>
+      <div class="plan reveal" data-type="studio">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="20" width="200" height="140" fill="#fff"/><path d="M20 100h70M90 100v60M150 20v50M150 70h70"/><rect x="30" y="30" width="50" height="45" stroke-dasharray="4 3"/><rect x="160" y="30" width="50" height="30" stroke-dasharray="4 3"/><text x="35" y="135" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">санузел</text><text x="110" y="120" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">жилая зона</text><text x="165" y="50" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">кухня</text></svg></div>
+        <div class="plan-body">
+          <h3>Студия «Лагуна» с видом на море</h3>
+          <div class="plan-meta"><span>31,8 м²</span><span>7–12 этаж</span><span>лоджия</span></div>
+          <div class="plan-price">от 9,2 млн ₽<small>≈ 289 000 ₽/м² · рассрочка от 153 000 ₽/мес</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="Студия «Лагуна», 31,8 м²">Узнать цену лота</button>
+        </div>
+      </div>
+      <div class="plan reveal" data-type="one">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="20" width="200" height="140" fill="#fff"/><path d="M120 20v140M20 100h100M170 20v50M170 70h50"/><rect x="30" y="30" width="80" height="55" stroke-dasharray="4 3"/><text x="40" y="135" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">санузел</text><text x="35" y="62" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="140" y="120" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">кухня-гостиная</text></svg></div>
+        <div class="plan-body">
+          <h3>1-комнатные «Марина»</h3>
+          <div class="plan-meta"><span>42,6 м²</span><span>3–10 этаж</span><span>балкон</span></div>
+          <div class="plan-price">от 11,7 млн ₽<small>≈ 275 000 ₽/м² · рассрочка от 195 000 ₽/мес</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="1-комнатные «Марина», 42,6 м²">Узнать цену лота</button>
+        </div>
+      </div>
+      <div class="plan reveal" data-type="one">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="20" width="200" height="140" fill="#fff"/><path d="M110 20v140M20 90h90M110 110h110"/><rect x="30" y="30" width="70" height="50" stroke-dasharray="4 3"/><text x="35" y="130" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">санузел</text><text x="35" y="60" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="125" y="70" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">гостиная</text><text x="130" y="140" font-size="11" fill="#5b6673" stroke="none" font-family="Manrope">кухня</text></svg></div>
+        <div class="plan-body">
+          <h3>1-комнатные «Марина+» евроформат</h3>
+          <div class="plan-meta"><span>48,3 м²</span><span>5–14 этаж</span><span>вид на море</span></div>
+          <div class="plan-price">от 14,1 млн ₽<small>≈ 292 000 ₽/м² · рассрочка от 235 000 ₽/мес</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="1-комнатные «Марина+», 48,3 м²">Узнать цену лота</button>
+        </div>
+      </div>
+      <div class="plan reveal" data-type="two">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="20" width="200" height="140" fill="#fff"/><path d="M90 20v140M160 20v140M20 100h70M160 90h60"/><rect x="28" y="28" width="55" height="45" stroke-dasharray="4 3"/><rect x="168" y="28" width="45" height="45" stroke-dasharray="4 3"/><text x="30" y="135" font-size="10" fill="#5b6673" stroke="none" font-family="Manrope">санузел</text><text x="30" y="60" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="170" y="60" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="97" y="95" font-size="10" fill="#5b6673" stroke="none" font-family="Manrope">гостиная</text><text x="170" y="130" font-size="10" fill="#5b6673" stroke="none" font-family="Manrope">кухня</text></svg></div>
+        <div class="plan-body">
+          <h3>2-комнатные «Гранд»</h3>
+          <div class="plan-meta"><span>63,5 м²</span><span>4–12 этаж</span><span>2 санузла</span></div>
+          <div class="plan-price">от 17,4 млн ₽<small>≈ 274 000 ₽/м² · рассрочка от 290 000 ₽/мес</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="2-комнатные «Гранд», 63,5 м²">Узнать цену лота</button>
+        </div>
+      </div>
+      <div class="plan reveal" data-type="three">
+        <div class="plan-img"><svg viewBox="0 0 240 180" fill="none" stroke="#0b1f33" stroke-width="2"><rect x="20" y="40" width="200" height="120" fill="#fff"/><rect x="20" y="20" width="200" height="20" fill="#e9e0d1" stroke-dasharray="4 3"/><path d="M85 40v120M150 40v120M20 110h65M150 100h70"/><text x="90" y="34" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">терраса 24 м²</text><text x="28" y="80" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="92" y="100" font-size="9" fill="#5b6673" stroke="none" font-family="Manrope">гостиная</text><text x="157" y="75" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">спальня</text><text x="157" y="135" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">кухня</text><text x="28" y="140" font-size="8" fill="#5b6673" stroke="none" font-family="Manrope">санузлы</text></svg></div>
+        <div class="plan-body">
+          <h3>3-комнатные «Пентхаус» с террасой</h3>
+          <div class="plan-meta"><span>89,7 м²</span><span>15–16 этаж</span><span>терраса 24 м²</span></div>
+          <div class="plan-price">от 29,6 млн ₽<small>≈ 330 000 ₽/м² · всего 4 лота в комплексе</small></div>
+          <button class="btn btn-navy" data-open-modal data-plan="3-комнатные «Пентхаус», 89,7 м²">Узнать цену лота</button>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top:28px;font-size:13px;color:var(--muted)">Цены указаны на текущий этап строительства и меняются по мере готовности дома. Актуальный прайс с номерами лотов — по запросу.</p>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="gallery">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">Комплекс</span>
+      <h2>Что вы получаете, кроме квадратных метров</h2>
+    </div>
+    <div class="g-grid" style="margin-top:40px">
+      <div class="g-item big g1 reveal"><span>Фасад и лобби с видом на море</span></div>
+      <div class="g-item g2 reveal"><span>Открытый бассейн с подогревом</span></div>
+      <div class="g-item g3 reveal"><span>Спа и фитнес-зона</span></div>
+      <div class="g-item g4 reveal"><span>Чистовая отделка апартаментов</span></div>
+      <div class="g-item g5 reveal"><span>Ресторан на первом этаже</span></div>
+      <div class="g-item g6 reveal"><span>Подземный паркинг</span></div>
+      <div class="g-item g1 reveal"><span>Ландшафтный двор без машин</span></div>
+    </div>
+    <p style="margin-top:24px;font-size:13px;color:var(--muted)">Рендеры, ход строительства и видео с площадки отправляем в мессенджер по запросу.</p>
+  </div>
+</section>
+
+<!-- INVEST -->
+<section id="invest">
+  <div class="container invest-grid">
+    <div class="reveal">
+      <span class="eyebrow">Доходность</span>
+      <h2>Сочи заполняется круглый год. Хоста — не исключение</h2>
+      <p class="lead" style="margin-bottom:30px">Летом — море, зимой — горы и санатории, в межсезонье — конференции и лечение. Загрузка апартаментов у моря не падает ниже 60% даже в ноябре.</p>
+      <ul class="check-list">
+        <li>Посуточная сдача через УК: вы получаете отчёт и деньги, УК — гостей и уборку</li>
+        <li>Долгосрочная аренда: спрос от переезжающих в Сочи семей и удалёнщиков</li>
+        <li>Рост цены к сдаче дома: покупка на котловане исторически даёт +25–40%</li>
+        <li>Ликвидность: апартаменты у моря продаются быстрее, чем квартиры в спальных районах</li>
+      </ul>
+      <button class="btn btn-gold" data-open-modal data-plan="Инвестиционный расчёт">Получить расчёт доходности</button>
+    </div>
+    <div class="calc reveal">
+      <h3>Калькулятор дохода от аренды</h3>
+      <label>Стоимость апартаментов <output id="oPrice">9,2 млн ₽</output></label>
+      <input type="range" id="rPrice" min="6.9" max="29.6" step="0.1" value="9.2">
+      <label>Ставка за сутки <output id="oRate">6 500 ₽</output></label>
+      <input type="range" id="rRate" min="3000" max="20000" step="100" value="6500">
+      <label>Загрузка в году <output id="oOcc">65%</output></label>
+      <input type="range" id="rOcc" min="30" max="95" step="1" value="65">
+      <div class="calc-result">
+        <div><b id="rYear">—</b><span>доход в год до расходов</span></div>
+        <div><b id="rNet">—</b><span>чистыми при комиссии УК 25%</span></div>
+        <div><b id="rYield">—</b><span>чистая доходность годовых</span></div>
+        <div><b id="rPayback">—</b><span>окупаемость</span></div>
+      </div>
+      <div class="calc-foot">Расчёт ориентировочный, не является офертой. Точную модель под конкретный лот подготовит менеджер.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TERMS -->
+<section id="terms" style="background:var(--sand)">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">Условия покупки</span>
+      <h2>Четыре способа купить. Выберите тот, что не давит на бюджет</h2>
+    </div>
+    <div class="grid-4" style="margin-top:48px">
+      <div class="option hot reveal"><span class="tag">Популярно</span><h3>Рассрочка 0%</h3><div class="big">от 20%</div><p>Первый взнос от 20%, остаток равными платежами до ввода дома в эксплуатацию. Без банка и справок.</p></div>
+      <div class="option reveal"><h3>100% оплата</h3><div class="big">−7%</div><p>Скидка при полной оплате в течение 5 дней после бронирования. Самая низкая цена за метр.</p></div>
+      <div class="option reveal"><h3>Ипотека</h3><div class="big">от 12,9%</div><p>Банки-партнёры одобряют апартаменты. Поможем собрать документы и получить решение за 1–3 дня.</p></div>
+      <div class="option reveal"><h3>Trade-in</h3><div class="big">1 сделка</div><p>Зачтём вашу квартиру в любом городе России в стоимость апартаментов. Оценка и выкуп за 14 дней.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section class="steps" style="padding-top:0">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">Как купить</span>
+      <h2>От заявки до ключей — без поездок в офис</h2>
+    </div>
+    <div class="grid-4" style="margin-top:40px">
+      <div class="step reveal"><b>01</b><h3>Заявка</h3><p>Оставляете номер. Через 15 минут — звонок менеджера и подборка лотов в мессенджер.</p></div>
+      <div class="step reveal"><b>02</b><h3>Показ</h3><p>Онлайн-презентация с рендерами и площадкой или живой показ с трансфером от аэропорта.</p></div>
+      <div class="step reveal"><b>03</b><h3>Бронь и договор</h3><p>Фиксируем цену лота на 5 дней. ДДУ подписывается дистанционно через электронную подпись.</p></div>
+      <div class="step reveal"><b>04</b><h3>Ключи и доход</h3><p>Принимаете апартаменты с отделкой. Передаёте в УК или заезжаете сами.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow">Вопросы</span>
+      <h2>Что спрашивают перед покупкой</h2>
+    </div>
+    <div style="margin-top:36px;max-width:860px">
+      <div class="faq-item reveal">
+        <button class="faq-q">Апартаменты — это не квартира. В чём разница для меня?</button>
+        <div class="faq-a"><p>Юридически это нежилое помещение: нельзя оформить постоянную регистрацию и не действуют льготные семейные ипотеки. Зато нет ограничений на посуточную сдачу, ниже налог при покупке юрлицом и УК работает как в отеле. Для инвестиций и «второго дома у моря» апартаменты удобнее квартиры.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Какие коммунальные платежи и сколько берёт УК?</button>
+        <div class="faq-a"><p>Эксплуатационные расходы для апартаментов выше, чем у квартир, из-за бассейна, охраны и общих зон. Точную ставку за метр и тарифы УК за сдачу в аренду пришлём вместе с прайсом — они зафиксированы в договоре, не «плавают».</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Можно ли купить дистанционно, если я не в Сочи?</button>
+        <div class="faq-a"><p>Да. Показ проводим онлайн, договор подписывается электронной подписью, оплата идёт на эскроу-счёт в банке. Приезжать нужно только на приёмку, и то по желанию — можно выдать доверенность.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Когда сдача дома и что будет, если сроки сдвинут?</button>
+        <div class="faq-a"><p>Срок передачи ключей зафиксирован в ДДУ. Деньги до этого момента лежат на эскроу-счёте и не доступны застройщику. При просрочке дольщику по закону положена неустойка. Плановый срок по текущей очереди сообщит менеджер.</p></div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-q">Есть ли паркинг и сколько стоит машиноместо?</button>
+        <div class="faq-a"><p>Подземный паркинг на территории. Машиноместа продаются отдельно, на старте — по фиксированной цене со скидкой для покупателей апартаментов. В Хосте с парковкой летом сложно, место окупается быстро.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="contact">
+  <div class="container">
+    <div class="reveal">
+      <span class="eyebrow" style="color:var(--gold)">Заявка</span>
+      <h2>Забронируйте лот до следующего повышения цены</h2>
+      <p class="lead" style="margin-bottom:26px">Оставьте номер, и за 15 минут вы получите:</p>
+      <ul>
+        <li>прайс со свободными лотами и этажами</li>
+        <li>расчёт рассрочки под ваш первый взнос</li>
+        <li>модель доходности при сдаче через УК</li>
+        <li>рендеры, видео стройки и схему проезда</li>
+      </ul>
+    </div>
+    <form class="card-form reveal" data-form>
+      <h3>Получить прайс и подборку</h3>
+      <p>Менеджер свяжется в удобном мессенджере</p>
+      <div class="field"><input type="text" name="name" placeholder="Ваше имя" required></div>
+      <div class="field"><input type="tel" name="phone" placeholder="+7 (___) ___-__-__" required></div>
+      <div class="field">
+        <select name="messenger">
+          <option value="">Где удобно получить подборку</option>
+          <option>Telegram</option>
+          <option>WhatsApp</option>
+          <option>Звонок</option>
+        </select>
+      </div>
+      <button class="btn btn-gold btn-block" type="submit">Отправить заявку</button>
+      <div class="consent">Нажимая кнопку, вы соглашаетесь с <a href="#">политикой обработки персональных данных</a>.</div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="f-grid">
+      <div>
+        <div class="logo" style="color:#fff;margin-bottom:14px"><svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" stroke="#c9a55c" stroke-width="1.5"/><path d="M8 26c4-3 8-3 12 0s8 3 12 0" stroke="#c9a55c" stroke-width="2" stroke-linecap="round"/><path d="M20 8v14M14 14l6-6 6 6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><div>Гранд Марина<span>Хоста · Сочи</span></div></div>
+        <p style="max-width:380px">Отдел продаж ЖК «Гранд Марина». Сочи, Хостинский район, микрорайон Хоста. Ежедневно с 9:00 до 21:00.</p>
+      </div>
+      <div>
+        <h4>Навигация</h4>
+        <ul><li><a href="#about">О комплексе</a></li><li><a href="#location">Расположение</a></li><li><a href="#plans">Планировки</a></li><li><a href="#invest">Доходность</a></li><li><a href="#terms">Условия покупки</a></li></ul>
+      </div>
+      <div>
+        <h4>Контакты</h4>
+        <ul><li><a href="tel:+78620000000">+7 (862) 000-00-00</a></li><li><a href="mailto:sales@grandmarina-sochi.ru">sales@grandmarina-sochi.ru</a></li><li><a href="#">Telegram</a> · <a href="#">WhatsApp</a></li></ul>
+      </div>
+    </div>
+    <div class="f-bottom">
+      Информация на сайте носит справочный характер и не является публичной офертой (ст. 437 ГК РФ). Характеристики, цены и сроки уточняйте у менеджера. Проектная декларация — на сайте наш.дом.рф. Персональные данные обрабатываются в соответствии с 152-ФЗ.
+    </div>
+  </div>
+</footer>
+
+<div class="sticky-cta">
+  <a href="tel:+78620000000" class="btn btn-outline">Позвонить</a>
+  <button class="btn btn-gold" data-open-modal>Получить цены</button>
+</div>
+
+<div class="modal" id="modal">
+  <form class="card-form" data-form>
+    <button type="button" class="modal-close" id="modalClose" aria-label="Закрыть">×</button>
+    <h3>Узнать цену и свободные лоты</h3>
+    <p id="modalSub">Пришлём прайс и планировки за 15 минут</p>
+    <input type="hidden" name="plan" id="modalPlan">
+    <div class="field"><input type="text" name="name" placeholder="Ваше имя" required></div>
+    <div class="field"><input type="tel" name="phone" placeholder="+7 (___) ___-__-__" required></div>
+    <button class="btn btn-gold btn-block" type="submit">Получить цены</button>
+    <div class="consent">Нажимая кнопку, вы соглашаетесь с <a href="#">политикой обработки персональных данных</a>.</div>
+  </form>
+</div>
+<div class="toast" id="toast">Заявка отправлена. Менеджер свяжется в течение 15 минут.</div>
+
+<script>
+(function(){
+  // Header
+  var header=document.getElementById('header');
+  var onScroll=function(){header.classList.toggle('scrolled',window.scrollY>40)};
+  onScroll();window.addEventListener('scroll',onScroll,{passive:true});
+
+  // Mobile menu
+  var burger=document.getElementById('burger'),mm=document.getElementById('mobileMenu');
+  burger.addEventListener('click',function(){mm.classList.toggle('open')});
+  mm.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mm.classList.remove('open')})});
+
+  // Modal
+  var modal=document.getElementById('modal'),modalPlan=document.getElementById('modalPlan'),modalSub=document.getElementById('modalSub');
+  document.querySelectorAll('[data-open-modal]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var p=b.getAttribute('data-plan')||'';
+      modalPlan.value=p;
+      modalSub.textContent=p?('Лот: '+p+'. Пришлём цену и этажи за 15 минут'):'Пришлём прайс и планировки за 15 минут';
+      modal.classList.add('open');
+      setTimeout(function(){var i=modal.querySelector('input[name=name]');i&&i.focus()},250);
+    });
+  });
+  var closeModal=function(){modal.classList.remove('open')};
+  document.getElementById('modalClose').addEventListener('click',closeModal);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeModal()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+
+  // Phone mask
+  document.querySelectorAll('input[type=tel]').forEach(function(inp){
+    inp.addEventListener('input',function(){
+      var d=inp.value.replace(/\D/g,'');
+      if(d[0]==='8')d='7'+d.slice(1);
+      if(d[0]!=='7')d='7'+d;
+      d=d.slice(0,11);
+      var r='+7';
+      if(d.length>1)r+=' ('+d.slice(1,4);
+      if(d.length>=4)r+=') '+d.slice(4,7);
+      if(d.length>=7)r+='-'+d.slice(7,9);
+      if(d.length>=9)r+='-'+d.slice(9,11);
+      inp.value=r;
+    });
+  });
+
+  // Forms
+  var toast=document.getElementById('toast');
+  document.querySelectorAll('[data-form]').forEach(function(f){
+    f.addEventListener('submit',function(e){
+      e.preventDefault();
+      var phone=f.querySelector('input[type=tel]');
+      if(phone.value.replace(/\D/g,'').length<11){phone.focus();phone.style.borderColor='#d9534f';return}
+      var data={};new FormData(f).forEach(function(v,k){data[k]=v});
+      data.page=location.href;data.ts=new Date().toISOString();
+      // TODO: замените на свой endpoint (CRM, Telegram-бот, amoCRM, Bitrix24)
+      // fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      console.log('lead',data);
+      f.reset();closeModal();
+      toast.classList.add('show');setTimeout(function(){toast.classList.remove('show')},4000);
+    });
+  });
+
+  // Plan filter
+  var tabs=document.querySelectorAll('.tab'),plans=document.querySelectorAll('#plansGrid .plan');
+  tabs.forEach(function(t){t.addEventListener('click',function(){
+    tabs.forEach(function(x){x.classList.remove('active')});t.classList.add('active');
+    var fl=t.getAttribute('data-filter');
+    plans.forEach(function(p){p.classList.toggle('hidden',fl!=='all'&&p.getAttribute('data-type')!==fl)});
+  })});
+
+  // FAQ
+  document.querySelectorAll('.faq-q').forEach(function(q){q.addEventListener('click',function(){
+    var it=q.parentElement,open=it.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(function(x){x.classList.remove('open')});
+    if(!open)it.classList.add('open');
+  })});
+
+  // Calculator
+  var rP=document.getElementById('rPrice'),rR=document.getElementById('rRate'),rO=document.getElementById('rOcc');
+  var fmt=function(n){return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ')};
+  var calc=function(){
+    var price=parseFloat(rP.value)*1e6,rate=+rR.value,occ=+rO.value/100;
+    var year=rate*365*occ,net=year*0.75;
+    document.getElementById('oPrice').textContent=rP.value.replace('.',',')+' млн ₽';
+    document.getElementById('oRate').textContent=fmt(rate)+' ₽';
+    document.getElementById('oOcc').textContent=rO.value+'%';
+    document.getElementById('rYear').textContent=fmt(year)+' ₽';
+    document.getElementById('rNet').textContent=fmt(net)+' ₽';
+    document.getElementById('rYield').textContent=(net/price*100).toFixed(1).replace('.',',')+'%';
+    document.getElementById('rPayback').textContent=(price/net).toFixed(1).replace('.',',')+' лет';
+  };
+  [rP,rR,rO].forEach(function(r){r.addEventListener('input',calc)});calc();
+
+  // Reveal
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+  }else{document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in')})}
+})();
+</script>
+</body>
+</html>
