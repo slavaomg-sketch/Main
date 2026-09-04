@@ -47,10 +47,10 @@ export async function CatalogView({ sp, base, fixed = {}, showCategories = true,
     return `${basePath}${s ? `?${s}` : ''}`;
   };
   return (
-    <div className="flex gap-8">
+    <div className="flex flex-col gap-4 lg:flex-row lg:gap-8">
       <CatalogFilters facets={result.facets} showCategories={showCategories} activeDevice={activeDevice ? { name: activeDevice.name } : null} />
       <div className="min-w-0 flex-1">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[13px] text-ink-500">{result.total} товаров</p>
           <SortSelect value={sort} allowCompat={Boolean(activeDevice)} />
         </div>

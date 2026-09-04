@@ -39,7 +39,7 @@ export default async function MyDevicesPage() {
       {bundles.length > 0 && (
         <section className="mt-8">
           <h2 className="h2 mb-3">Комплекты для {primary!.deviceModel.name}</h2>
-          <div className="grid gap-4 md:grid-cols-2">{bundles.map((b) => <BundleCard key={b.id} bundle={b} />)}</div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{bundles.map((b) => <BundleCard key={b.id} bundle={b} />)}</div>
         </section>
       )}
       {perDevice.map(({ device, items }) => items.length > 0 && (

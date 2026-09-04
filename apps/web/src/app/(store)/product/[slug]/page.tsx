@@ -49,7 +49,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   const favorites = customer ? (await prisma.favorite.findMany({ where: { customerId: customer.customer.id }, select: { productId: true } })).map((f) => f.productId) : await getGuestFavoriteIds();
   const variantImages = product.variants.find((v) => v.id === selected.id)?.images ?? [];
   const images = [...variantImages, ...product.images].map((i) => ({ url: i.asset.publicUrl, large: (i.asset.variants as Record<string, string>).large ?? i.asset.publicUrl, thumb: (i.asset.variants as Record<string, string>).thumb ?? i.asset.publicUrl, alt: i.alt ?? product.name }));
-  const visibleAttrs = product.attributes.filter((a) => a.attribute.isVisible && !a.variantId && typeof a.value !== 'object');
+  const specAttrs = product.attributes.filter((a) => a.attribute.code.startsWith('spec_') && !a.variantId);
+  const visibleAttrs = specAttrs.length ? specAttrs : product.attributes.filter((a) => a.attribute.isVisible && !a.variantId && typeof a.value !== 'object');
   const env = getEnv();
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -65,7 +66,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
   return (
     <div className="shell py-5" data-testid="product-page">
       <Breadcrumbs items={[{ label: 'Каталог', href: '/catalog' }, { label: product.category.name, href: `/category/${product.category.slug}` }, { label: product.name }]} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_340px]">
         <div><Gallery images={images} name={product.name} /></div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-500">
@@ -109,13 +110,13 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <CompatPanel device={activeDevice ? { name: activeDevice.name, slug: activeDevice.slug } : null} result={compat} devicesCount={devices.length} />
           {devices.length > 0 && (
             <section className="card p-5" aria-labelledby="devices-heading">
               <h2 id="devices-heading" className="h3 mb-3">Совместимые устройства</h2>
-              <ul className="grid gap-2 sm:grid-cols-2" data-testid="compatible-devices">
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="compatible-devices">
                 {devices.map(({ device, result }) => (
                   <li key={device.id}>
                     <Link href={`/device/${device.slug}`} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2 hover:bg-ink-50">

@@ -2,7 +2,6 @@ import type {
   CompatibilityRule,
   ConnectorType,
   DeviceSpecProfile,
-  ProductSpecProfile,
   RuleOutcome,
   RuleVerdict,
   ConstraintSpec,

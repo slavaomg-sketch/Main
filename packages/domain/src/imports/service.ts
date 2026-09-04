@@ -101,6 +101,11 @@ async function matchRow(db: DbClient, sourceId: string, row: CanonicalImportRow)
     const v = await db.productVariant.findFirst({ where: { gtin: row.gtin } });
     if (v) return { productId: v.productId, variantId: v.id, via: 'gtin' };
   }
+  // Внешний ID совпадает с нашим SKU (например, при повторной загрузке экспорта без столбца SKU)
+  if (!row.sku) {
+    const v = await db.productVariant.findUnique({ where: { sku: row.externalId } });
+    if (v) return { productId: v.productId, variantId: v.id, via: 'sku' };
+  }
   return { productId: null, variantId: null, via: null };
 }
 

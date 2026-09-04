@@ -18,7 +18,7 @@ export default async function AccountPage() {
   const customer = await prisma.customer.findUniqueOrThrow({ where: { id: session.customer.id }, include: { orders: { orderBy: { createdAt: 'desc' }, take: 3 }, devices: { include: { deviceModel: true }, orderBy: { isPrimary: 'desc' } } } });
   return (
     <AccountShell title={`Здравствуйте, ${customer.firstName ?? customer.email}!`} current="/account">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <section className="card p-5">
           <h2 className="h3 mb-2">Мои устройства</h2>
           {customer.devices.length ? (

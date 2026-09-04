@@ -35,7 +35,7 @@ export default async function DeviceCategoryPage({ params }: { params: Promise<{
       {brands.map((brand) => (
         <section key={brand} className="mb-6">
           <h2 className="h3 mb-3">{brand}</h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {data.models.filter((m) => m.brand.name === brand).map((m) => (
               <DeviceCard key={m.id} device={m} />
             ))}

@@ -23,7 +23,7 @@ export function CartView({ cart }: { cart: CartDTO }) {
       router.refresh();
     });
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" data-testid="cart">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" data-testid="cart">
       <ul className="card divide-y divide-ink-200" aria-busy={pending}>
         {cart.lines.map((l) => (
           <li key={l.id} className="flex gap-3 p-4 sm:gap-4" data-testid="cart-line">

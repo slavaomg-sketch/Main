@@ -7,7 +7,7 @@ export function WideBanners({ banners }: { banners: Array<PromoCardData & { hand
   if (banners.length === 0) return null;
   return (
     <section className="shell py-4" aria-label="Тематические разделы">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {banners.map((b) => {
           const dark = b.theme === 'DARK';
           return (

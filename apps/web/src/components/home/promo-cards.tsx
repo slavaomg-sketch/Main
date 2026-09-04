@@ -18,7 +18,7 @@ export function PromoCards({ cards }: { cards: PromoCardData[] }) {
   if (cards.length === 0) return null;
   return (
     <section className="shell py-4" aria-label="Специальные разделы">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {cards.map((c, i) => (
           <article key={c.id} className={`relative flex min-h-[176px] overflow-hidden rounded-[var(--radius-lg)] ${THEME[c.theme] ?? 'bg-canvas'}`}>
             <div className="relative z-10 flex w-[60%] flex-col p-5">

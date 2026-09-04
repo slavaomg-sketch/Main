@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { prisma } from '@techmatch/database';
-import { getPaymentProvider, listAddresses } from '@techmatch/domain';
+import { getPaymentProvider, listAddresses, maybeRunInlineMaintenance } from '@techmatch/domain';
+import { getEnv } from '@techmatch/config';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { CheckoutForm } from '@/components/cart/checkout-form';
 import { getCartDTO, getCustomer } from '@/lib/session';
@@ -10,6 +11,7 @@ export const metadata: Metadata = { title: 'Оформление заказа', 
 export const dynamic = 'force-dynamic';
 
 export default async function CheckoutPage() {
+  if (getEnv().QUEUE_DRIVER === 'inline') await maybeRunInlineMaintenance(prisma);
   const cart = await getCartDTO();
   if (!cart || cart.lines.length === 0) redirect('/cart');
   const customer = await getCustomer();

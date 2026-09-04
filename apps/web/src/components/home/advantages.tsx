@@ -4,7 +4,7 @@ import type { HomepageSettings } from '@techmatch/domain';
 export function Advantages({ items }: { items: HomepageSettings['advantages'] }) {
   return (
     <section className="shell py-3" aria-label="Преимущества">
-      <ul className="grid gap-x-4 gap-y-4 rounded-[var(--radius-lg)] border-y border-ink-200 py-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-x-4 lg:divide-x lg:divide-ink-200">
+      <ul className="grid grid-cols-1 gap-x-4 gap-y-4 rounded-[var(--radius-lg)] border-y border-ink-200 py-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-x-4 lg:divide-x lg:divide-ink-200">
         {items.map((a) => (
           <li key={a.title} className="flex items-center gap-3 lg:pl-4 lg:first:pl-0">
             <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-ink-300 text-ink-800">

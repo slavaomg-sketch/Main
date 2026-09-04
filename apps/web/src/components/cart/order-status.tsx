@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABEL, type OrderStatus } from '@techmatch/domain/orders';
+import { ORDER_STATUS_LABEL, type OrderStatus } from '@techmatch/domain/orders/state';
 
 const CLS: Record<OrderStatus, string> = {
   DRAFT: 'bg-ink-100 text-ink-600',

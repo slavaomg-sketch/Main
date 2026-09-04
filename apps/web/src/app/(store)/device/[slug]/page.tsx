@@ -108,7 +108,7 @@ export default async function DevicePage({ params, searchParams }: { params: Pro
       <section className="mt-6" aria-labelledby="compat-title">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="compat-title" className="h2">Совместимые аксессуары</h2>
-          <div className="flex items-center gap-3 text-[13px]">
+          <div className="flex flex-wrap items-center gap-3 text-[13px]">
             <Link href={href({ all: sp.all ? null : '1' })} className="text-ink-600 hover:underline">{sp.all ? 'Скрыть неподтверждённые' : 'Показать неподтверждённые'}</Link>
             <SortSelect value={sp.sort ?? 'compat'} allowCompat />
           </div>
@@ -138,7 +138,7 @@ export default async function DevicePage({ params, searchParams }: { params: Pro
       {bundles.length > 0 && (
         <section className="mt-8">
           <h2 className="h2 mb-3">Готовые комплекты для {device.name}</h2>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {bundles.map((b) => (
               <BundleCard key={b.id} bundle={b} />
             ))}
@@ -146,7 +146,7 @@ export default async function DevicePage({ params, searchParams }: { params: Pro
         </section>
       )}
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
+      <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
         {STATUS_ORDER.filter((s) => stats[s] > 0 && s !== 'INCOMPATIBLE').map((s) => (
           <div key={s} className="card p-4 text-[13px]">
             <div className="font-semibold">{statusLabel(s)}: {stats[s]}</div>

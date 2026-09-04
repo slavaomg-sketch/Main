@@ -7,7 +7,7 @@ import { randomToken } from '../shared/ids';
 import { evaluateDeviceCatalog } from '../compatibility/service';
 import type { CompatibilityResult } from '../compatibility/types';
 
-export const cartInclude = {
+export const cartInclude = () => ({
   items: {
     orderBy: { createdAt: 'asc' as const },
     include: {
@@ -22,9 +22,9 @@ export const cartInclude = {
     },
   },
   activeDeviceModel: { select: { id: true, name: true, slug: true } },
-} satisfies Prisma.CartInclude;
+}) satisfies Prisma.CartInclude;
 
-export type CartRow = Prisma.CartGetPayload<{ include: typeof cartInclude }>;
+export type CartRow = Prisma.CartGetPayload<{ include: ReturnType<typeof cartInclude> }>;
 
 export interface CartLineDTO {
   id: string;
@@ -62,21 +62,21 @@ export interface CartDTO {
 /** Активная корзина без побочных эффектов (для чтения в layout/страницах). */
 export async function findActiveCart(db: DbClient, key: { sessionToken?: string | null; customerId?: string | null }): Promise<CartRow | null> {
   let cart: CartRow | null = null;
-  if (key.customerId) cart = await db.cart.findFirst({ where: { customerId: key.customerId, status: 'ACTIVE' }, include: cartInclude, orderBy: { updatedAt: 'desc' } });
-  if (!cart && key.sessionToken) cart = await db.cart.findFirst({ where: { sessionToken: key.sessionToken, status: 'ACTIVE' }, include: cartInclude });
+  if (key.customerId) cart = await db.cart.findFirst({ where: { customerId: key.customerId, status: 'ACTIVE' }, include: cartInclude(), orderBy: { updatedAt: 'desc' } });
+  if (!cart && key.sessionToken) cart = await db.cart.findFirst({ where: { sessionToken: key.sessionToken, status: 'ACTIVE' }, include: cartInclude() });
   return cart;
 }
 
 export async function getOrCreateCart(db: DbClient, key: { sessionToken?: string | null; customerId?: string | null }): Promise<{ cart: CartRow; sessionToken: string }> {
   let cart = await findActiveCart(db, key);
   if (cart) {
-    if (key.customerId && !cart.customerId) cart = await db.cart.update({ where: { id: cart.id }, data: { customerId: key.customerId }, include: cartInclude });
+    if (key.customerId && !cart.customerId) cart = await db.cart.update({ where: { id: cart.id }, data: { customerId: key.customerId }, include: cartInclude() });
     return { cart, sessionToken: cart.sessionToken ?? key.sessionToken ?? randomToken(24) };
   }
   // Токен из cookie мог принадлежать уже оформленной (CONVERTED) корзине — выдаём новый
   const tokenTaken = key.sessionToken ? await db.cart.findUnique({ where: { sessionToken: key.sessionToken }, select: { id: true } }) : null;
   const sessionToken = key.sessionToken && !tokenTaken ? key.sessionToken : randomToken(24);
-  cart = await db.cart.create({ data: { sessionToken, customerId: key.customerId ?? null, expiresAt: new Date(Date.now() + 30 * 86_400_000) }, include: cartInclude });
+  cart = await db.cart.create({ data: { sessionToken, customerId: key.customerId ?? null, expiresAt: new Date(Date.now() + 30 * 86_400_000) }, include: cartInclude() });
   return { cart, sessionToken };
 }
 
@@ -132,7 +132,7 @@ export async function applyCoupon(db: DbClient, cartId: string, code: string | n
     await db.cart.update({ where: { id: cartId }, data: { couponCode: null } });
     return { ok: true, message: 'Промокод удалён' };
   }
-  const cart = await db.cart.findUnique({ where: { id: cartId }, include: cartInclude });
+  const cart = await db.cart.findUnique({ where: { id: cartId }, include: cartInclude() });
   if (!cart) throw new NotFoundError('Корзина');
   const dto = buildCartDTO(cart);
   const check = await validateCoupon(db, code, { subtotalMinor: dto.totals.subtotalMinor, customerId: cart.customerId });

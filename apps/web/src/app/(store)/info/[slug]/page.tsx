@@ -31,7 +31,7 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="shell py-5">
       <Breadcrumbs items={[{ label: page.title }]} />
-      <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
         <nav className="card h-fit p-2" aria-label="Информация">
           {pages.map((p) => (
             <Link key={p.slug} href={`/info/${p.slug}`} className={`block rounded-[var(--radius-sm)] px-3 py-2 text-[13.5px] ${p.slug === slug ? 'bg-brand-50 font-semibold text-brand-600' : 'hover:bg-ink-100'}`}>{p.title}</Link>

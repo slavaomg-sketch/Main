@@ -60,7 +60,7 @@ export async function createOrderFromCart(db: PrismaClient, input: CheckoutInput
   if (existing) {
     return { orderId: existing.id, publicId: existing.publicId, totalMinor: existing.totalMinor, paymentUrl: existing.payments[0]?.confirmationUrl ?? null, paymentMode: getPaymentProvider().mode, reused: true };
   }
-  const cart = await db.cart.findUnique({ where: { id: input.cartId }, include: cartInclude });
+  const cart = await db.cart.findUnique({ where: { id: input.cartId }, include: cartInclude() });
   if (!cart || cart.status !== 'ACTIVE') throw new NotFoundError('Корзина');
   const dto = await loadCartDTO(db, cart);
   assertCartReady(dto);

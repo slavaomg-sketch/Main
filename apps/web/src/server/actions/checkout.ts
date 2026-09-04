@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
+import { idempotencyKeySchema, shippingAddressSchema } from '@techmatch/validation';
 import { prisma } from '@techmatch/database';
 import { createOrderFromCart, createRetryPayment, getOrCreateCart, loadCartDTO, quoteDelivery } from '@techmatch/domain';
 import { getEnv } from '@techmatch/config';
@@ -10,17 +10,7 @@ import { CART_COOKIE, getCustomer, requestMeta } from '@/lib/session';
 import { rateLimit } from '@/lib/rate-limit';
 import { runAction, toActionError, type ActionResult } from '@/lib/errors';
 
-const addressSchema = z.object({
-  fullName: z.string().trim().min(2, 'Укажите имя и фамилию').max(120),
-  phone: z.string().trim().min(10, 'Укажите телефон').max(30),
-  email: z.email('Укажите корректный email'),
-  city: z.string().trim().min(2, 'Укажите город').max(100),
-  street: z.string().trim().min(2, 'Укажите улицу').max(160),
-  building: z.string().trim().min(1, 'Укажите дом').max(30),
-  apartment: z.string().trim().max(30).optional().or(z.literal('')),
-  postalCode: z.string().trim().max(12).optional().or(z.literal('')),
-  region: z.string().trim().max(100).optional().or(z.literal('')),
-});
+const addressSchema = shippingAddressSchema;
 
 export type CheckoutFormState = ActionResult<{ publicId: string; paymentUrl: string | null }> | null;
 
@@ -41,7 +31,7 @@ export async function placeOrderAction(_prev: CheckoutFormState, formData: FormD
   const deliveryMethodCode = String(formData.get('deliveryMethodCode') ?? '');
   const idempotencyKey = String(formData.get('idempotencyKey') ?? '');
   if (!deliveryMethodCode) return { ok: false, error: 'Выберите способ доставки' };
-  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(idempotencyKey)) return { ok: false, error: 'Некорректный ключ заказа, обновите страницу' };
+  if (!idempotencyKeySchema.safeParse(idempotencyKey).success) return { ok: false, error: 'Некорректный ключ заказа, обновите страницу' };
   const meta = await requestMeta();
   const rl = await rateLimit(`checkout:${meta.ip ?? 'anon'}`, { max: 10, windowSeconds: 600 });
   if (!rl.ok) return { ok: false, error: 'Слишком много попыток оформления. Подождите немного.' };

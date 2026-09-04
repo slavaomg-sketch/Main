@@ -54,12 +54,12 @@ export function CheckoutForm({ cart, defaults, loggedIn, paymentMode }: { cart: 
     </div>
   );
   return (
-    <form action={action} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" data-testid="checkout-form">
+    <form action={action} className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" data-testid="checkout-form">
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <div className="space-y-5">
         <section className="card p-5">
           <h2 className="h3 mb-4">1. Контактные данные</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {field('fullName', 'Имя и фамилия', { required: true, autoComplete: 'name' })}
             {field('phone', 'Телефон', { required: true, type: 'tel', autoComplete: 'tel', placeholder: '+7 900 000-00-00' })}
             <div className="sm:col-span-2">{field('email', 'Email', { required: true, type: 'email', autoComplete: 'email' })}</div>
@@ -67,7 +67,7 @@ export function CheckoutForm({ cart, defaults, loggedIn, paymentMode }: { cart: 
         </section>
         <section className="card p-5">
           <h2 className="h3 mb-4">2. Адрес доставки</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="label" htmlFor="f-city">Город</label>
               <input id="f-city" name="city" className="input" required autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />

@@ -1,13 +1,13 @@
 'use server';
 
-import { z } from 'zod';
+import { newsletterSchema } from '@techmatch/validation';
 import { prisma } from '@techmatch/database';
 import { subscribeNewsletter } from '@techmatch/domain';
 import { rateLimit } from '@/lib/rate-limit';
 import { requestMeta } from '@/lib/session';
 import type { ActionResult } from '@/lib/errors';
 
-const schema = z.object({ email: z.email('Укажите корректный email'), name: z.string().max(80).optional() });
+const schema = newsletterSchema;
 
 export async function subscribeAction(_prev: ActionResult<{ message: string }> | null, formData: FormData): Promise<ActionResult<{ message: string }>> {
   const parsed = schema.safeParse({ email: formData.get('email'), name: formData.get('name') || undefined });

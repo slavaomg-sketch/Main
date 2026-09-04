@@ -40,7 +40,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
             <p className="mb-3 rounded-[var(--radius-md)] bg-warning-100 px-4 py-2.5 text-[13px] text-warning-500" data-testid="device-ambiguous">{result.disambiguationHint}</p>
           )}
           {result.candidates.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {result.candidates.map((c) => (
                 <DeviceCard key={c.id} device={c} />
               ))}
@@ -69,7 +69,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
       </section>
       <section className="mt-8">
         <SectionTitle title="Популярные устройства" />
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {popular.map((d) => (
             <DeviceCard key={d.id} device={d} />
           ))}

@@ -14,7 +14,7 @@ export function AccountShell({ title, current, children }: { title: string; curr
   return (
     <div className="shell py-5">
       <Breadcrumbs items={[{ label: 'Личный кабинет', href: '/account' }, ...(current !== '/account' ? [{ label: title }] : [])]} />
-      <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
         <nav className="card h-fit p-2" aria-label="Личный кабинет">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className={`flex min-h-10 items-center gap-2.5 rounded-[var(--radius-sm)] px-3 text-[13.5px] font-medium ${current === n.href ? 'bg-brand-50 text-brand-600' : 'hover:bg-ink-100'}`} aria-current={current === n.href ? 'page' : undefined}>

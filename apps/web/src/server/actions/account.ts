@@ -11,8 +11,7 @@ import { FAV_COOKIE, getGuestFavoriteIds } from '@/lib/favorites';
 import { rateLimit } from '@/lib/rate-limit';
 import { runAction, toActionError, type ActionResult } from '@/lib/errors';
 
-const loginSchema = z.object({ email: z.email('Укажите корректный email'), password: z.string().min(1, 'Введите пароль'), next: z.string().optional() });
-const registerSchema = z.object({ email: z.email('Укажите корректный email'), password: z.string().min(8, 'Пароль не короче 8 символов'), firstName: z.string().min(1, 'Укажите имя').max(60), phone: z.string().max(30).optional(), next: z.string().optional() });
+import { loginSchema, registerSchema } from '@techmatch/validation';
 
 function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/account';

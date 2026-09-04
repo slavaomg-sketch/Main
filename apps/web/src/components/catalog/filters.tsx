@@ -49,8 +49,10 @@ export function CatalogFilters({ facets, showCategories = true, activeDevice }: 
           onSubmit={(e) => {
             e.preventDefault();
             apply((q) => {
-              min ? q.set('min', min) : q.delete('min');
-              max ? q.set('max', max) : q.delete('max');
+              if (min) q.set('min', min);
+              else q.delete('min');
+              if (max) q.set('max', max);
+              else q.delete('max');
             });
           }}
         >
@@ -67,7 +69,7 @@ export function CatalogFilters({ facets, showCategories = true, activeDevice }: 
             {facets.brands.map((b) => (
               <li key={b.slug}>
                 <label className="flex items-center gap-2 text-[13px]">
-                  <input type="checkbox" className="size-4 accent-brand-500" checked={brands.has(b.slug)} onChange={(e) => apply((q) => { q.delete('brand'); const next = new Set(brands); e.target.checked ? next.add(b.slug) : next.delete(b.slug); next.forEach((v) => q.append('brand', v)); })} />
+                  <input type="checkbox" className="size-4 accent-brand-500" checked={brands.has(b.slug)} onChange={(e) => apply((q) => { q.delete('brand'); const next = new Set(brands); if (e.target.checked) next.add(b.slug); else next.delete(b.slug); next.forEach((v) => q.append('brand', v)); })} />
                   <span className="flex-1">{b.name}</span>
                   <span className="text-ink-400">{b.count}</span>
                 </label>

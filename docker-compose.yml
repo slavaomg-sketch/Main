@@ -1,0 +1,87 @@
+# TechMatch — локальный/production запуск. Секреты берутся из .env (см. .env.example).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-techmatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techmatch}
+      POSTGRES_DB: ${POSTGRES_DB:-techmatch}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-techmatch} -d ${POSTGRES_DB:-techmatch}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-techmatch}:${POSTGRES_PASSWORD:-techmatch}@postgres:5432/${POSTGRES_DB:-techmatch}?schema=public
+    command: ['sh', '-c', 'pnpm --filter @techmatch/database migrate:deploy && if [ "$$SEED_ON_START" = "1" ]; then pnpm --filter @techmatch/database seed; fi']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - storage:/app/storage
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-techmatch}:${POSTGRES_PASSWORD:-techmatch}@postgres:5432/${POSTGRES_DB:-techmatch}?schema=public
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: bullmq
+      MEDIA_LOCAL_DIR: /app/storage/media
+    ports:
+      - '${PORT:-3000}:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage:/app/storage
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-techmatch}:${POSTGRES_PASSWORD:-techmatch}@postgres:5432/${POSTGRES_DB:-techmatch}?schema=public
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: bullmq
+      MEDIA_LOCAL_DIR: /app/storage/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - storage:/app/storage
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

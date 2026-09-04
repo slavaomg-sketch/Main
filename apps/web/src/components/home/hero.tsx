@@ -25,7 +25,7 @@ export function Hero({ settings, images }: { settings: HomepageSettings; images:
   };
   return (
     <section className="bg-hero" aria-labelledby="hero-title">
-      <div className="shell grid items-center gap-8 py-8 md:py-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-8 lg:py-10">
+      <div className="shell grid grid-cols-1 items-center gap-8 py-8 md:py-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-8 lg:py-10">
         <div className="relative z-10 max-w-[600px]">
           <p className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-brand-500 uppercase">{settings.heroEyebrow}</p>
           <h1 id="hero-title" className="h1 text-ink-900">{settings.heroTitle}</h1>

@@ -14,7 +14,7 @@ export default async function BundlesPage() {
       <Breadcrumbs items={[{ label: 'Готовые комплекты' }]} />
       <h1 className="h2 mb-1">Готовые комплекты</h1>
       <p className="mb-5 max-w-2xl text-[14px] text-ink-600">Всё необходимое для устройства в одном наборе. Каждая позиция проверена на совместимость, а цена ниже, чем при покупке по отдельности.</p>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {bundles.map((b) => (
           <BundleCard key={b.id} bundle={b} />
         ))}

@@ -15,6 +15,14 @@
     "./shared/*": {
       "types": "./src/shared/*.ts",
       "default": "./src/shared/*.ts"
+    },
+    "./orders/state": {
+      "types": "./src/orders/state.ts",
+      "default": "./src/orders/state.ts"
+    },
+    "./admin/rbac": {
+      "types": "./src/admin/rbac.ts",
+      "default": "./src/admin/rbac.ts"
     }
   },
   "scripts": {
@@ -33,6 +41,7 @@
   },
   "devDependencies": {
     "@techmatch/testing": "workspace:*",
+    "dotenv": "^17.4.2",
     "eslint": "^9.30.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"

@@ -19,7 +19,7 @@ export function DevicesList({ devices }: { devices: Array<{ id: string; isPrimar
       router.refresh();
     });
   return (
-    <ul className="grid gap-3 md:grid-cols-2" data-testid="my-devices">
+    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="my-devices">
       {devices.map((d) => (
         <li key={d.id} className={`card flex items-center gap-3 p-3 ${d.isPrimary ? 'border-brand-200 bg-brand-50/40' : ''}`}>
           <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">{d.deviceModel.imageUrl && <Image src={d.deviceModel.imageUrl} alt="" fill sizes="64px" className="object-cover" />}</span>

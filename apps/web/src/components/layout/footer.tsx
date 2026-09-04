@@ -18,7 +18,7 @@ const SOCIAL = [
 export function Footer({ trustTitle, trustText }: { trustTitle: string; trustText: string }) {
   return (
     <footer className="mt-12 border-t border-ink-200 bg-surface pb-24 md:pb-8">
-      <div className="shell grid gap-8 py-8 md:grid-cols-[1.3fr_1fr_1fr_1fr_1.3fr]">
+      <div className="shell grid grid-cols-1 gap-8 py-8 md:grid-cols-[1.3fr_1fr_1fr_1fr_1.3fr]">
         <div>
           <Logo withTagline={false} />
           <p className="mt-2 text-[12px] text-ink-500">Аксессуары для любых устройств</p>

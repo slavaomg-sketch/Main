@@ -26,7 +26,7 @@ export interface ProductCardDTO {
   compatibility?: Pick<CompatibilityResult, 'status' | 'confidence' | 'explanation' | 'limitations'> | null;
 }
 
-export const productCardInclude = {
+export const productCardInclude = () => ({
   brand: { select: { name: true, slug: true } },
   category: { select: { name: true, slug: true } },
   images: { orderBy: [{ isPrimary: 'desc' as const }, { sortOrder: 'asc' as const }], take: 1, include: { asset: true } },
@@ -38,9 +38,9 @@ export const productCardInclude = {
       inventory: true,
     },
   },
-} satisfies Prisma.ProductInclude;
+}) satisfies Prisma.ProductInclude;
 
-export type ProductCardRow = Prisma.ProductGetPayload<{ include: typeof productCardInclude }>;
+export type ProductCardRow = Prisma.ProductGetPayload<{ include: ReturnType<typeof productCardInclude> }>;
 
 export function availableQuantity(inv: Array<{ quantity: number; reservedQuantity: number }>): number {
   return inv.reduce((s, i) => s + Math.max(0, i.quantity - i.reservedQuantity), 0);
@@ -144,7 +144,7 @@ export async function listProducts(db: DbClient, input: ListProductsInput): Prom
     where.id = input.productIds ? { in: found.filter((id) => input.productIds!.includes(id)) } : { in: found };
   }
 
-  const rows = await db.product.findMany({ where, include: productCardInclude, orderBy: [{ popularity: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }] });
+  const rows = await db.product.findMany({ where, include: productCardInclude(), orderBy: [{ popularity: 'desc' }, { sortOrder: 'asc' }, { name: 'asc' }] });
 
   let compat: Map<string, CompatibilityResult> | null = null;
   if (input.deviceModelId) {
@@ -220,7 +220,7 @@ export async function listProducts(db: DbClient, input: ListProductsInput): Prom
   };
 }
 
-export const productPageInclude = {
+export const productPageInclude = () => ({
   brand: true,
   category: { include: { parent: true } },
   images: { orderBy: [{ isPrimary: 'desc' as const }, { sortOrder: 'asc' as const }], include: { asset: true } },
@@ -235,19 +235,19 @@ export const productPageInclude = {
     },
   },
   reviews: { where: { isApproved: true }, orderBy: { createdAt: 'desc' as const }, take: 10 },
-} satisfies Prisma.ProductInclude;
+}) satisfies Prisma.ProductInclude;
 
-export type ProductPageRow = Prisma.ProductGetPayload<{ include: typeof productPageInclude }>;
+export type ProductPageRow = Prisma.ProductGetPayload<{ include: ReturnType<typeof productPageInclude> }>;
 
 export async function getProductBySlug(db: DbClient, slug: string): Promise<ProductPageRow> {
-  const product = await db.product.findUnique({ where: { slug }, include: productPageInclude });
+  const product = await db.product.findUnique({ where: { slug }, include: productPageInclude() });
   if (!product || product.status !== 'ACTIVE') throw new NotFoundError('Товар', slug);
   return product;
 }
 
 export async function getProductCardsByIds(db: DbClient, ids: string[], deviceModelId?: string | null): Promise<ProductCardDTO[]> {
   if (ids.length === 0) return [];
-  const rows = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: productCardInclude });
+  const rows = await db.product.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, include: productCardInclude() });
   const compat = deviceModelId ? (await evaluateDeviceCatalog(db, deviceModelId)).results : null;
   const order = new Map(ids.map((id, i) => [id, i]));
   return rows
@@ -278,7 +278,7 @@ export async function getProductBrand(db: DbClient, slug: string) {
 
 /** Сопутствующие товары: та же категория или та же совместимость. */
 export async function relatedProducts(db: DbClient, product: { id: string; categoryId: string }, limit = 6) {
-  const rows = await db.product.findMany({ where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id } }, include: productCardInclude, orderBy: { popularity: 'desc' }, take: limit });
+  const rows = await db.product.findMany({ where: { status: 'ACTIVE', categoryId: product.categoryId, id: { not: product.id } }, include: productCardInclude(), orderBy: { popularity: 'desc' }, take: limit });
   return rows.map((r) => toProductCard(r)).filter((c): c is ProductCardDTO => c !== null);
 }
 

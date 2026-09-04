@@ -25,7 +25,7 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
   return (
     <div className="shell py-5">
       <Breadcrumbs items={[{ label: 'Готовые комплекты', href: '/bundles' }, { label: bundle.name }]} />
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="relative aspect-[16/9] overflow-hidden rounded-[var(--radius-lg)] bg-ink-100">{img && <Image src={img} alt={bundle.name} fill sizes="(max-width: 1024px) 100vw, 800px" className="object-cover" priority />}</div>
           <h1 className="h2 mt-5">{bundle.name}</h1>

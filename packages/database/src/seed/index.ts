@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -268,7 +267,7 @@ async function seedContent() {
     const col = await prisma.collection.upsert({ where: { slug: c.slug }, create: { slug: c.slug, name: c.name, type: c.type }, update: { name: c.name, type: c.type } });
     await prisma.collectionItem.deleteMany({ where: { collectionId: col.id } });
     const products = await prisma.product.findMany({ where: { slug: { in: [...c.products] } }, select: { id: true, slug: true } });
-    await prisma.collectionItem.createMany({ data: c.products.map((slug, i) => ({ collectionId: col.id, productId: products.find((p) => p.slug === slug)?.id })).filter((x): x is { collectionId: string; productId: string; sortOrder?: number } => Boolean(x.productId)).map((x, i) => ({ ...x, sortOrder: i })) });
+    await prisma.collectionItem.createMany({ data: c.products.map((slug) => ({ collectionId: col.id, productId: products.find((p) => p.slug === slug)?.id })).filter((x): x is { collectionId: string; productId: string; sortOrder?: number } => Boolean(x.productId)).map((x, i) => ({ ...x, sortOrder: i })) });
   }
   for (const [i, b] of BUNDLES.entries()) {
     const imageAssetId = await image(b.image);

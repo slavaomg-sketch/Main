@@ -18,9 +18,9 @@ export function formatRub(minor: Minor, opts: { withKopecks?: boolean } = {}): s
   const kop = abs % 100;
   const rubStr = rub.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
   if (opts.withKopecks || kop !== 0) {
-    return `${sign}${rubStr},${kop.toString().padStart(2, '0')} ₽`;
+    return `${sign}${rubStr},${kop.toString().padStart(2, '0')}\u00A0₽`;
   }
-  return `${sign}${rubStr} ₽`;
+  return `${sign}${rubStr}\u00A0₽`;
 }
 
 /** Процент от суммы с округлением до копейки (банковское округление не нужно — используем half-up). */

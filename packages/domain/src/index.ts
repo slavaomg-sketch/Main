@@ -18,3 +18,4 @@ export * from './notifications/index';
 export * from './admin/index';
 export * from './audit/index';
 export * from './providers';
+export * from './maintenance';

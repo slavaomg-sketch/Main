@@ -30,7 +30,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       {devices && devices.candidates.length > 0 && (
         <section className="mb-6">
           <h2 className="h3 mb-3">Устройства</h2>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {devices.candidates.map((c) => (
               <DeviceCard key={c.id} device={c} />
             ))}

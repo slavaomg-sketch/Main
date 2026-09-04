@@ -9,7 +9,7 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "echo \"unit/integration tests live in packages/*; run pnpm test:e2e for Playwright\"",
     "test:e2e": "playwright test"
   },
   "dependencies": {
