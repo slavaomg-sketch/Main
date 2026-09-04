@@ -60,8 +60,8 @@ export function SuggestList({ id, data, loading, query, onPick }: { id: string; 
           </div>
           {data.devices.map((d) => (
             <Link key={d.slug} href={`/device/${d.slug}`} onClick={onPick} role="option" aria-selected={false} className="flex items-center gap-3 rounded-[var(--radius-sm)] px-2 py-1.5 hover:bg-ink-100">
-              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">
-                {d.imageUrl ? <img src={d.imageUrl} alt="" width={40} height={40} className="size-full object-cover" /> : null}
+              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-ink-100 bg-white">
+                {d.imageUrl ? <img src={d.imageUrl} alt="" width={40} height={40} className="size-full object-contain" /> : null}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-semibold">{d.fullName}</span>
@@ -77,8 +77,8 @@ export function SuggestList({ id, data, loading, query, onPick }: { id: string; 
           <div className="px-2 pt-1 pb-1.5 text-[11px] font-semibold tracking-wider text-ink-400 uppercase">Товары</div>
           {data.products.map((p) => (
             <Link key={p.slug} href={`/product/${p.slug}`} onClick={onPick} role="option" aria-selected={false} className="flex items-center gap-3 rounded-[var(--radius-sm)] px-2 py-1.5 hover:bg-ink-100">
-              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">
-                {p.image ? <img src={p.image.variants.thumb ?? p.image.url} alt="" width={40} height={40} className="size-full object-cover" /> : null}
+              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-ink-100 bg-white">
+                {p.image ? <img src={p.image.variants.thumb ?? p.image.url} alt="" width={40} height={40} className="size-full object-contain" /> : null}
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px]">{p.name}</span>
               <span className="text-[13px] font-semibold">{fmt(p.priceMinor)}</span>

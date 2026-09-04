@@ -1,0 +1,933 @@
+{
+  "dev-iphone-15-pro": {
+    "file": "dev-iphone-15-pro.jpg",
+    "title": "File:IPhone 15 Pro & iPhone 15 Pro Max.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:IPhone_15_Pro_%26_iPhone_15_Pro_Max.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "IPHONE 15"
+  },
+  "dev-iphone-15": {
+    "file": "dev-iphone-15.jpg",
+    "title": "File:IPhone Pro (Max).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:IPhone_Pro_(Max).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Ka Kit Pang"
+  },
+  "dev-iphone-16-pro": {
+    "file": "dev-iphone-16-pro.jpg",
+    "title": "File:Front of iPhone 15 Pro Max.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Front_of_iPhone_15_Pro_Max.jpg",
+    "license": "CC BY 4.0",
+    "author": "Ayamano2021"
+  },
+  "dev-iphone-14": {
+    "file": "dev-iphone-14.jpg",
+    "title": "File:IPhone 14 Product Red.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:IPhone_14_Product_Red.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Hajoon0102"
+  },
+  "dev-iphone-13": {
+    "file": "dev-iphone-13.jpg",
+    "title": "File:Back of the iPhone 14 Pro.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Back_of_the_iPhone_14_Pro.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Hajoon0102"
+  },
+  "dev-galaxy-s25": {
+    "file": "dev-galaxy-s25.jpg",
+    "title": "File:第一手！Samsung Galaxy S25系列拿到了：5个升级！S Pen不支持蓝牙了？ (2160p 50fps VP9-96kbit AAC)-00.00.07.100.png",
+    "source": "https://commons.wikimedia.org/wiki/File:%E7%AC%AC%E4%B8%80%E6%89%8B%EF%BC%81Samsung_Galaxy_S25%E7%B3%BB%E5%88%97%E6%8B%BF%E5%88%B0%E4%BA%86%EF%BC%9A5%E4%B8%AA%E5%8D%87%E7%BA%A7%EF%BC%81S_Pen%E4%B8%8D%E6%94%AF%E6%8C%81%E8%93%9D%E7%89%99%E4%BA%86%EF%BC%9F_(2160p_50fps_VP9-96kbit_AAC)-00.00.07.100.png",
+    "license": "CC BY 3.0",
+    "author": "可恩Ke En"
+  },
+  "dev-galaxy-s24": {
+    "file": "dev-galaxy-s24.jpg",
+    "title": "File:Samsung Galaxy S24 (webtekno) 008.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_S24_(webtekno)_008.png",
+    "license": "CC BY 3.0",
+    "author": "webtekno"
+  },
+  "dev-galaxy-a55": {
+    "file": "dev-galaxy-a55.jpg",
+    "title": "File:Samsung Galaxy A34 5G 20231122 HOF01948-HDR RAW-Export cens.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_A34_5G_20231122_HOF01948-HDR_RAW-Export_cens.png",
+    "license": "CC BY 4.0",
+    "author": "PantheraLeo1359531"
+  },
+  "dev-pixel-8": {
+    "file": "dev-pixel-8.jpg",
+    "title": "File:Google Pixel 8 Rose rear.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Google_Pixel_8_Rose_rear.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "IXTA9839"
+  },
+  "dev-xiaomi-14": {
+    "file": "dev-xiaomi-14.jpg",
+    "title": "File:Xiaomi Redmi Note 10 Pro.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Xiaomi_Redmi_Note_10_Pro.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Petar Milošević"
+  },
+  "dev-macbook-air-m2-13": {
+    "file": "dev-macbook-air-m2-13.jpg",
+    "title": "File:M2 Macbook Air Midnight model - 1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Midnight_model_-_1.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "dev-macbook-air-m3-15": {
+    "file": "dev-macbook-air-m3-15.jpg",
+    "title": "File:M2 Macbook Air Midnight model - 2.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Midnight_model_-_2.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "dev-macbook-pro-14-m3": {
+    "file": "dev-macbook-pro-14-m3.jpg",
+    "title": "File:M3 Macbook Pro 14 inch Space Grey model.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M3_Macbook_Pro_14_inch_Space_Grey_model.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Kyu3a"
+  },
+  "dev-macbook-air-m1": {
+    "file": "dev-macbook-air-m1.jpg",
+    "title": "File:M2 Macbook Air Starlight model.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Starlight_model.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "dev-dell-xps-13": {
+    "file": "dev-dell-xps-13.jpg",
+    "title": "File:DELL XPS 13 and 15 (37750892221).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:DELL_XPS_13_and_15_(37750892221).jpg",
+    "license": "CC0",
+    "author": "Tinh tế Photo"
+  },
+  "dev-thinkpad-x1": {
+    "file": "dev-thinkpad-x1.jpg",
+    "title": "File:Lenovo ThinkPad X1 Ultrabook (Nov 16, 2012).png",
+    "source": "https://commons.wikimedia.org/wiki/File:Lenovo_ThinkPad_X1_Ultrabook_(Nov_16,_2012).png",
+    "license": "CC BY-SA 2.0",
+    "author": "Intel Free Press"
+  },
+  "dev-ipad-pro-11-m4": {
+    "file": "dev-ipad-pro-11-m4.jpg",
+    "title": "File:M4 iPad Pro series - 2.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M4_iPad_Pro_series_-_2.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Kyu3a"
+  },
+  "dev-ipad-10": {
+    "file": "dev-ipad-10.jpg",
+    "title": "File:Ipadtenthgen.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Ipadtenthgen.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Wiikiipediia"
+  },
+  "dev-ipad-9": {
+    "file": "dev-ipad-9.jpg",
+    "title": "File:IPad Air.png",
+    "source": "https://commons.wikimedia.org/wiki/File:IPad_Air.png",
+    "license": "CC BY-SA 3.0",
+    "author": "Zach Vega"
+  },
+  "dev-galaxy-tab-s9": {
+    "file": "dev-galaxy-tab-s9.jpg",
+    "title": "File:20230729 삼성 갤럭시 탭 S9.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:20230729_%EC%82%BC%EC%84%B1_%EA%B0%A4%EB%9F%AD%EC%8B%9C_%ED%83%AD_S9.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Striker9498"
+  },
+  "dev-apple-watch-s10": {
+    "file": "dev-apple-watch-s10.jpg",
+    "title": "File:Apple Watch Series 10.jpeg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Series_10.jpeg",
+    "license": "CC BY-SA 4.0",
+    "author": "KK IN HK"
+  },
+  "dev-apple-watch-s9": {
+    "file": "dev-apple-watch-s9.jpg",
+    "title": "File:Apple Watch Sport - 38mm Space Gray (3768).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Sport_-_38mm_Space_Gray_(3768).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Gregory Varnum"
+  },
+  "dev-apple-watch-ultra-2": {
+    "file": "dev-apple-watch-ultra-2.jpg",
+    "title": "File:Apple Watch Ultra - 2.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Ultra_-_2.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "dev-galaxy-watch-6": {
+    "file": "dev-galaxy-watch-6.jpg",
+    "title": "File:Galaxy Watch.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Galaxy_Watch.jpg",
+    "license": "CC BY 4.0",
+    "author": "Ka Kit Pang"
+  },
+  "dev-airpods-pro-2": {
+    "file": "dev-airpods-pro-2.jpg",
+    "title": "File:AirPods Pro (2nd generation).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:AirPods_Pro_(2nd_generation).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Hajoon0102"
+  },
+  "dev-sony-wh1000xm5": {
+    "file": "dev-sony-wh1000xm5.jpg",
+    "title": "File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.4.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.4.jpg",
+    "license": "CC BY 4.0",
+    "author": "www.digitalpush.net"
+  },
+  "dev-bose-qc45": {
+    "file": "dev-bose-qc45.jpg",
+    "title": "File:Bose QuietComfort 25 Acoustic Noise Cancelling Headphones.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bose_QuietComfort_25_Acoustic_Noise_Cancelling_Headphones.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Florian Fuchs"
+  },
+  "dev-canon-g3410": {
+    "file": "dev-canon-g3410.jpg",
+    "title": "File:Canon PIXMA G 3871 Multifunction ink-jet Printer.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_PIXMA_G_3871_Multifunction_ink-jet_Printer.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "dev-canon-ts3340": {
+    "file": "dev-canon-ts3340.jpg",
+    "title": "File:Canon PIXMA TS 5380 Multifunction ink-jet Printer.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_PIXMA_TS_5380_Multifunction_ink-jet_Printer.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "dev-epson-l3250": {
+    "file": "dev-epson-l3250.jpg",
+    "title": "File:C11CB57201 Inyección+de+tinta Epson+EcoTank+L800 ES.png",
+    "source": "https://commons.wikimedia.org/wiki/File:C11CB57201_Inyecci%C3%B3n%2Bde%2Btinta_Epson%2BEcoTank%2BL800_ES.png",
+    "license": "CC BY-SA 4.0",
+    "author": "YasmaSA1991"
+  },
+  "dev-hp-m111w": {
+    "file": "dev-hp-m111w.jpg",
+    "title": "File:Brother HL-1050 01.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Brother_HL-1050_01.jpg",
+    "license": "Public domain",
+    "author": "Hubert Berberich (HubiB)"
+  },
+  "dev-brother-hl-l2340": {
+    "file": "dev-brother-hl-l2340.jpg",
+    "title": "File:HP Laserjet 5 DN 1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:HP_Laserjet_5_DN_1.jpg",
+    "license": "CC BY-SA 3.0 de",
+    "author": "Thiemo Schuff"
+  },
+  "dev-dell-u2723qe": {
+    "file": "dev-dell-u2723qe.jpg",
+    "title": "File:Acer AL1706 LCD monitor.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Acer_AL1706_LCD_monitor.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "JulianVilla26"
+  },
+  "dev-lg-27gp850": {
+    "file": "dev-lg-27gp850.jpg",
+    "title": "File:Dual Dell monitor workstation setup.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Dual_Dell_monitor_workstation_setup.jpg",
+    "license": "CC BY 2.0",
+    "author": ""
+  },
+  "dev-ps5": {
+    "file": "dev-ps5.jpg",
+    "title": "File:PlayStation 5 and DualSense (2).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:PlayStation_5_and_DualSense_(2).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Osh33m"
+  },
+  "dev-xbox-series-x": {
+    "file": "dev-xbox-series-x.jpg",
+    "title": "File:Xbox series X (50648118708).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Xbox_series_X_(50648118708).jpg",
+    "license": "CC BY 2.0",
+    "author": "Ian Hughes"
+  },
+  "dev-switch-oled": {
+    "file": "dev-switch-oled.jpg",
+    "title": "File:Nintendo Switch – OLED-Modell mit gedockter Konsole 20230506 HOF01624 RAW-Export.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Nintendo_Switch_%E2%80%93_OLED-Modell_mit_gedockter_Konsole_20230506_HOF01624_RAW-Export.png",
+    "license": "CC BY 4.0",
+    "author": "PantheraLeo1359531"
+  },
+  "dev-steam-deck": {
+    "file": "dev-steam-deck.jpg",
+    "title": "File:Steam Deck (front).png",
+    "source": "https://commons.wikimedia.org/wiki/File:Steam_Deck_(front).png",
+    "license": "CC BY-SA 4.0",
+    "author": "Liam Dawe/GamingOnLinux, PNG version by VulcanSphere"
+  },
+  "dev-canon-r50": {
+    "file": "dev-canon-r50.jpg",
+    "title": "File:Canon EOS R50 (52694437103).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_EOS_R50_(52694437103).jpg",
+    "license": "CC BY 2.0",
+    "author": "Henry Söderlund from Helsinki, Finland"
+  },
+  "dev-sony-a7iv": {
+    "file": "dev-sony-a7iv.jpg",
+    "title": "File:Sony Alpha 7R IV front view with exposed sensor.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sony_Alpha_7R_IV_front_view_with_exposed_sensor.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Franz van Duns"
+  },
+  "dev-gopro-12": {
+    "file": "dev-gopro-12.jpg",
+    "title": "File:GoPro Hero 10 Black with battery door open.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:GoPro_Hero_10_Black_with_battery_door_open.jpg",
+    "license": "CC BY 4.0",
+    "author": "4300streetcar"
+  },
+  "dev-tesla-model-3": {
+    "file": "dev-tesla-model-3.jpg",
+    "title": "File:Tesla Model 3 interior.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tesla_Model_3_interior.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Coolomon Tetris (also known as CoolT)"
+  },
+  "dev-70mai-a800s": {
+    "file": "dev-70mai-a800s.jpg",
+    "title": "File:Видеорегистратор двухсторонний (снимает внутри салона и то, что происходит по пути движения ТС). Фото А. Щекинова.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:%D0%92%D0%B8%D0%B4%D0%B5%D0%BE%D1%80%D0%B5%D0%B3%D0%B8%D1%81%D1%82%D1%80%D0%B0%D1%82%D0%BE%D1%80_%D0%B4%D0%B2%D1%83%D1%85%D1%81%D1%82%D0%BE%D1%80%D0%BE%D0%BD%D0%BD%D0%B8%D0%B9_(%D1%81%D0%BD%D0%B8%D0%BC%D0%B0%D0%B5%D1%82_%D0%B2%D0%BD%D1%83%D1%82%D1%80%D0%B8_%D1%81%D0%B0%D0%BB%D0%BE%D0%BD%D0%B0_%D0%B8_%D1%82%D0%BE,_%D1%87%D1%82%D0%BE_%D0%BF%D1%80%D0%BE%D0%B8%D1%81%D1%85%D0%BE%D0%B4%D0%B8%D1%82_%D0%BF%D0%BE_%D0%BF%D1%83%D1%82%D0%B8_%D0%B4%D0%B2%D0%B8%D0%B6%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A2%D0%A1)._%D0%A4%D0%BE%D1%82%D0%BE_%D0%90._%D0%A9%D0%B5%D0%BA%D0%B8%D0%BD%D0%BE%D0%B2%D0%B0.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Schekinov Alexey Victorovich"
+  },
+  "dev-car-12v": {
+    "file": "dev-car-12v.jpg",
+    "title": "File:Dymond Mini duo USB car charger, Oude Pekela (2019) 02.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Dymond_Mini_duo_USB_car_charger,_Oude_Pekela_(2019)_02.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Donald Trung Quoc Don (Chữ Hán: 徵國單) - Wikimedia Commons - © CC BY-SA 4.0 Intern"
+  },
+  "p-anker-nano-30w": {
+    "file": "p-anker-nano-30w.jpg",
+    "title": "File:Anker Fusion White.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Anker_Fusion_White.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "之乎"
+  },
+  "p-apple-20w": {
+    "file": "p-apple-20w.jpg",
+    "title": "File:Silicon vs GaN 30W USB-C chargers.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Silicon_vs_GaN_30W_USB-C_chargers.jpg",
+    "license": "CC BY 4.0",
+    "author": "4300streetcar"
+  },
+  "p-samsung-25w": {
+    "file": "p-samsung-25w.jpg",
+    "title": "File:SAMSUNG EP-TA800 25W POWER ADAPER WHITE (2).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:SAMSUNG_EP-TA800_25W_POWER_ADAPER_WHITE_(2).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "p-anker-65w-gan": {
+    "file": "p-anker-65w-gan.jpg",
+    "title": "File:Anker-PowerPort-40W-5-Port-USB-Ladegeraet.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Anker-PowerPort-40W-5-Port-USB-Ladegeraet.jpg",
+    "license": "CC BY 4.0",
+    "author": "www.digitalpush.net"
+  },
+  "p-ugreen-100w": {
+    "file": "p-ugreen-100w.jpg",
+    "title": "File:Magsafe set.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:Magsafe_set.JPG",
+    "license": "Public domain",
+    "author": "gerolsteiner91"
+  },
+  "p-lazos-45w-pps": {
+    "file": "p-lazos-45w-pps.jpg",
+    "title": "File:Lazos GaN Charger 30W L-AC-G30.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Lazos_GaN_Charger_30W_L-AC-G30.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Qurren"
+  },
+  "p-apple-12w-usba": {
+    "file": "p-apple-12w-usba.jpg",
+    "title": "File:USB power adapter for Apple iPod, Model A1205, by Foxlink Technology Ltd-1050.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:USB_power_adapter_for_Apple_iPod,_Model_A1205,_by_Foxlink_Technology_Ltd-1050.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Raimond Spekking"
+  },
+  "p-cable-cc-100w": {
+    "file": "p-cable-cc-100w.jpg",
+    "title": "File:Bad USB-C cable.agr.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bad_USB-C_cable.agr.jpg",
+    "license": "CC BY 4.0",
+    "author": "ArnoldReinhold"
+  },
+  "p-cable-cc-240w-braided": {
+    "file": "p-cable-cc-240w-braided.jpg",
+    "title": "File:Noch ein kabel.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Noch_ein_kabel.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "WikiAlexMedia"
+  },
+  "p-cable-ac": {
+    "file": "p-cable-ac.jpg",
+    "title": "File:USB-C cable 2017 A.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:USB-C_cable_2017_A.jpg",
+    "license": "CC0",
+    "author": "Fructibus"
+  },
+  "p-cable-c-lightning": {
+    "file": "p-cable-c-lightning.jpg",
+    "title": "File:Lightning Cable (11729396666).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Lightning_Cable_(11729396666).jpg",
+    "license": "CC BY 2.0",
+    "author": "William Warby from London, England"
+  },
+  "p-cable-a-lightning": {
+    "file": "p-cable-a-lightning.jpg",
+    "title": "File:Apple Lightning Cable End (48727307142).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Lightning_Cable_End_(48727307142).jpg",
+    "license": "CC BY 2.0",
+    "author": "brett jordan"
+  },
+  "p-cable-usb-b": {
+    "file": "p-cable-usb-b.jpg",
+    "title": "File:A-B Usb Cable.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:A-B_Usb_Cable.jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "oomlout"
+  },
+  "p-cable-tb4": {
+    "file": "p-cable-tb4.jpg",
+    "title": "File:Thunderbolt Cable 1 2013-09-04.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Thunderbolt_Cable_1_2013-09-04.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "FASTILY"
+  },
+  "p-cable-hdmi21": {
+    "file": "p-cable-hdmi21.jpg",
+    "title": "File:HDMI Cable.JPG",
+    "source": "https://commons.wikimedia.org/wiki/File:HDMI_Cable.JPG",
+    "license": "CC BY-SA 4.0",
+    "author": "Kannan shanmugam,shanmugam studio, Kollam"
+  },
+  "p-cable-dp14": {
+    "file": "p-cable-dp14.jpg",
+    "title": "File:Kabel DisplayPort zu Digital Visual Interface 20221119 HOF06615-HDR.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Kabel_DisplayPort_zu_Digital_Visual_Interface_20221119_HOF06615-HDR.png",
+    "license": "CC BY 4.0",
+    "author": "PantheraLeo1359531"
+  },
+  "p-cable-cc-usb2-charge": {
+    "file": "p-cable-cc-usb2-charge.jpg",
+    "title": "File:AGOZ STUDIO21408.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:AGOZ_STUDIO21408.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Kene88"
+  },
+  "p-magsafe-charger": {
+    "file": "p-magsafe-charger.jpg",
+    "title": "File:MagSafe and USB-C Cable Charger for iPhone.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:MagSafe_and_USB-C_Cable_Charger_for_iPhone.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "James Tamim"
+  },
+  "p-qi2-pad": {
+    "file": "p-qi2-pad.jpg",
+    "title": "File:Wireless Charging Pad.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Wireless_Charging_Pad.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Seawhelan"
+  },
+  "p-anker-qi-pad": {
+    "file": "p-anker-qi-pad.jpg",
+    "title": "File:Wireless Charging Pad 2018.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Wireless_Charging_Pad_2018.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Seawhelan"
+  },
+  "p-3in1-stand": {
+    "file": "p-3in1-stand.jpg",
+    "title": "File:Samsung Wireless Charger Pad, IFA 2018, Berlin (P1070294).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Samsung_Wireless_Charger_Pad,_IFA_2018,_Berlin_(P1070294).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Matti Blume"
+  },
+  "p-car-charger-2c-45w": {
+    "file": "p-car-charger-2c-45w.jpg",
+    "title": "File:Ugreen car charger USB-C USB-A 30W 25845.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Ugreen_car_charger_USB-C_USB-A_30W_25845.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Qurren"
+  },
+  "p-car-charger-usba": {
+    "file": "p-car-charger-usba.jpg",
+    "title": "File:Dymond Mini duo USB car charger, Oude Pekela (2019) 01.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Dymond_Mini_duo_USB_car_charger,_Oude_Pekela_(2019)_01.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Donald Trung Quoc Don (Chữ Hán: 徵國單) - Wikimedia Commons - © CC BY-SA 4.0 Intern"
+  },
+  "p-car-mount-magsafe": {
+    "file": "p-car-mount-magsafe.jpg",
+    "title": "File:Car universal holder for smartphones and phablets, Oude Pekela (2018) 04.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Car_universal_holder_for_smartphones_and_phablets,_Oude_Pekela_(2018)_04.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Donald Trung Quoc Don (Chữ Hán: 徵國單) - Wikimedia Commons.(Want to use this image"
+  },
+  "p-hub-6in1": {
+    "file": "p-hub-6in1.jpg",
+    "title": "File:USB C Hub.png",
+    "source": "https://commons.wikimedia.org/wiki/File:USB_C_Hub.png",
+    "license": "CC BY-SA 4.0",
+    "author": "Dieter1968"
+  },
+  "p-apple-multiport": {
+    "file": "p-apple-multiport.jpg",
+    "title": "File:USB-C Digital AV Multiport Adapter.jpeg",
+    "source": "https://commons.wikimedia.org/wiki/File:USB-C_Digital_AV_Multiport_Adapter.jpeg",
+    "license": "CC BY-SA 4.0",
+    "author": "Thefreeencyclopedia1"
+  },
+  "p-adapter-c-to-a": {
+    "file": "p-adapter-c-to-a.jpg",
+    "title": "File:USB OTG Type-C Adapter - A.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:USB_OTG_Type-C_Adapter_-_A.jpg",
+    "license": "CC0",
+    "author": "Fructibus"
+  },
+  "p-tb-dock": {
+    "file": "p-tb-dock.jpg",
+    "title": "File:OWC Thunderbolt 3 Dock.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:OWC_Thunderbolt_3_Dock.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Amin"
+  },
+  "p-adapter-c-35": {
+    "file": "p-adapter-c-35.jpg",
+    "title": "File:Apple USB-C to USB Adapter and Apple USB-C to SD Card Reader.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_USB-C_to_USB_Adapter_and_Apple_USB-C_to_SD_Card_Reader.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Peter11700"
+  },
+  "p-case-iphone-15-pro": {
+    "file": "p-case-iphone-15-pro.jpg",
+    "title": "File:Apple iPhone 17 Silicone Case (Black) unboxing.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_iPhone_17_Silicone_Case_(Black)_unboxing.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "茅野ふたば"
+  },
+  "p-case-iphone-14": {
+    "file": "p-case-iphone-14.jpg",
+    "title": "File:Apple iPhone 17 Silicone Case (Black).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_iPhone_17_Silicone_Case_(Black).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "茅野ふたば"
+  },
+  "p-case-galaxy-s25": {
+    "file": "p-case-galaxy-s25.jpg",
+    "title": "File:Apple iPhone 17 Silicone Case (Black) rear.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_iPhone_17_Silicone_Case_(Black)_rear.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "茅野ふたば"
+  },
+  "p-shell-macbook-air-13": {
+    "file": "p-shell-macbook-air-13.jpg",
+    "title": "File:Cozistyle Stand Sleeve.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Cozistyle_Stand_Sleeve.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Richardinsky"
+  },
+  "p-folio-ipad-10": {
+    "file": "p-folio-ipad-10.jpg",
+    "title": "File:Magic Keyboard for iPad Pro - 2.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Magic_Keyboard_for_iPad_Pro_-_2.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW"
+  },
+  "p-keyboard-ipad-pro": {
+    "file": "p-keyboard-ipad-pro.jpg",
+    "title": "File:Magic Keyboard for iPad Pro - 1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Magic_Keyboard_for_iPad_Pro_-_1.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW"
+  },
+  "p-glass-iphone-15-pro": {
+    "file": "p-glass-iphone-15-pro.jpg",
+    "title": "File:محافظ صفحه نمایش حریم شخصی.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:%D9%85%D8%AD%D8%A7%D9%81%D8%B8_%D8%B5%D9%81%D8%AD%D9%87_%D9%86%D9%85%D8%A7%DB%8C%D8%B4_%D8%AD%D8%B1%DB%8C%D9%85_%D8%B4%D8%AE%D8%B5%DB%8C.jpg",
+    "license": "CC0",
+    "author": "admin"
+  },
+  "p-glass-galaxy-s25": {
+    "file": "p-glass-galaxy-s25.jpg",
+    "title": "File:Librem5 Azdle 01 screen-protector bottom.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Librem5_Azdle_01_screen-protector_bottom.jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "Azdle"
+  },
+  "p-band-apple-45": {
+    "file": "p-band-apple-45.jpg",
+    "title": "File:Apple Watch Sport - 38mm Space Gray (3769).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Sport_-_38mm_Space_Gray_(3769).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Gregory Varnum"
+  },
+  "p-band-apple-41": {
+    "file": "p-band-apple-41.jpg",
+    "title": "File:Apple Watch Sport - 38mm Space Gray (3773).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Sport_-_38mm_Space_Gray_(3773).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Gregory Varnum"
+  },
+  "p-band-ultra": {
+    "file": "p-band-ultra.jpg",
+    "title": "File:Apple Watch Ultra - 4.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Ultra_-_4.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "p-band-galaxy-20": {
+    "file": "p-band-galaxy-20.jpg",
+    "title": "File:SAMSUNG Galaxy Watch (3).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:SAMSUNG_Galaxy_Watch_(3).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "p-sport-loop-45": {
+    "file": "p-sport-loop-45.jpg",
+    "title": "File:Apple Watch SE 2 (GPS + Cellular, 40mm, Midnight) with Anchor Blue Sport Loop.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_SE_2_(GPS_%2B_Cellular,_40mm,_Midnight)_with_Anchor_Blue_Sport_Loop.jpg",
+    "license": "CC0",
+    "author": "AzureSaturn"
+  },
+  "p-ink-gi41": {
+    "file": "p-ink-gi41.jpg",
+    "title": "File:Canon S520 ink jet printer - opened.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_S520_ink_jet_printer_-_opened.jpg",
+    "license": "CC BY-SA 2.5",
+    "author": "André Karwath aka Aka\n"
+  },
+  "p-cart-pg445": {
+    "file": "p-cart-pg445.jpg",
+    "title": "File:Ink-jet printer inside-cartridges.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Ink-jet_printer_inside-cartridges.jpg",
+    "license": "Public domain",
+    "author": "Julo"
+  },
+  "p-toner-hp-150a": {
+    "file": "p-toner-hp-150a.jpg",
+    "title": "File:Toner Cartridge.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Toner_Cartridge.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "FairToner"
+  },
+  "p-toner-tn2375": {
+    "file": "p-toner-tn2375.jpg",
+    "title": "File:Samsung laser toner cartridge front view.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Samsung_laser_toner_cartridge_front_view.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "W.carter"
+  },
+  "p-ink-epson-103": {
+    "file": "p-ink-epson-103.jpg",
+    "title": "File:Flacons d'encres 4 couleurs 113 pour imprimantes EPSON ECOTANK ET.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Flacons_d%27encres_4_couleurs_113_pour_imprimantes_EPSON_ECOTANK_ET.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Fawaz.tairou"
+  },
+  "p-hp-cartridge-305": {
+    "file": "p-hp-cartridge-305.jpg",
+    "title": "File:HP Black Print Cartridge 300-9897.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:HP_Black_Print_Cartridge_300-9897.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Raimond Spekking"
+  },
+  "p-dualsense": {
+    "file": "p-dualsense.jpg",
+    "title": "File:Playstation DualSense Controller.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Playstation_DualSense_Controller.png",
+    "license": "CC BY-SA 4.0",
+    "author": "Alex Cochrane"
+  },
+  "p-dualsense-blue": {
+    "file": "p-dualsense-blue.jpg",
+    "title": "File:DualSense Wireless Controller Cobalt Blue.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:DualSense_Wireless_Controller_Cobalt_Blue.jpg",
+    "license": "CC0",
+    "author": "Sonson2"
+  },
+  "p-xbox-controller": {
+    "file": "p-xbox-controller.jpg",
+    "title": "File:Xbox One Wireless Controller Model 1708 (36001635511).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Xbox_One_Wireless_Controller_Model_1708_(36001635511).jpg",
+    "license": "CC BY 2.0",
+    "author": "MiNe from Taipei, Taiwan"
+  },
+  "p-switch-pro": {
+    "file": "p-switch-pro.jpg",
+    "title": "File:Nintendo-Switch-Pro-Controller-BR.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Nintendo-Switch-Pro-Controller-BR.jpg",
+    "license": "Public domain",
+    "author": "Evan-Amos"
+  },
+  "p-ps5-charging-station": {
+    "file": "p-ps5-charging-station.jpg",
+    "title": "File:PlayStation 3 bluetooth headset.png",
+    "source": "https://commons.wikimedia.org/wiki/File:PlayStation_3_bluetooth_headset.png",
+    "license": "CC BY-SA 3.0",
+    "author": "Alphathon"
+  },
+  "p-switch-dock": {
+    "file": "p-switch-dock.jpg",
+    "title": "File:Nintendo-Switch-Console-Docked-wJoyConRB.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Nintendo-Switch-Console-Docked-wJoyConRB.jpg",
+    "license": "Public domain",
+    "author": "Evan-Amos"
+  },
+  "p-psvr2": {
+    "file": "p-psvr2.jpg",
+    "title": "File:Sony-PlayStation-4-PSVR-Headset-Mk1-Bottom.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sony-PlayStation-4-PSVR-Headset-Mk1-Bottom.jpg",
+    "license": "Public domain",
+    "author": "Evan-Amos"
+  },
+  "p-ssd-t7": {
+    "file": "p-ssd-t7.jpg",
+    "title": "File:SAMSUNG PROTABLE SSD T7 SHIELD 4TB REAR SIDE.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:SAMSUNG_PROTABLE_SSD_T7_SHIELD_4TB_REAR_SIDE.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "p-microsd-256": {
+    "file": "p-microsd-256.jpg",
+    "title": "File:MicroSD card 2GB focus-stacked.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:MicroSD_card_2GB_focus-stacked.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Afrank99"
+  },
+  "p-microsd-adata": {
+    "file": "p-microsd-adata.jpg",
+    "title": "File:ADATA microSD adapter and SanDisk 4GB microSDHC 20170628.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:ADATA_microSD_adapter_and_SanDisk_4GB_microSDHC_20170628.jpg",
+    "license": "CC0",
+    "author": "ゴスロリ"
+  },
+  "p-powerbank-10k": {
+    "file": "p-powerbank-10k.jpg",
+    "title": "File:Anker power bank lit.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Anker_power_bank_lit.jpg",
+    "license": "CC BY 4.0",
+    "author": "Saucy"
+  },
+  "p-powerbank-20k": {
+    "file": "p-powerbank-20k.jpg",
+    "title": "File:Mi50WPowerBank20000mAhXiaomi20240823000.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Mi50WPowerBank20000mAhXiaomi20240823000.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "OnionBulb"
+  },
+  "p-powerbank-red": {
+    "file": "p-powerbank-red.jpg",
+    "title": "File:2023 Powerbank Anker Powercore 5000mAh.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:2023_Powerbank_Anker_Powercore_5000mAh.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Jacek Halicki"
+  },
+  "p-battery-lpe17": {
+    "file": "p-battery-lpe17.jpg",
+    "title": "File:Canon LP-E17 BATTERY PACK.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_LP-E17_BATTERY_PACK.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "p-battery-npfz100": {
+    "file": "p-battery-npfz100.jpg",
+    "title": "File:Sony NP-FZ100 battery pack.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sony_NP-FZ100_battery_pack.jpg",
+    "license": "CC BY 4.0",
+    "author": "Amitabha Gupta"
+  },
+  "p-webcam": {
+    "file": "p-webcam.jpg",
+    "title": "File:Webcam 01.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Webcam_01.jpg",
+    "license": "CC0",
+    "author": "Pmwiki1"
+  },
+  "p-magic-keyboard": {
+    "file": "p-magic-keyboard.jpg",
+    "title": "File:Apple Magic Keyboard - US.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Magic_Keyboard_-_US.jpg",
+    "license": "CC BY 4.0",
+    "author": "Fletcher"
+  },
+  "p-apple-pencil": {
+    "file": "p-apple-pencil.jpg",
+    "title": "File:Apple Pencil.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Pencil.jpg",
+    "license": "CC BY 2.0",
+    "author": "Brett Jordan"
+  },
+  "p-laptop-stand": {
+    "file": "p-laptop-stand.jpg",
+    "title": "File:Cozistyle Stand Sleeve.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Cozistyle_Stand_Sleeve.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Richardinsky"
+  },
+  "p-monitor-arm": {
+    "file": "p-monitor-arm.jpg",
+    "title": "File:New office setup (November 2020) (51379754287).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:New_office_setup_(November_2020)_(51379754287).jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "Mack Male from Edmonton, AB, Canada"
+  },
+  "p-bose-qc": {
+    "file": "p-bose-qc.jpg",
+    "title": "File:Bose QuietComfort 25 Acoustic Noise Cancelling Headphones with Carry Case.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bose_QuietComfort_25_Acoustic_Noise_Cancelling_Headphones_with_Carry_Case.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Florian Fuchs"
+  },
+  "p-sony-headphones": {
+    "file": "p-sony-headphones.jpg",
+    "title": "File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.3.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.3.jpg",
+    "license": "CC BY 4.0",
+    "author": "www.digitalpush.net"
+  },
+  "p-earbuds-technics": {
+    "file": "p-earbuds-technics.jpg",
+    "title": "File:Technics-EAH-AZ60M2 09.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Technics-EAH-AZ60M2_09.jpg",
+    "license": "CC BY 4.0",
+    "author": "RuinDig/Yuki Uchida"
+  },
+  "hero-laptop": {
+    "file": "hero-laptop.jpg",
+    "title": "File:M2 Macbook Air Midnight model - 1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Midnight_model_-_1.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "hero-phone": {
+    "file": "hero-phone.jpg",
+    "title": "File:IPhone 15 Pro & iPhone 15 Pro Max.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:IPhone_15_Pro_%26_iPhone_15_Pro_Max.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "IPHONE 15"
+  },
+  "hero-tablet": {
+    "file": "hero-tablet.jpg",
+    "title": "File:Ipadtenthgen.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Ipadtenthgen.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Wiikiipediia"
+  },
+  "hero-watch": {
+    "file": "hero-watch.jpg",
+    "title": "File:Apple Watch Series 10.jpeg",
+    "source": "https://commons.wikimedia.org/wiki/File:Apple_Watch_Series_10.jpeg",
+    "license": "CC BY-SA 4.0",
+    "author": "KK IN HK"
+  },
+  "hero-earbuds": {
+    "file": "hero-earbuds.jpg",
+    "title": "File:AirPods Pro case.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:AirPods_Pro_case.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "— aconcagua (talk)"
+  },
+  "hero-controller": {
+    "file": "hero-controller.jpg",
+    "title": "File:Playstation DualSense Controller.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Playstation_DualSense_Controller.png",
+    "license": "CC BY-SA 4.0",
+    "author": "Alex Cochrane"
+  },
+  "hero-printer": {
+    "file": "hero-printer.jpg",
+    "title": "File:Canon PIXMA G 3871 Multifunction ink-jet Printer.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_PIXMA_G_3871_Multifunction_ink-jet_Printer.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "hero-camera": {
+    "file": "hero-camera.jpg",
+    "title": "File:Canon EOS R50 (52694437103).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_EOS_R50_(52694437103).jpg",
+    "license": "CC BY 2.0",
+    "author": "Henry Söderlund from Helsinki, Finland"
+  },
+  "banner-cables": {
+    "file": "banner-cables.jpg",
+    "title": "File:AGOZ STUDIO21408.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:AGOZ_STUDIO21408.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Kene88"
+  },
+  "banner-printer": {
+    "file": "banner-printer.jpg",
+    "title": "File:Canon PIXMA G 3871 Multifunction ink-jet Printer.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_PIXMA_G_3871_Multifunction_ink-jet_Printer.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  },
+  "promo-devices": {
+    "file": "promo-devices.jpg",
+    "title": "File:Magsafe 3 of M2 Macbook Air Midnight Model.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Magsafe_3_of_M2_Macbook_Air_Midnight_Model.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "KKPCW（Kyu3）"
+  },
+  "promo-bundle": {
+    "file": "promo-bundle.jpg",
+    "title": "File:Bad USB-C cable.agr.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Bad_USB-C_cable.agr.jpg",
+    "license": "CC BY 4.0",
+    "author": "ArnoldReinhold"
+  },
+  "promo-sale": {
+    "file": "promo-sale.jpg",
+    "title": "File:Anker Fusion White.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Anker_Fusion_White.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "之乎"
+  },
+  "bundle-iphone": {
+    "file": "bundle-iphone.jpg",
+    "title": "File:MagSafe and USB-C Cable Charger for iPhone.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:MagSafe_and_USB-C_Cable_Charger_for_iPhone.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "James Tamim"
+  },
+  "bundle-macbook": {
+    "file": "bundle-macbook.jpg",
+    "title": "File:USB C Hub.png",
+    "source": "https://commons.wikimedia.org/wiki/File:USB_C_Hub.png",
+    "license": "CC BY-SA 4.0",
+    "author": "Dieter1968"
+  },
+  "bundle-printer": {
+    "file": "bundle-printer.jpg",
+    "title": "File:Canon S520 ink jet printer - opened.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Canon_S520_ink_jet_printer_-_opened.jpg",
+    "license": "CC BY-SA 2.5",
+    "author": "André Karwath aka Aka\n"
+  },
+  "bundle-ps5": {
+    "file": "bundle-ps5.jpg",
+    "title": "File:DualSense Wireless Controller Cobalt Blue.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:DualSense_Wireless_Controller_Cobalt_Blue.jpg",
+    "license": "CC0",
+    "author": "Sonson2"
+  },
+  "bundle-galaxy": {
+    "file": "bundle-galaxy.jpg",
+    "title": "File:SAMSUNG EP-TA800 25W POWER ADAPER WHITE (2).jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:SAMSUNG_EP-TA800_25W_POWER_ADAPER_WHITE_(2).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dinkun Chen"
+  }
+}

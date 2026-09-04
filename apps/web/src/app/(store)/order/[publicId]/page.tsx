@@ -54,7 +54,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           <section className="card divide-y divide-ink-200">
             {order.items.map((i) => (
               <div key={i.id} className="flex items-center gap-3 p-4">
-                <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">{i.imageUrl && <Image src={i.imageUrl} alt="" fill sizes="64px" className="object-cover" />}</span>
+                <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-white">{i.imageUrl && <Image src={i.imageUrl} alt="" fill sizes="64px" className="object-contain" />}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-[14px] font-medium">{i.name}</span>
                   <span className="block text-[12px] text-ink-500">арт. {i.sku} · {i.quantity} × {formatRub(i.unitPriceMinor)}</span>

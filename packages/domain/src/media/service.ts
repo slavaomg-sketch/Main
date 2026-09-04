@@ -4,11 +4,19 @@ import { dirname, join, resolve } from 'node:path';
 import { getEnv, REPO_ROOT } from '@techmatch/config';
 import type { DbClient } from '@techmatch/database';
 import { ValidationError } from '../shared/errors';
+import { normalizeProductImage } from './normalize';
 
-export const IMAGE_VARIANTS: Record<string, { width: number; height?: number; fit: 'inside' | 'cover' }> = {
-  thumb: { width: 160, height: 160, fit: 'inside' },
-  card: { width: 480, height: 480, fit: 'inside' },
-  large: { width: 1200, fit: 'inside' },
+export { normalizeProductImage, IMAGE_STANDARD } from './normalize';
+
+/**
+ * Варианты изображения. thumb/card/large — WebP с прозрачным фоном для витрины (фон задаёт карточка),
+ * white — JPEG 1200×1200 на белом фоне для экспорта на маркетплейсы и в YML.
+ */
+export const IMAGE_VARIANTS: Record<string, { width: number; height?: number; fit: 'inside' | 'contain'; format: 'webp' | 'jpeg' }> = {
+  thumb: { width: 160, height: 160, fit: 'contain', format: 'webp' },
+  card: { width: 480, height: 480, fit: 'contain', format: 'webp' },
+  large: { width: 1200, fit: 'inside', format: 'webp' },
+  white: { width: 1200, height: 1200, fit: 'contain', format: 'jpeg' },
 };
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
@@ -74,6 +82,8 @@ export interface StoreImageInput {
   originalUrl?: string | null;
   license?: string | null;
   attribution?: string | null;
+  /** Приводить к стандарту товарного фото (по умолчанию — значение IMAGE_NORMALIZE). */
+  normalize?: boolean;
 }
 
 /**
@@ -91,19 +101,27 @@ export async function storeImage(db: DbClient, input: StoreImageInput) {
 
   const sharp = (await import('sharp')).default;
   const image = sharp(input.buffer, { failOn: 'error' }).rotate();
-  const meta = await image.metadata();
-  const mime = meta.format === 'jpeg' ? 'image/jpeg' : meta.format === 'png' ? 'image/png' : meta.format === 'webp' ? 'image/webp' : meta.format === 'avif' ? 'image/avif' : null;
-  if (!mime || !ALLOWED_MIME.has(mime)) throw new ValidationError('Допустимы только JPEG, PNG, WebP и AVIF');
+  const sourceMeta = await image.metadata();
+  const sourceMime = sourceMeta.format === 'jpeg' ? 'image/jpeg' : sourceMeta.format === 'png' ? 'image/png' : sourceMeta.format === 'webp' ? 'image/webp' : sourceMeta.format === 'avif' ? 'image/avif' : null;
+  if (!sourceMime || !ALLOWED_MIME.has(sourceMime)) throw new ValidationError('Допустимы только JPEG, PNG, WebP и AVIF');
+
+  const normalize = input.normalize ?? env.IMAGE_NORMALIZE === 'true';
+  const master = normalize ? (await normalizeProductImage(input.buffer)).buffer : input.buffer;
+  const meta = normalize ? await sharp(master).metadata() : sourceMeta;
+  const mime = normalize ? 'image/webp' : sourceMime;
+  const ext = normalize ? 'webp' : sourceMeta.format === 'jpeg' ? 'jpg' : sourceMeta.format;
 
   const store = getMediaStorage();
   const prefix = `${sha256.slice(0, 2)}/${sha256.slice(2, 4)}`;
   const baseKey = `${prefix}/${sha256}`;
-  const originalKey = `${baseKey}.${meta.format === 'jpeg' ? 'jpg' : meta.format}`;
-  const publicUrl = await store.put(originalKey, input.buffer, mime);
+  const originalKey = `${baseKey}.${ext}`;
+  const publicUrl = await store.put(originalKey, master, mime);
   const variants: Record<string, string> = {};
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
   for (const [name, spec] of Object.entries(IMAGE_VARIANTS)) {
-    const buf = await sharp(input.buffer).rotate().resize({ width: spec.width, height: spec.height, fit: spec.fit, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
-    variants[name] = await store.put(`${baseKey}-${name}.webp`, buf, 'image/webp');
+    const pipeline = sharp(master).rotate().resize({ width: spec.width, height: spec.height, fit: spec.fit, withoutEnlargement: true, background: spec.format === 'jpeg' ? '#ffffff' : transparent });
+    const buf = spec.format === 'jpeg' ? await pipeline.flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer() : await pipeline.webp({ quality: 82 }).toBuffer();
+    variants[name] = await store.put(`${baseKey}-${name}.${spec.format === 'jpeg' ? 'jpg' : 'webp'}`, buf, spec.format === 'jpeg' ? 'image/jpeg' : 'image/webp');
   }
   return db.mediaAsset.create({
     data: {
@@ -113,7 +131,7 @@ export async function storeImage(db: DbClient, input: StoreImageInput) {
       mimeType: mime,
       width: meta.width ?? null,
       height: meta.height ?? null,
-      sizeBytes: input.buffer.length,
+      sizeBytes: master.length,
       sha256,
       variants,
       source: input.source ?? 'UPLOAD',

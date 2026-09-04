@@ -36,7 +36,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
             const stock = p.variants.reduce((s, x) => s + x.inventory.reduce((a, i) => a + i.quantity, 0), 0);
             return (
               <tr key={p.id}>
-                <td className="w-12"><span className="block size-10 overflow-hidden rounded-[6px] bg-ink-100">{p.images[0] && <img src={(p.images[0].asset.variants as Record<string, string>).thumb ?? p.images[0].asset.publicUrl} alt="" className="size-full object-cover" />}</span></td>
+                <td className="w-12"><span className="block size-10 overflow-hidden rounded-[6px] bg-white">{p.images[0] && <img src={(p.images[0].asset.variants as Record<string, string>).thumb ?? p.images[0].asset.publicUrl} alt="" className="size-full object-contain" />}</span></td>
                 <td><Link href={`/admin/products/${p.id}`} className="font-semibold text-brand-600">{p.name}</Link><div className="text-[12px] text-ink-500">{p.brand?.name} · {v?.sku}{p.variants.length > 1 ? ` (+${p.variants.length - 1})` : ''}</div></td>
                 <td>{p.category.name}</td>
                 <td><span className={`badge ${p.status === 'ACTIVE' ? 'bg-success-100 text-success-500' : p.status === 'DRAFT' ? 'bg-warning-100 text-warning-500' : 'bg-ink-100 text-ink-500'}`}>{p.status}</span></td>

@@ -31,8 +31,8 @@ export function PromoCards({ cards }: { cards: PromoCardData[] }) {
               )}
             </div>
             {c.imageUrl && (
-              <div className="absolute inset-y-3 right-3 w-[42%] overflow-hidden rounded-[var(--radius-md)]">
-                <Image src={c.imageUrl} alt="" fill sizes="(max-width: 768px) 45vw, 200px" className="object-cover" />
+              <div className="absolute inset-y-2 right-2 w-[42%]">
+                <Image src={c.imageUrl} alt="" fill sizes="(max-width: 768px) 45vw, 200px" className="object-contain drop-shadow-[0_14px_20px_rgba(15,23,42,0.18)]" />
               </div>
             )}
             {i === 2 && (

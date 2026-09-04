@@ -36,6 +36,10 @@ const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().optional().default(''),
   S3_PUBLIC_BASE_URL: z.string().optional().default(''),
   UPLOAD_MAX_IMAGE_MB: z.coerce.number().positive().default(8),
+  /** Приводить загружаемые фото товаров и устройств к единому стандарту (квадрат 1:1, объект по центру, единые поля). */
+  IMAGE_NORMALIZE: z.enum(['true', 'false']).default('true'),
+  /** Внешняя команда удаления фона, например: rembg i -m isnet-general-use {input} {output}. Пусто — фон не удаляется. */
+  IMAGE_CUTOUT_COMMAND: z.string().optional().default(''),
 
   PAYMENT_PROVIDER: z.enum(['mock', 'yookassa']).default('mock'),
   YOOKASSA_SHOP_ID: z.string().optional().default(''),

@@ -29,8 +29,8 @@ const imageCache = new Map<string, string>();
 async function image(key: string | undefined): Promise<string | null> {
   if (!key) return null;
   if (imageCache.has(key)) return imageCache.get(key)!;
-  const file = join(ASSETS, `${key}.jpg`);
-  if (!existsSync(file)) {
+  const file = [join(ASSETS, `${key}.webp`), join(ASSETS, `${key}.jpg`), join(ASSETS, `${key}.png`)].find((f) => existsSync(f));
+  if (!file) {
     console.warn(`  ! нет изображения ${key}`);
     return null;
   }

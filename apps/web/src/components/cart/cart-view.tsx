@@ -27,8 +27,8 @@ export function CartView({ cart }: { cart: CartDTO }) {
       <ul className="card divide-y divide-ink-200" aria-busy={pending}>
         {cart.lines.map((l) => (
           <li key={l.id} className="flex gap-3 p-4 sm:gap-4" data-testid="cart-line">
-            <Link href={`/product/${l.productSlug}`} className="relative size-20 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100 sm:size-24">
-              {l.imageUrl && <Image src={l.imageVariants.thumb ?? l.imageUrl} alt="" fill sizes="96px" className="object-cover" />}
+            <Link href={`/product/${l.productSlug}`} className="relative size-20 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-ink-100 bg-white sm:size-24">
+              {l.imageUrl && <Image src={l.imageVariants.thumb ?? l.imageUrl} alt="" fill sizes="96px" className="object-contain" />}
             </Link>
             <div className="min-w-0 flex-1">
               <Link href={`/product/${l.productSlug}`} className="line-clamp-2 text-[14px] font-medium hover:text-brand-600">{l.name}</Link>

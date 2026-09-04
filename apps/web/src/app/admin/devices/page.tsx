@@ -41,7 +41,7 @@ export default async function AdminDevices({ searchParams }: { searchParams: Pro
             <tbody>
               {items.map((d) => (
                 <tr key={d.id}>
-                  <td className="w-12"><span className="block size-10 overflow-hidden rounded-[6px] bg-ink-100">{d.imageUrl && <img src={d.imageUrl} alt="" className="size-full object-cover" />}</span></td>
+                  <td className="w-12"><span className="block size-10 overflow-hidden rounded-[6px] bg-white">{d.imageUrl && <img src={d.imageUrl} alt="" className="size-full object-contain" />}</span></td>
                   <td><Link href={`/admin/devices/${d.id}`} className="font-semibold text-brand-600">{d.fullName}</Link><div className="text-[12px] text-ink-500">{d.brand.name}{d.primaryModelNumber ? ` · ${d.primaryModelNumber}` : ''}{d.specsAreDemo ? ' · demo-характеристики' : ''}</div></td>
                   <td>{d.category.name}</td><td>{d.releaseYear ?? '—'}</td><td>{d._count.variants}</td><td>{d._count.aliases}</td><td>{d._count.relations}</td>
                   <td><span className={`badge ${d.isActive ? 'bg-success-100 text-success-500' : 'bg-ink-100 text-ink-500'}`}>{d.isActive ? 'активно' : 'скрыто'}</span></td>

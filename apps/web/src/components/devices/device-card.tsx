@@ -16,8 +16,8 @@ export interface DeviceCardData {
 export function DeviceCard({ device, hint }: { device: DeviceCardData; hint?: string | null }) {
   return (
     <Link href={`/device/${device.slug}`} className="card flex items-center gap-3 p-3 transition-shadow hover:shadow-[var(--shadow-card-hover)]" data-testid="device-card">
-      <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">
-        {device.imageUrl && <Image src={device.imageUrl} alt="" fill sizes="64px" className="object-cover" />}
+      <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] border border-ink-100 bg-white">
+        {device.imageUrl && <Image src={device.imageUrl} alt="" fill sizes="64px" className="object-contain" />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-semibold">{device.fullName}</span>

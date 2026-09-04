@@ -73,7 +73,7 @@ export function DeviceForm({ device, brands, categories }: { device: DeviceFormD
       {device.id && (
         <section className="card h-fit p-5">
           <h2 className="mb-3 text-[15px] font-bold">Изображение</h2>
-          {device.imageUrl && <img src={device.imageUrl} alt="" className="mb-3 size-40 rounded-[var(--radius-md)] border border-ink-200 object-cover" />}
+          {device.imageUrl && <img src={device.imageUrl} alt="" className="mb-3 size-40 rounded-[var(--radius-md)] border border-ink-200 object-contain" />}
           <ActionForm action={(fd) => uploadDeviceImageAction(device.id!, fd)} submitLabel="Загрузить">
             <input type="file" name="file" accept="image/*" className="text-[13px]" />
           </ActionForm>

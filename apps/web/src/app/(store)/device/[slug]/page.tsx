@@ -66,8 +66,8 @@ export default async function DevicePage({ params, searchParams }: { params: Pro
     <div className="shell py-5" data-testid="device-page">
       <Breadcrumbs items={[{ label: 'Подбор по устройству', href: '/devices' }, { label: device.category.name, href: `/devices/${device.category.slug}` }, { label: device.name }]} />
       <section className="card flex flex-col gap-5 p-5 md:flex-row md:items-center md:gap-7">
-        <div className="relative size-28 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-ink-100 md:size-36">
-          {device.imageUrl && <Image src={device.imageUrl} alt={device.fullName} fill sizes="144px" className="object-cover" priority />}
+        <div className="relative size-28 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-ink-100 bg-white md:size-36">
+          {device.imageUrl && <Image src={device.imageUrl} alt={device.fullName} fill sizes="144px" className="object-contain" priority />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] text-ink-500">{device.brand.name} · {device.category.name}{device.releaseYear ? ` · ${device.releaseYear}` : ''}</p>

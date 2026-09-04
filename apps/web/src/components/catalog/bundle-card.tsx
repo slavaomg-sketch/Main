@@ -26,8 +26,8 @@ export function BundleCard({ bundle }: { bundle: BundleRow }) {
   const img = bundle.imageAsset ? ((bundle.imageAsset.variants as Record<string, string>).card ?? bundle.imageAsset.publicUrl) : null;
   return (
     <article className="card flex flex-col overflow-hidden" data-testid="bundle-card">
-      <Link href={`/bundles/${bundle.slug}`} className="relative block aspect-[16/9] bg-ink-100">
-        {img && <Image src={img} alt={bundle.name} fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />}
+      <Link href={`/bundles/${bundle.slug}`} className="relative block aspect-[16/9] bg-white">
+        {img && <Image src={img} alt={bundle.name} fill sizes="(max-width: 768px) 100vw, 400px" className="object-contain p-3" />}
         <span className="badge absolute top-2.5 left-2.5 bg-success-500 text-white">Выгода {formatRub(p.savingsMinor)}</span>
       </Link>
       <div className="flex flex-1 flex-col p-4">
@@ -38,8 +38,8 @@ export function BundleCard({ bundle }: { bundle: BundleRow }) {
             const pic = i.variant.product.images[0]?.asset;
             return (
               <li key={i.variant.id} className="flex items-center gap-2 text-[12.5px]">
-                <span className="relative size-8 shrink-0 overflow-hidden rounded-[6px] bg-ink-100">
-                  {pic && <Image src={(pic.variants as Record<string, string>).thumb ?? pic.publicUrl} alt="" fill sizes="32px" className="object-cover" />}
+                <span className="relative size-8 shrink-0 overflow-hidden rounded-[6px] border border-ink-100 bg-white">
+                  {pic && <Image src={(pic.variants as Record<string, string>).thumb ?? pic.publicUrl} alt="" fill sizes="32px" className="object-contain" />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{i.variant.product.name}{i.quantity > 1 ? ` × ${i.quantity}` : ''}</span>
               </li>

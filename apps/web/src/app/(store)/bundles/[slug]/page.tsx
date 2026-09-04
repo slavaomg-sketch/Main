@@ -27,7 +27,7 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
       <Breadcrumbs items={[{ label: 'Готовые комплекты', href: '/bundles' }, { label: bundle.name }]} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="relative aspect-[16/9] overflow-hidden rounded-[var(--radius-lg)] bg-ink-100">{img && <Image src={img} alt={bundle.name} fill sizes="(max-width: 1024px) 100vw, 800px" className="object-cover" priority />}</div>
+          <div className="relative aspect-[16/9] overflow-hidden rounded-[var(--radius-lg)] bg-white">{img && <Image src={img} alt={bundle.name} fill sizes="(max-width: 1024px) 100vw, 800px" className="object-contain" priority />}</div>
           <h1 className="h2 mt-5">{bundle.name}</h1>
           {bundle.description && <p className="mt-2 text-[15px] text-ink-700">{bundle.description}</p>}
           {bundle.devices.length > 0 && (
@@ -43,7 +43,7 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
               const pic = i.variant.product.images[0]?.asset;
               return (
                 <li key={i.variant.id} className="flex items-center gap-3 p-3">
-                  <span className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">{pic && <Image src={(pic.variants as Record<string, string>).thumb ?? pic.publicUrl} alt="" fill sizes="56px" className="object-cover" />}</span>
+                  <span className="relative size-14 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-white">{pic && <Image src={(pic.variants as Record<string, string>).thumb ?? pic.publicUrl} alt="" fill sizes="56px" className="object-contain" />}</span>
                   <span className="min-w-0 flex-1">
                     <Link href={`/product/${i.variant.product.slug}`} className="block text-[14px] font-medium hover:text-brand-600">{i.variant.product.name}</Link>
                     <span className="text-[12px] text-ink-500">{i.variant.name !== i.variant.product.name ? i.variant.name : i.variant.product.brand?.name}{i.quantity > 1 ? ` · ${i.quantity} шт.` : ''}</span>

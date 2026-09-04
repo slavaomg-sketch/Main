@@ -19,7 +19,7 @@ export function Hero({ settings, images }: { settings: HomepageSettings; images:
     if (!img) return null;
     return (
       <div className={`absolute overflow-hidden rounded-[var(--radius-lg)] bg-surface shadow-[0_10px_30px_rgba(15,23,42,0.12)] ring-1 ring-black/5 ${cls}`}>
-        <Image src={img.url} alt={img.alt} fill sizes={sizes} priority={priority} className="object-cover" />
+        <Image src={img.url} alt={img.alt} fill sizes={sizes} priority={priority} className="object-contain p-[7%]" />
       </div>
     );
   };

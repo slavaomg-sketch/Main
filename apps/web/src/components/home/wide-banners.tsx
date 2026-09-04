@@ -13,9 +13,9 @@ export function WideBanners({ banners }: { banners: Array<PromoCardData & { hand
           return (
             <article key={b.id} className={`relative flex min-h-[200px] overflow-hidden rounded-[var(--radius-lg)] ${dark ? 'bg-ink-900 text-white' : 'bg-canvas text-ink-900'}`}>
               {b.imageUrl && (
-                <div className="absolute inset-y-0 right-0 w-[52%]">
-                  <Image src={b.imageUrl} alt="" fill sizes="(max-width: 1024px) 50vw, 320px" className="object-cover" />
-                  <div className={`absolute inset-0 ${dark ? 'bg-gradient-to-r from-ink-900 via-ink-900/40 to-transparent' : 'bg-gradient-to-r from-canvas via-canvas/40 to-transparent'}`} />
+                <div className="absolute inset-y-3 right-4 w-[46%]">
+                  <Image src={b.imageUrl} alt="" fill sizes="(max-width: 1024px) 50vw, 320px" className={`object-contain ${dark ? "drop-shadow-[0_18px_28px_rgba(0,0,0,0.45)]" : "drop-shadow-[0_18px_28px_rgba(15,23,42,0.18)]"}`} />
+                  <div className={`absolute inset-y-0 left-0 w-1/3 ${dark ? 'bg-gradient-to-r from-ink-900 to-transparent' : 'bg-gradient-to-r from-canvas to-transparent'}`} />
                 </div>
               )}
               <div className="relative z-10 flex w-[58%] flex-col p-6">

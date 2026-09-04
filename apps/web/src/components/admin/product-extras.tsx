@@ -93,7 +93,7 @@ export function ImagesEditor({ productId, images }: { productId: string; images:
       <ul className="mb-4 flex flex-wrap gap-3">
         {images.map((img) => (
           <li key={img.id} className="relative">
-            <img src={img.url} alt="" className="size-24 rounded-[var(--radius-sm)] border border-ink-200 object-cover" />
+            <img src={img.url} alt="" className="size-24 rounded-[var(--radius-sm)] border border-ink-200 object-contain" />
             {img.isPrimary && <span className="badge absolute top-1 left-1 bg-brand-500 text-white">главное</span>}
             <div className="mt-1 text-center"><ActionButton action={() => removeProductImageAction(productId, img.id)} confirm="Удалить изображение?" className="text-[12px] text-danger-500 hover:underline">удалить</ActionButton></div>
           </li>

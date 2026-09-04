@@ -74,7 +74,7 @@ export function BannersEditor({ banners }: { banners: BannerData[] }) {
         {adding && <BannerForm onDone={() => setAdding(false)} />}
         {banners.map((b) => (
           <div key={b.id} className="flex gap-3">
-            {b.imageUrl && <img src={b.imageUrl} alt="" className="size-20 shrink-0 rounded-[var(--radius-sm)] object-cover" />}
+            {b.imageUrl && <img src={b.imageUrl} alt="" className="size-20 shrink-0 rounded-[var(--radius-sm)] object-contain" />}
             <div className="min-w-0 flex-1"><BannerForm b={b} /><div className="mt-1"><ActionButton action={() => deleteBannerAction(b.id)} confirm="Удалить баннер?" className="text-[12px] text-danger-500 hover:underline">удалить</ActionButton></div></div>
           </div>
         ))}

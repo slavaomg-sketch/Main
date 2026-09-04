@@ -26,9 +26,9 @@ export function ProductCard({ product, favorite = false, deviceModelId, priority
   return (
     <article className="group card relative flex h-full flex-col overflow-hidden transition-shadow hover:shadow-[var(--shadow-card-hover)]" data-testid="product-card">
       <div className="relative">
-        <Link href={`/product/${product.slug}`} className="block aspect-square overflow-hidden bg-ink-100" tabIndex={-1} aria-hidden="true">
+        <Link href={`/product/${product.slug}`} className="block aspect-square overflow-hidden bg-white" tabIndex={-1} aria-hidden="true">
           {src ? (
-            <Image src={src} alt={img?.alt ?? product.name} width={480} height={480} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px" priority={priority} className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+            <Image src={src} alt={img?.alt ?? product.name} width={480} height={480} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px" priority={priority} className="size-full object-contain transition-transform duration-300 group-hover:scale-[1.03]" />
           ) : (
             <span className="flex size-full items-center justify-center text-ink-400">Нет фото</span>
           )}

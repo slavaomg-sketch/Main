@@ -1,6 +1,6 @@
 # Демо-изображения: источники и лицензии
 
-Все изображения seed взяты с Wikimedia Commons под свободными лицензиями (CC0 / CC BY / CC BY-SA / Public domain) и уменьшены до 1000 px. Они используются **только для демонстрации** и должны быть заменены реальными фото товаров из каталога/маркетплейсов перед публичным запуском. Условия CC BY / CC BY-SA требуют указания автора и лицензии — этот файл и поля `MediaAsset.license/attribution` выполняют это требование.
+Все изображения seed взяты с Wikimedia Commons под свободными лицензиями (CC0 / CC BY / CC BY-SA / Public domain). Это **производные работы**: фон удалён, объект отцентрован на квадратном холсте 1000×1000 с одинаковыми полями по стандарту `docs/IMAGE_STANDARD.md` (скрипт `tools/images/normalize.py`). Исходные фото без изменений лежат в `packages/database/seed-assets/images-original/`. Изображения используются **только для демонстрации** и должны быть заменены реальными фото товаров перед публичным запуском. Условия CC BY / CC BY-SA требуют указания автора, лицензии и факта изменения — этот файл и поля `MediaAsset.license/attribution` выполняют это требование.
 
 | Ключ | Файл на Commons | Лицензия | Автор |
 |---|---|---|---|
@@ -9,8 +9,7 @@
 | `bundle-galaxy` | [File:SAMSUNG EP-TA800 25W POWER ADAPER WHITE (2).jpg](https://commons.wikimedia.org/wiki/File:SAMSUNG_EP-TA800_25W_POWER_ADAPER_WHITE_(2).jpg) | CC BY-SA 4.0 | Dinkun Chen |
 | `bundle-iphone` | [File:MagSafe and USB-C Cable Charger for iPhone.jpg](https://commons.wikimedia.org/wiki/File:MagSafe_and_USB-C_Cable_Charger_for_iPhone.jpg) | CC BY-SA 4.0 | James Tamim |
 | `bundle-macbook` | [File:USB C Hub.png](https://commons.wikimedia.org/wiki/File:USB_C_Hub.png) | CC BY-SA 4.0 | Dieter1968 |
-| `bundle-printer` | [File:Canon S520 ink jet printer - opened.jpg](https://commons.wikimedia.org/wiki/File:Canon_S520_ink_jet_printer_-_opened.jpg) | CC BY-SA 2.5 | André Karwath aka Aka
- |
+| `bundle-printer` | [File:Canon PIXMA G 3871 Multifunction ink-jet Printer.jpg](https://commons.wikimedia.org/wiki/File:Canon_PIXMA_G_3871_Multifunction_ink-jet_Printer.jpg) | CC BY-SA 4.0 | Dinkun Chen |
 | `bundle-ps5` | [File:DualSense Wireless Controller Cobalt Blue.jpg](https://commons.wikimedia.org/wiki/File:DualSense_Wireless_Controller_Cobalt_Blue.jpg) | CC0 | Sonson2 |
 | `dev-70mai-a800s` | [File:Видеорегистратор двухсторонний (снимает внутри салона и то, что происходит по пути движения ТС). Фото А. Щекинова.jpg](https://commons.wikimedia.org/wiki/File:%D0%92%D0%B8%D0%B4%D0%B5%D0%BE%D1%80%D0%B5%D0%B3%D0%B8%D1%81%D1%82%D1%80%D0%B0%D1%82%D0%BE%D1%80_%D0%B4%D0%B2%D1%83%D1%85%D1%81%D1%82%D0%BE%D1%80%D0%BE%D0%BD%D0%BD%D0%B8%D0%B9_(%D1%81%D0%BD%D0%B8%D0%BC%D0%B0%D0%B5%D1%82_%D0%B2%D0%BD%D1%83%D1%82%D1%80%D0%B8_%D1%81%D0%B0%D0%BB%D0%BE%D0%BD%D0%B0_%D0%B8_%D1%82%D0%BE,_%D1%87%D1%82%D0%BE_%D0%BF%D1%80%D0%BE%D0%B8%D1%81%D1%85%D0%BE%D0%B4%D0%B8%D1%82_%D0%BF%D0%BE_%D0%BF%D1%83%D1%82%D0%B8_%D0%B4%D0%B2%D0%B8%D0%B6%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A2%D0%A1)._%D0%A4%D0%BE%D1%82%D0%BE_%D0%90._%D0%A9%D0%B5%D0%BA%D0%B8%D0%BD%D0%BE%D0%B2%D0%B0.jpg) | CC BY-SA 4.0 | Schekinov Alexey Victorovich |
 | `dev-airpods-pro-2` | [File:AirPods Pro (2nd generation).jpg](https://commons.wikimedia.org/wiki/File:AirPods_Pro_(2nd_generation).jpg) | CC BY-SA 4.0 | Hajoon0102 |
@@ -25,32 +24,32 @@
 | `dev-car-12v` | [File:Dymond Mini duo USB car charger, Oude Pekela (2019) 02.jpg](https://commons.wikimedia.org/wiki/File:Dymond_Mini_duo_USB_car_charger,_Oude_Pekela_(2019)_02.jpg) | CC BY-SA 4.0 | Donald Trung Quoc Don (Chữ Hán: 徵國單) - Wikimedia Commons - © CC BY-SA 4.0 Intern |
 | `dev-dell-u2723qe` | [File:Acer AL1706 LCD monitor.jpg](https://commons.wikimedia.org/wiki/File:Acer_AL1706_LCD_monitor.jpg) | CC BY-SA 4.0 | JulianVilla26 |
 | `dev-dell-xps-13` | [File:DELL XPS 13 and 15 (37750892221).jpg](https://commons.wikimedia.org/wiki/File:DELL_XPS_13_and_15_(37750892221).jpg) | CC0 | Tinh tế Photo |
-| `dev-epson-l3250` | [File:C11CB57201 Inyección+de+tinta Epson+EcoTank+L800 ES.png](https://commons.wikimedia.org/wiki/File:C11CB57201_Inyecci%C3%B3n%2Bde%2Btinta_Epson%2BEcoTank%2BL800_ES.png) | CC BY-SA 4.0 | YasmaSA1991 |
+| `dev-epson-l3250` | [File:C11CB57201 Inyección+de+tinta Epson+EcoTank+L800 ES.png](https://commons.wikimedia.org/wiki/File:C11CB57201_Inyección+de+tinta_Epson+EcoTank+L800_ES.png) | CC BY-SA 4.0 | <a href="//commons.wikimedia.org/w/index.php?title=User:YasmaSA1991&amp;action=e |
 | `dev-galaxy-a55` | [File:Samsung Galaxy A34 5G 20231122 HOF01948-HDR RAW-Export cens.png](https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_A34_5G_20231122_HOF01948-HDR_RAW-Export_cens.png) | CC BY 4.0 | PantheraLeo1359531 |
-| `dev-galaxy-s24` | [File:Samsung Galaxy S24 (webtekno) 008.png](https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_S24_(webtekno)_008.png) | CC BY 3.0 | webtekno |
-| `dev-galaxy-s25` | [File:第一手！Samsung Galaxy S25系列拿到了：5个升级！S Pen不支持蓝牙了？ (2160p 50fps VP9-96kbit AAC)-00.00.07.100.png](https://commons.wikimedia.org/wiki/File:%E7%AC%AC%E4%B8%80%E6%89%8B%EF%BC%81Samsung_Galaxy_S25%E7%B3%BB%E5%88%97%E6%8B%BF%E5%88%B0%E4%BA%86%EF%BC%9A5%E4%B8%AA%E5%8D%87%E7%BA%A7%EF%BC%81S_Pen%E4%B8%8D%E6%94%AF%E6%8C%81%E8%93%9D%E7%89%99%E4%BA%86%EF%BC%9F_(2160p_50fps_VP9-96kbit_AAC)-00.00.07.100.png) | CC BY 3.0 | 可恩Ke En |
+| `dev-galaxy-s24` | [File:Samsung Galaxy S24, Sperrbildschirm.JPG](https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_S24,_Sperrbildschirm.JPG) | CC BY-SA 4.0 | C.Stadler/Bwa |
+| `dev-galaxy-s25` | [File:Galaxy S25 Black.png](https://commons.wikimedia.org/wiki/File:Galaxy_S25_Black.png) | CC BY-SA 4.0 | <a href="//commons.wikimedia.org/wiki/User:Mandy_Harper" title="User:Mandy Harpe |
 | `dev-galaxy-tab-s9` | [File:20230729 삼성 갤럭시 탭 S9.jpg](https://commons.wikimedia.org/wiki/File:20230729_%EC%82%BC%EC%84%B1_%EA%B0%A4%EB%9F%AD%EC%8B%9C_%ED%83%AD_S9.jpg) | CC BY-SA 3.0 | Striker9498 |
 | `dev-galaxy-watch-6` | [File:Galaxy Watch.jpg](https://commons.wikimedia.org/wiki/File:Galaxy_Watch.jpg) | CC BY 4.0 | Ka Kit Pang |
 | `dev-gopro-12` | [File:GoPro Hero 10 Black with battery door open.jpg](https://commons.wikimedia.org/wiki/File:GoPro_Hero_10_Black_with_battery_door_open.jpg) | CC BY 4.0 | 4300streetcar |
 | `dev-hp-m111w` | [File:Brother HL-1050 01.jpg](https://commons.wikimedia.org/wiki/File:Brother_HL-1050_01.jpg) | Public domain | Hubert Berberich (HubiB) |
 | `dev-ipad-10` | [File:Ipadtenthgen.jpg](https://commons.wikimedia.org/wiki/File:Ipadtenthgen.jpg) | CC BY-SA 4.0 | Wiikiipediia |
-| `dev-ipad-9` | [File:IPad Air.png](https://commons.wikimedia.org/wiki/File:IPad_Air.png) | CC BY-SA 3.0 | Zach Vega |
+| `dev-ipad-9` | [File:IPad 10.2‑inch.png](https://commons.wikimedia.org/wiki/File:IPad_10.2‑inch.png) | CC BY-SA 4.0 | <a href="//commons.wikimedia.org/w/index.php?title=User:Piscopro&amp;action=edit |
 | `dev-ipad-pro-11-m4` | [File:M4 iPad Pro series - 2.jpg](https://commons.wikimedia.org/wiki/File:M4_iPad_Pro_series_-_2.jpg) | CC BY-SA 4.0 | Kyu3a |
 | `dev-iphone-13` | [File:Back of the iPhone 14 Pro.jpg](https://commons.wikimedia.org/wiki/File:Back_of_the_iPhone_14_Pro.jpg) | CC BY-SA 4.0 | Hajoon0102 |
 | `dev-iphone-14` | [File:IPhone 14 Product Red.jpg](https://commons.wikimedia.org/wiki/File:IPhone_14_Product_Red.jpg) | CC BY-SA 4.0 | Hajoon0102 |
 | `dev-iphone-15` | [File:IPhone Pro (Max).jpg](https://commons.wikimedia.org/wiki/File:IPhone_Pro_(Max).jpg) | CC BY-SA 4.0 | Ka Kit Pang |
 | `dev-iphone-15-pro` | [File:IPhone 15 Pro & iPhone 15 Pro Max.jpg](https://commons.wikimedia.org/wiki/File:IPhone_15_Pro_%26_iPhone_15_Pro_Max.jpg) | CC BY-SA 4.0 | IPHONE 15 |
-| `dev-iphone-16-pro` | [File:Front of iPhone 15 Pro Max.jpg](https://commons.wikimedia.org/wiki/File:Front_of_iPhone_15_Pro_Max.jpg) | CC BY 4.0 | Ayamano2021 |
-| `dev-lg-27gp850` | [File:Dual Dell monitor workstation setup.jpg](https://commons.wikimedia.org/wiki/File:Dual_Dell_monitor_workstation_setup.jpg) | CC BY 2.0 | — |
+| `dev-iphone-16-pro` | [File:Back view of iPhone 16 Pro White Titanium.jpg](https://commons.wikimedia.org/wiki/File:Back_view_of_iPhone_16_Pro_White_Titanium.jpg) | CC BY-SA 4.0 | <a href="//commons.wikimedia.org/wiki/User:%E3%83%A1%E3%82%A4%E3%83%89%E7%90%86% |
+| `dev-lg-27gp850` | [File:Dual Dell monitor workstation setup.jpg](https://commons.wikimedia.org/wiki/File:Dual_Dell_monitor_workstation_setup.jpg) | CC BY 2.0 |  |
 | `dev-macbook-air-m1` | [File:M2 Macbook Air Starlight model.jpg](https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Starlight_model.jpg) | CC BY-SA 4.0 | KKPCW（Kyu3） |
 | `dev-macbook-air-m2-13` | [File:M2 Macbook Air Midnight model - 1.jpg](https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Midnight_model_-_1.jpg) | CC BY-SA 4.0 | KKPCW（Kyu3） |
-| `dev-macbook-air-m3-15` | [File:M2 Macbook Air Midnight model - 2.jpg](https://commons.wikimedia.org/wiki/File:M2_Macbook_Air_Midnight_model_-_2.jpg) | CC BY-SA 4.0 | KKPCW（Kyu3） |
+| `dev-macbook-air-m3-15` | [File:Macbook Air 15 inch - 2 (blurred).jpg](https://commons.wikimedia.org/wiki/File:Macbook_Air_15_inch_-_2_(blurred).jpg) | CC BY-SA 4.0 | User:KKPCW |
 | `dev-macbook-pro-14-m3` | [File:M3 Macbook Pro 14 inch Space Grey model.jpg](https://commons.wikimedia.org/wiki/File:M3_Macbook_Pro_14_inch_Space_Grey_model.jpg) | CC BY-SA 4.0 | Kyu3a |
 | `dev-pixel-8` | [File:Google Pixel 8 Rose rear.jpg](https://commons.wikimedia.org/wiki/File:Google_Pixel_8_Rose_rear.jpg) | CC BY-SA 4.0 | IXTA9839 |
 | `dev-ps5` | [File:PlayStation 5 and DualSense (2).jpg](https://commons.wikimedia.org/wiki/File:PlayStation_5_and_DualSense_(2).jpg) | CC BY-SA 4.0 | Osh33m |
 | `dev-sony-a7iv` | [File:Sony Alpha 7R IV front view with exposed sensor.jpg](https://commons.wikimedia.org/wiki/File:Sony_Alpha_7R_IV_front_view_with_exposed_sensor.jpg) | CC BY-SA 4.0 | Franz van Duns |
 | `dev-sony-wh1000xm5` | [File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.4.jpg](https://commons.wikimedia.org/wiki/File:Sony-WH-1000XM3-kabellose-Bluetooth-Noise-Cancelling-Kopfhoerer.4.jpg) | CC BY 4.0 | www.digitalpush.net |
-| `dev-steam-deck` | [File:Steam Deck (front).png](https://commons.wikimedia.org/wiki/File:Steam_Deck_(front).png) | CC BY-SA 4.0 | Liam Dawe/GamingOnLinux, PNG version by VulcanSphere |
+| `dev-steam-deck` | [File:Steam Deck (front).png](https://commons.wikimedia.org/wiki/File:Steam_Deck_(front).png) | CC BY-SA 4.0 | Liam Dawe/GamingOnLinux, PNG version by <a href="//commons.wikimedia.org/wiki/Us |
 | `dev-switch-oled` | [File:Nintendo Switch – OLED-Modell mit gedockter Konsole 20230506 HOF01624 RAW-Export.png](https://commons.wikimedia.org/wiki/File:Nintendo_Switch_%E2%80%93_OLED-Modell_mit_gedockter_Konsole_20230506_HOF01624_RAW-Export.png) | CC BY 4.0 | PantheraLeo1359531 |
 | `dev-tesla-model-3` | [File:Tesla Model 3 interior.jpg](https://commons.wikimedia.org/wiki/File:Tesla_Model_3_interior.jpg) | CC BY-SA 4.0 | Coolomon Tetris (also known as CoolT) |
 | `dev-thinkpad-x1` | [File:Lenovo ThinkPad X1 Ultrabook (Nov 16, 2012).png](https://commons.wikimedia.org/wiki/File:Lenovo_ThinkPad_X1_Ultrabook_(Nov_16,_2012).png) | CC BY-SA 2.0 | Intel Free Press |
@@ -73,10 +72,10 @@
 | `p-apple-12w-usba` | [File:USB power adapter for Apple iPod, Model A1205, by Foxlink Technology Ltd-1050.jpg](https://commons.wikimedia.org/wiki/File:USB_power_adapter_for_Apple_iPod,_Model_A1205,_by_Foxlink_Technology_Ltd-1050.jpg) | CC BY-SA 4.0 | Raimond Spekking |
 | `p-apple-20w` | [File:Silicon vs GaN 30W USB-C chargers.jpg](https://commons.wikimedia.org/wiki/File:Silicon_vs_GaN_30W_USB-C_chargers.jpg) | CC BY 4.0 | 4300streetcar |
 | `p-apple-multiport` | [File:USB-C Digital AV Multiport Adapter.jpeg](https://commons.wikimedia.org/wiki/File:USB-C_Digital_AV_Multiport_Adapter.jpeg) | CC BY-SA 4.0 | Thefreeencyclopedia1 |
-| `p-apple-pencil` | [File:Apple Pencil.jpg](https://commons.wikimedia.org/wiki/File:Apple_Pencil.jpg) | CC BY 2.0 | Brett Jordan |
+| `p-apple-pencil` | [File:ApplePencilPro.png](https://commons.wikimedia.org/wiki/File:ApplePencilPro.png) | CC0 | <a href="//commons.wikimedia.org/w/index.php?title=User:Jtosman&amp;action=edit& |
 | `p-band-apple-41` | [File:Apple Watch Sport - 38mm Space Gray (3773).jpg](https://commons.wikimedia.org/wiki/File:Apple_Watch_Sport_-_38mm_Space_Gray_(3773).jpg) | CC BY-SA 4.0 | Gregory Varnum |
 | `p-band-apple-45` | [File:Apple Watch Sport - 38mm Space Gray (3769).jpg](https://commons.wikimedia.org/wiki/File:Apple_Watch_Sport_-_38mm_Space_Gray_(3769).jpg) | CC BY-SA 4.0 | Gregory Varnum |
-| `p-band-galaxy-20` | [File:SAMSUNG Galaxy Watch (3).jpg](https://commons.wikimedia.org/wiki/File:SAMSUNG_Galaxy_Watch_(3).jpg) | CC BY-SA 4.0 | Dinkun Chen |
+| `p-band-galaxy-20` | [File:SAMSUNG Galaxy Watch (5).jpg](https://commons.wikimedia.org/wiki/File:SAMSUNG_Galaxy_Watch_(5).jpg) | CC BY-SA 4.0 | <a href="//commons.wikimedia.org/wiki/User:Dinkun_Chen" title="User:Dinkun Chen" |
 | `p-band-ultra` | [File:Apple Watch Ultra - 4.jpg](https://commons.wikimedia.org/wiki/File:Apple_Watch_Ultra_-_4.jpg) | CC BY-SA 4.0 | KKPCW（Kyu3） |
 | `p-battery-lpe17` | [File:Canon LP-E17 BATTERY PACK.jpg](https://commons.wikimedia.org/wiki/File:Canon_LP-E17_BATTERY_PACK.jpg) | CC BY-SA 4.0 | Dinkun Chen |
 | `p-battery-npfz100` | [File:Sony NP-FZ100 battery pack.jpg](https://commons.wikimedia.org/wiki/File:Sony_NP-FZ100_battery_pack.jpg) | CC BY 4.0 | Amitabha Gupta |
@@ -135,7 +134,7 @@
 | `p-toner-tn2375` | [File:Samsung laser toner cartridge front view.jpg](https://commons.wikimedia.org/wiki/File:Samsung_laser_toner_cartridge_front_view.jpg) | CC BY-SA 4.0 | W.carter |
 | `p-ugreen-100w` | [File:Magsafe set.JPG](https://commons.wikimedia.org/wiki/File:Magsafe_set.JPG) | Public domain | gerolsteiner91 |
 | `p-webcam` | [File:Webcam 01.jpg](https://commons.wikimedia.org/wiki/File:Webcam_01.jpg) | CC0 | Pmwiki1 |
-| `p-xbox-controller` | [File:Xbox One Wireless Controller Model 1708 (36001635511).jpg](https://commons.wikimedia.org/wiki/File:Xbox_One_Wireless_Controller_Model_1708_(36001635511).jpg) | CC BY 2.0 | MiNe from Taipei, Taiwan |
+| `p-xbox-controller` | [File:Microsoft-Xbox-One-controller.jpg](https://commons.wikimedia.org/wiki/File:Microsoft-Xbox-One-controller.jpg) | Public domain | Eva |
 | `promo-bundle` | [File:Bad USB-C cable.agr.jpg](https://commons.wikimedia.org/wiki/File:Bad_USB-C_cable.agr.jpg) | CC BY 4.0 | ArnoldReinhold |
-| `promo-devices` | [File:Magsafe 3 of M2 Macbook Air Midnight Model.jpg](https://commons.wikimedia.org/wiki/File:Magsafe_3_of_M2_Macbook_Air_Midnight_Model.jpg) | CC BY-SA 4.0 | KKPCW（Kyu3） |
+| `promo-devices` | [File:Samsung Galaxy s24 series.jpg](https://commons.wikimedia.org/wiki/File:Samsung_Galaxy_s24_series.jpg) | CC BY 3.0 | 可恩K |
 | `promo-sale` | [File:Anker Fusion White.jpg](https://commons.wikimedia.org/wiki/File:Anker_Fusion_White.jpg) | CC BY-SA 4.0 | 之乎 |

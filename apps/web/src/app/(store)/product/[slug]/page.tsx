@@ -120,7 +120,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                 {devices.map(({ device, result }) => (
                   <li key={device.id}>
                     <Link href={`/device/${device.slug}`} className="flex items-center gap-3 rounded-[var(--radius-sm)] p-2 hover:bg-ink-50">
-                      <span className="relative size-10 shrink-0 overflow-hidden rounded-[6px] bg-ink-100">{device.imageUrl && <Image src={device.imageUrl} alt="" fill sizes="40px" className="object-cover" />}</span>
+                      <span className="relative size-10 shrink-0 overflow-hidden rounded-[6px] bg-white">{device.imageUrl && <Image src={device.imageUrl} alt="" fill sizes="40px" className="object-contain" />}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-medium">{device.fullName}</span>
                         <CompatBadge status={result.status} short className="mt-0.5" />

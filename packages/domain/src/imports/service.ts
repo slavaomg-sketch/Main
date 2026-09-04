@@ -356,7 +356,7 @@ async function exportRows(db: DbClient) {
     oldPrice: v.prices[0]?.compareAtMinor ? (v.prices[0].compareAtMinor / 100).toFixed(2) : '',
     stock: v.inventory.reduce((s, i) => s + i.quantity, 0),
     gtin: v.gtin ?? '',
-    images: v.product.images.map((i) => i.asset.publicUrl).join(';'),
+    images: v.product.images.map((i) => ((i.asset.variants as Record<string, string> | null)?.white ?? i.asset.publicUrl)).join(';'),
     compatibleDevices: v.product.relations.map((r) => r.deviceModel.slug).join(';'),
     productSlug: v.product.slug,
     variantId: v.id,

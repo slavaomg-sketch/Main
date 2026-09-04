@@ -22,7 +22,7 @@ export function DevicesList({ devices }: { devices: Array<{ id: string; isPrimar
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="my-devices">
       {devices.map((d) => (
         <li key={d.id} className={`card flex items-center gap-3 p-3 ${d.isPrimary ? 'border-brand-200 bg-brand-50/40' : ''}`}>
-          <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-ink-100">{d.deviceModel.imageUrl && <Image src={d.deviceModel.imageUrl} alt="" fill sizes="64px" className="object-cover" />}</span>
+          <span className="relative size-16 shrink-0 overflow-hidden rounded-[var(--radius-sm)] bg-white">{d.deviceModel.imageUrl && <Image src={d.deviceModel.imageUrl} alt="" fill sizes="64px" className="object-contain" />}</span>
           <span className="min-w-0 flex-1">
             <Link href={`/device/${d.deviceModel.slug}`} className="block truncate text-[14px] font-semibold hover:text-brand-600">{d.deviceModel.fullName}</Link>
             <span className="block text-[12px] text-ink-500">{d.deviceModel.category.name}{d.deviceVariant ? ` · ${d.deviceVariant.name}` : ''}{d.isPrimary ? ' · активное' : ''}</span>

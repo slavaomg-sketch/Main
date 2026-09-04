@@ -86,4 +86,4 @@ docs/            ARCHITECTURE, DATA_MODEL, COMPATIBILITY_ENGINE, MARKETPLACE_IMP
 
 ## Лицензии демо-изображений
 
-Изображения seed — с Wikimedia Commons (CC0/CC BY/CC BY-SA/PD), список с авторами в `docs/IMAGE_CREDITS.md`. Перед публичным запуском заменить реальными фото товаров.
+Изображения seed — с Wikimedia Commons (CC0/CC BY/CC BY-SA/PD), список с авторами в `docs/IMAGE_CREDITS.md`, стандарт фото — `docs/IMAGE_STANDARD.md`. Перед публичным запуском заменить реальными фото товаров.
