@@ -69,7 +69,10 @@ function VehicleStats.GlobalSpeedCap(speedClass: string?): number
 	for _, v in VehicleDefinitions.List do
 		best = math.max(best, v.Physics.TopSpeed)
 	end
-	return best * VehicleStats.SpeedClassScale(speedClass) * GameConfig.Physics.BoostSpeedCapFraction * GameConfig.Security.SpeedTolerance
+	return best
+		* VehicleStats.SpeedClassScale(speedClass)
+		* GameConfig.Physics.BoostSpeedCapFraction
+		* GameConfig.Security.SpeedTolerance
 end
 
 -- Display normalisation to 0..100 for the garage: vehicle display stats nudged by hero modifiers.

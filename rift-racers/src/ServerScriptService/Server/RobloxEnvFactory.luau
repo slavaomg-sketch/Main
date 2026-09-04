@@ -157,6 +157,9 @@ function RobloxEnvFactory.Build(): any
 			game:BindToClose(fn)
 		end,
 		SessionId = sessionId,
+		Sleep = function(seconds: number)
+			task.wait(seconds)
+		end,
 		Random = Random.new(),
 		Log = function(level: string, tag: string, message: string)
 			local line = string.format("[%s][%s] %s", GameConfig.ProjectShortName, tag, message)

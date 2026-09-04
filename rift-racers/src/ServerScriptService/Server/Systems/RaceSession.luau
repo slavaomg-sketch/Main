@@ -118,7 +118,14 @@ local function makeKey(userId: number): string
 end
 RaceSession.KeyFor = makeKey
 
-function RaceSession.new(env: any, registry: any, modeId: string, players: { any }, rulesOverride: { [string]: any }?, index: number?): any
+function RaceSession.new(
+	env: any,
+	registry: any,
+	modeId: string,
+	players: { any },
+	rulesOverride: { [string]: any }?,
+	index: number?
+): any
 	sessionCounter += 1
 	local modeDef = ModeDefinitions.ById[modeId]
 	assert(modeDef, "unknown mode " .. modeId)
@@ -200,7 +207,12 @@ function RaceSession.Log(self: any, msg: string)
 end
 
 -- Roster ---------------------------------------------------------------------------------------------------------
-function RaceSession.AddRacer(self: any, identity: GameTypes.RacerIdentity, loadout: GameTypes.Loadout, player: any?): RacerRuntime
+function RaceSession.AddRacer(
+	self: any,
+	identity: GameTypes.RacerIdentity,
+	loadout: GameTypes.Loadout,
+	player: any?
+): RacerRuntime
 	local now = self._env.Now()
 	local racer: RacerRuntime = {
 		Identity = identity,
@@ -308,7 +320,7 @@ function RaceSession.RemovePlayer(self: any, player: any)
 		if extra then
 			extra.Player = nil
 		end
-		if self.SM:Is("Racing", "FinishWindow") then
+		if self.SM:Is("Racing", "FinishWindow", "Results", "Rewards") then
 			-- Keep the record for results (DNF) but stop simulating.
 			self._env.World.DestroyKart(self.Id, key)
 		else
@@ -360,7 +372,18 @@ function RaceSession.StateView(self: any): { [string]: any }
 	}
 	for _, key in self.Order do
 		local r = self.Racers[key]
-		table.insert(view.Roster, { Key = key, Name = r.Identity.DisplayName, IsBot = r.Identity.IsBot, Team = r.Team, Hero = r.Loadout.HeroId, Vehicle = r.Loadout.VehicleId, Connected = r.Connected })
+		table.insert(
+			view.Roster,
+			{
+				Key = key,
+				Name = r.Identity.DisplayName,
+				IsBot = r.Identity.IsBot,
+				Team = r.Team,
+				Hero = r.Loadout.HeroId,
+				Vehicle = r.Loadout.VehicleId,
+				Connected = r.Connected,
+			}
+		)
 	end
 	return view
 end
@@ -465,7 +488,13 @@ function RaceSession.LoadVenue(self: any, venueId: string)
 		self.Track = rt
 		self.Arena = nil
 		local cap = TrackRuntime.GlobalSpeedCap(VehicleStats.SpeedClassScale(self.Rules.SpeedClass))
-		self.Shape = { Length = rt.Length, CheckpointCount = rt.CheckpointCount, CheckpointDists = rt.CheckpointDists, MinSectorTime = rt:MinSectorTime(cap), Laps = self.Rules.Laps }
+		self.Shape = {
+			Length = rt.Length,
+			CheckpointCount = rt.CheckpointCount,
+			CheckpointDists = rt.CheckpointDists,
+			MinSectorTime = rt:MinSectorTime(cap),
+			Laps = self.Rules.Laps,
+		}
 		self.KnockoutGateDists = rt:KnockoutGateDists()
 	end
 	self.Venue = self._env.World.BuildVenue(self.Id, venueId, self.Track or self.Arena, self.IsArena, self.Rules.Mirror)
@@ -555,7 +584,16 @@ function RaceSession.GridSetup(self: any)
 		local r = self.Racers[key]
 		local e = self.Extra[key]
 		local cf = slots[i]
-		self._env.World.SpawnKart(self.Id, key, r.Loadout.HeroId, r.Loadout.VehicleId, r.Loadout.Cosmetics, cf, e.Player, r.Identity.IsBot)
+		self._env.World.SpawnKart(
+			self.Id,
+			key,
+			r.Loadout.HeroId,
+			r.Loadout.VehicleId,
+			r.Loadout.Cosmetics,
+			cf,
+			e.Player,
+			r.Identity.IsBot
+		)
 		if not self.IsArena then
 			local loc = self.Track:Locate(cf.Position, self.Track.Length - 30)
 			r.Progress.Progress = loc.Progress
@@ -563,7 +601,12 @@ function RaceSession.GridSetup(self: any)
 		end
 		e.LastValidPos = cf.Position
 		self._registry:Get("BotRacerService"):Attach(self, key)
-		self:SendTo(key, "KartAssigned", { Key = key, SessionId = self.Id, Stats = e.Stats, Rules = self.Rules }, { HeroId = r.Loadout.HeroId, VehicleId = r.Loadout.VehicleId })
+		self:SendTo(
+			key,
+			"KartAssigned",
+			{ Key = key, SessionId = self.Id, Stats = e.Stats, Rules = self.Rules },
+			{ HeroId = r.Loadout.HeroId, VehicleId = r.Loadout.VehicleId }
+		)
 	end
 	self._registry:Get("ItemService"):SetupPickups(self)
 	self.Mode:OnGrid(self)
@@ -612,7 +655,10 @@ function RaceSession.ResolveStartBoost(self: any, key: string, pressedAt: number
 	r.StartBoostResult = result
 	local params = KartPhysicsModel.StartBoostParams(result :: any)
 	if params.BoostSeconds > 0 then
-		table.insert(r.Boosts, KartPhysicsModel.MakeBoost("Start", params.BoostSeconds, params.SpeedBonus, e.Stats, self.GoAt))
+		table.insert(
+			r.Boosts,
+			KartPhysicsModel.MakeBoost("Start", params.BoostSeconds, params.SpeedBonus, e.Stats, self.GoAt)
+		)
 	end
 	if params.StallSeconds > 0 then
 		r.Effects.Stall = { Id = "Stall", EndsAt = self.GoAt + params.StallSeconds, Params = {} }
@@ -622,10 +668,23 @@ function RaceSession.ResolveStartBoost(self: any, key: string, pressedAt: number
 			e.Sim.StallUntil = self.GoAt + params.StallSeconds
 		end
 		if params.BoostSeconds > 0 then
-			table.insert(e.Sim.Boosts, KartPhysicsModel.MakeBoost("Start", params.BoostSeconds, params.SpeedBonus, e.Stats, self.GoAt))
+			table.insert(
+				e.Sim.Boosts,
+				KartPhysicsModel.MakeBoost("Start", params.BoostSeconds, params.SpeedBonus, e.Stats, self.GoAt)
+			)
 		end
 	end
-	self:SendTo(key, "KartEffect", "StartBoost", { Result = result, BoostSeconds = params.BoostSeconds, SpeedBonus = params.SpeedBonus, StallSeconds = params.StallSeconds })
+	self:SendTo(
+		key,
+		"KartEffect",
+		"StartBoost",
+		{
+			Result = result,
+			BoostSeconds = params.BoostSeconds,
+			SpeedBonus = params.SpeedBonus,
+			StallSeconds = params.StallSeconds,
+		}
+	)
 	self.Events:Fire("StartBoost", { Key = key, Result = result })
 end
 
@@ -687,7 +746,27 @@ function RaceSession.BuildResults(self: any): RaceTypes.RaceResults
 	return results
 end
 
-function RaceSession.ApplyRewards(self: any)
+-- A finished player who leaves before Results still gets paid (provisional ranking; idempotent by RaceId+UserId).
+function RaceSession.ApplyRewardsForLeaver(self: any, key: string)
+	local r = self.Racers[key]
+	if not r or r.Identity.IsBot or self.Rewards[key] ~= nil then
+		return
+	end
+	if self.Results ~= nil then
+		-- Results already built (Results/Rewards state): pay from them now.
+		self:ApplyRewards(key)
+		return
+	end
+	if r.Progress.FinishedAt == nil then
+		return
+	end
+	local provisional = self.Mode:BuildResults(self)
+	self.Results = provisional
+	self:ApplyRewards(key)
+	self.Results = nil
+end
+
+function RaceSession.ApplyRewards(self: any, onlyKey: string?)
 	local rewardService = self._registry:Get("RewardService")
 	local profileService = self._registry:Get("ProfileService")
 	local results: RaceTypes.RaceResults = self.Results
@@ -705,7 +784,7 @@ function RaceSession.ApplyRewards(self: any)
 	for _, rec in results.Records do
 		local r = self.Racers[rec.Key]
 		local e = self.Extra[rec.Key]
-		if r.Identity.IsBot then
+		if r.Identity.IsBot or (onlyKey ~= nil and rec.Key ~= onlyKey) then
 			continue
 		end
 		local handle = profileService:GetByUserId(r.Identity.UserId)
@@ -714,7 +793,15 @@ function RaceSession.ApplyRewards(self: any)
 		end
 		local ghost: string? = nil
 		if e.Ghost and rec.Finished and rec.TimeSeconds then
-			local g = GhostRecordingSystem.Finish(e.Ghost, self.VenueId, r.Loadout.VehicleId, r.Loadout.HeroId, self.Rules.Laps, rec.TimeSeconds :: number, self.Rules.AssistMode)
+			local g = GhostRecordingSystem.Finish(
+				e.Ghost,
+				self.VenueId,
+				r.Loadout.VehicleId,
+				r.Loadout.HeroId,
+				self.Rules.Laps,
+				rec.TimeSeconds :: number,
+				self.Rules.AssistMode
+			)
 			ghost = GhostRecordingSystem.Serialize(g)
 		end
 		local ctx = {
@@ -727,7 +814,8 @@ function RaceSession.ApplyRewards(self: any)
 			TourFinal = isFinalTour,
 			KnockoutStages = self.Rules.KnockoutStages,
 			IsBattle = self.IsArena,
-			BattleWon = results.WinnerKey == rec.Key or (self.Rules.Teams > 0 and results.TeamScores ~= nil and self:TeamWon(rec.Team)),
+			BattleWon = results.WinnerKey == rec.Key
+				or (self.Rules.Teams > 0 and results.TeamScores ~= nil and self:TeamWon(rec.Team)),
 			Assist = self.Rules.AssistMode,
 			VehicleId = r.Loadout.VehicleId,
 			HeroId = r.Loadout.HeroId,
@@ -753,7 +841,9 @@ function RaceSession.ApplyRewards(self: any)
 			end
 		end
 	end
-	self:Broadcast("Results", results, self.Rewards)
+	if onlyKey == nil then
+		self:Broadcast("Results", results, self.Rewards)
+	end
 end
 
 function RaceSession.TeamWon(self: any, team: number): boolean
@@ -821,7 +911,9 @@ function RaceSession.PersonalView(self: any, key: string): { [string]: any }
 		Surface = e.Surface,
 		Position = r.Position,
 		Lap = r.Progress.Lap,
-		WrongWay = r.Progress.Direction < 0 and r.Progress.WrongWaySince ~= nil and (self._env.Now() - (r.Progress.WrongWaySince :: number)) >= GameConfig.Race.WrongWaySeconds,
+		WrongWay = r.Progress.Direction < 0
+			and r.Progress.WrongWaySince ~= nil
+			and (self._env.Now() - (r.Progress.WrongWaySince :: number)) >= GameConfig.Race.WrongWaySeconds,
 		Cores = r.Cores,
 		Score = r.Score,
 	}

@@ -169,7 +169,10 @@ function TrackValidator.ValidateDefinition(def: TrackDefinitions.TrackDefinition
 		for _, sc in rt.Shortcuts do
 			local a = sc.Spline:PositionAt(0)
 			local b = sc.Spline:PositionAt(sc.Spline.Length)
-			if (a - rt.Spline:PositionAt(sc.EntryDist)).Magnitude > 3 or (b - rt.Spline:PositionAt(sc.ExitDist)).Magnitude > 3 then
+			if
+				(a - rt.Spline:PositionAt(sc.EntryDist)).Magnitude > 3
+				or (b - rt.Spline:PositionAt(sc.ExitDist)).Magnitude > 3
+			then
 				issue(issues, "Error", "ShortcutDisconnected", sc.Def.Id)
 			end
 			local mainSpan = rt.Spline:Delta(sc.EntryDist, sc.ExitDist)
@@ -217,7 +220,9 @@ function TrackValidator.ValidateArena(def: TrackDefinitions.ArenaDefinition): Re
 		issue(issues, "Error", "UnknownSurface", def.FloorSurface)
 	end
 	for _, sp in def.SpawnPoints do
-		local outside = if def.Shape == "Bowl" then Vector3.new(sp.X, 0, sp.Z).Magnitude > def.Radius else (math.abs(sp.X) > def.Radius or math.abs(sp.Z) > def.Radius)
+		local outside = if def.Shape == "Bowl"
+			then Vector3.new(sp.X, 0, sp.Z).Magnitude > def.Radius
+			else (math.abs(sp.X) > def.Radius or math.abs(sp.Z) > def.Radius)
 		if outside then
 			issue(issues, "Error", "SpawnOutside", tostring(sp))
 		end

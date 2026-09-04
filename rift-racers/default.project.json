@@ -1,45 +1,69 @@
 {
   "name": "RiftRacers",
-  "globIgnorePaths": ["**/*.spec.luau", "**/.gitkeep"],
+  "globIgnorePaths": [
+    "**/*.spec.luau",
+    "**/.gitkeep"
+  ],
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
-      "Shared": { "$path": "src/ReplicatedStorage/Shared" }
+      "Shared": {
+        "$path": "src/ReplicatedStorage/Shared"
+      }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "Server": { "$path": "src/ServerScriptService/Server" }
+      "Server": {
+        "$path": "src/ServerScriptService/Server"
+      }
     },
     "ServerStorage": {
       "$className": "ServerStorage",
-      "Content": { "$path": "src/ServerStorage/Content" }
+      "Content": {
+        "$path": "src/ServerStorage/Content"
+      }
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "$properties": {
-        "CharacterAutoLoads": false,
         "EnableMouseLockOption": false
       },
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "Client": { "$path": "src/StarterPlayer/StarterPlayerScripts/Client" }
+        "Client": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts/Client"
+        }
       }
     },
     "StarterGui": {
       "$className": "StarterGui",
-      "$properties": { "ResetPlayerGuiOnSpawn": false },
-      "RiftRacersUI": { "$path": "src/StarterGui/RiftRacersUI" }
+      "$properties": {
+        "ResetPlayerGuiOnSpawn": false
+      },
+      "RiftRacersUI": {
+        "$path": "src/StarterGui/RiftRacersUI"
+      }
     },
     "Workspace": {
       "$className": "Workspace",
-      "$properties": { "StreamingEnabled": false },
+      "$properties": {
+        "StreamingEnabled": false
+      },
       "RiftRacers": {
         "$className": "Folder",
-        "Tracks": { "$className": "Folder" },
-        "Vehicles": { "$className": "Folder" },
-        "Projectiles": { "$className": "Folder" },
-        "Lobby": { "$className": "Folder" }
+        "Tracks": {
+          "$className": "Folder"
+        },
+        "Vehicles": {
+          "$className": "Folder"
+        },
+        "Projectiles": {
+          "$className": "Folder"
+        },
+        "Lobby": {
+          "$className": "Folder"
+        }
       }
     },
     "Lighting": {
@@ -51,6 +75,14 @@
         "Technology": "Future"
       }
     },
-    "SoundService": { "$className": "SoundService" }
+    "SoundService": {
+      "$className": "SoundService"
+    },
+    "Players": {
+      "$className": "Players",
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    }
   }
 }

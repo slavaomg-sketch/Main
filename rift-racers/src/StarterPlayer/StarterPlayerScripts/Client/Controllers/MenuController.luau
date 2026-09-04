@@ -96,7 +96,13 @@ end
 -- Screen plumbing ---------------------------------------------------------------------------------------------------
 function MenuController.NewScreen(self: any, name: string, order: number?, dim: boolean?): Screen
 	local gui = UIBuilder.ScreenGui("Screen_" .. name, Players.LocalPlayer:WaitForChild("PlayerGui"), order or 20, true)
-	local root = UIBuilder.Frame({ Transparency = if dim == false then 1 else 0.35, Color = Theme.Colors.Background, Parent = gui, Name = "Root", Corner = UDim.new(0, 0) })
+	local root = UIBuilder.Frame({
+		Transparency = if dim == false then 1 else 0.35,
+		Color = Theme.Colors.Background,
+		Parent = gui,
+		Name = "Root",
+		Corner = UDim.new(0, 0),
+	})
 	local screen: Screen = { Gui = gui, Root = root, Refresh = nil, First = nil }
 	self._screens[name] = screen
 	return screen
@@ -141,13 +147,32 @@ function MenuController.RefreshCurrent(self: any)
 end
 
 local function panel(parent: Instance, title: string, size: UDim2?): (Frame, Frame)
-	local p = UIBuilder.Frame({ Size = size or UDim2.new(0, 900, 0, 620), Position = UDim2.fromScale(0.5, 0.5), Anchor = Vector2.new(0.5, 0.5), Color = Theme.Colors.Panel, Stroke = true, Parent = parent })
+	local p = UIBuilder.Frame({
+		Size = size or UDim2.new(0, 900, 0, 620),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Anchor = Vector2.new(0.5, 0.5),
+		Color = Theme.Colors.Panel,
+		Stroke = true,
+		Parent = parent,
+	})
 	local sc = Instance.new("UISizeConstraint")
 	sc.MaxSize = Vector2.new(1400, 900)
 	sc.Parent = p
 	UIBuilder.Padding(p, 24)
-	UIBuilder.Label({ Text = title, Size = UDim2.new(1, 0, 0, 52), TextSize = Theme.TextSize.Title, Parent = p, Name = "Title" })
-	local body = UIBuilder.Frame({ Size = UDim2.new(1, 0, 1, -64), Position = UDim2.new(0, 0, 0, 64), Transparency = 1, Parent = p, Name = "Body" })
+	UIBuilder.Label({
+		Text = title,
+		Size = UDim2.new(1, 0, 0, 52),
+		TextSize = Theme.TextSize.Title,
+		Parent = p,
+		Name = "Title",
+	})
+	local body = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 1, -64),
+		Position = UDim2.new(0, 0, 0, 64),
+		Transparency = 1,
+		Parent = p,
+		Name = "Body",
+	})
 	return p, body
 end
 
@@ -155,8 +180,22 @@ end
 function MenuController.BuildAll(self: any)
 	do
 		local s = self:NewScreen("Loading", 50, true)
-		UIBuilder.Label({ Text = GameConfig.ProjectName, Size = UDim2.new(1, 0, 0, 100), Position = UDim2.fromScale(0.5, 0.4), Anchor = Vector2.new(0.5, 0.5), TextSize = 80, Color = Theme.Colors.Accent2, Parent = s.Root })
-		local l = UIBuilder.Label({ Text = Locale.T("UI.LOADING"), Size = UDim2.new(1, 0, 0, 40), Position = UDim2.fromScale(0.5, 0.55), Anchor = Vector2.new(0.5, 0.5), Parent = s.Root })
+		UIBuilder.Label({
+			Text = GameConfig.ProjectName,
+			Size = UDim2.new(1, 0, 0, 100),
+			Position = UDim2.fromScale(0.5, 0.4),
+			Anchor = Vector2.new(0.5, 0.5),
+			TextSize = 80,
+			Color = Theme.Colors.Accent2,
+			Parent = s.Root,
+		})
+		local l = UIBuilder.Label({
+			Text = Locale.T("UI.LOADING"),
+			Size = UDim2.new(1, 0, 0, 40),
+			Position = UDim2.fromScale(0.5, 0.55),
+			Anchor = Vector2.new(0.5, 0.5),
+			Parent = s.Root,
+		})
 		s.Refresh = function()
 			l.Text = Locale.T("UI.LOADING")
 		end
@@ -179,14 +218,43 @@ end
 
 function MenuController.BuildMainLobby(self: any)
 	local s = self:NewScreen("MainLobby", 20, false)
-	local left = UIBuilder.Frame({ Size = UDim2.new(0, 360, 1, -80), Position = UDim2.new(0, 40, 0, 40), Transparency = 1, Parent = s.Root })
+	local left = UIBuilder.Frame({
+		Size = UDim2.new(0, 360, 1, -80),
+		Position = UDim2.new(0, 40, 0, 40),
+		Transparency = 1,
+		Parent = s.Root,
+	})
 	UIBuilder.List(left, Enum.FillDirection.Vertical, 12, Enum.HorizontalAlignment.Left)
-	local title = UIBuilder.Label({ Text = GameConfig.ProjectName, Size = UDim2.new(1, 0, 0, 70), TextSize = 60, Color = Theme.Colors.Accent2, Align = Enum.TextXAlignment.Left, Parent = left, LayoutOrder = 0 })
-	local tagline = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 50), TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Align = Enum.TextXAlignment.Left, Parent = left, LayoutOrder = 1, Font = Theme.FontBody })
+	local title = UIBuilder.Label({
+		Text = GameConfig.ProjectName,
+		Size = UDim2.new(1, 0, 0, 70),
+		TextSize = 60,
+		Color = Theme.Colors.Accent2,
+		Align = Enum.TextXAlignment.Left,
+		Parent = left,
+		LayoutOrder = 0,
+	})
+	local tagline = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 50),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Align = Enum.TextXAlignment.Left,
+		Parent = left,
+		LayoutOrder = 1,
+		Font = Theme.FontBody,
+	})
 	local buttons: { [string]: TextButton } = {}
 	local order = 2
 	local function add(key: string, cb: () -> (), color: Color3?)
-		local b = UIBuilder.Button({ Text = Locale.T(key), Size = UDim2.new(1, 0, 0, 58), Parent = left, LayoutOrder = order, OnClick = cb, Color = color })
+		local b = UIBuilder.Button({
+			Text = Locale.T(key),
+			Size = UDim2.new(1, 0, 0, 58),
+			Parent = left,
+			LayoutOrder = order,
+			OnClick = cb,
+			Color = color,
+		})
 		buttons[key] = b
 		order += 1
 		return b
@@ -219,14 +287,71 @@ function MenuController.BuildMainLobby(self: any)
 	add("UI.SETTINGS", function()
 		self:Show("Settings")
 	end)
-	local profileBox = UIBuilder.Frame({ Size = UDim2.new(0, 340, 0, 120), Position = UDim2.new(1, -40, 0, 40), Anchor = Vector2.new(1, 0), Color = Theme.Colors.Panel, Stroke = true, Parent = s.Root })
+	local profileBox = UIBuilder.Frame({
+		Size = UDim2.new(0, 340, 0, 120),
+		Position = UDim2.new(1, -40, 0, 40),
+		Anchor = Vector2.new(1, 0),
+		Color = Theme.Colors.Panel,
+		Stroke = true,
+		Parent = s.Root,
+	})
 	UIBuilder.Padding(profileBox, 14)
-	local nameL = UIBuilder.Label({ Text = Players.LocalPlayer.DisplayName, Size = UDim2.new(1, 0, 0, 34), TextSize = Theme.TextSize.Header, Align = Enum.TextXAlignment.Left, Parent = profileBox })
-	local levelL = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 26), Position = UDim2.new(0, 0, 0, 36), TextSize = Theme.TextSize.Small, Align = Enum.TextXAlignment.Left, Color = Theme.Colors.TextDim, Parent = profileBox })
-	local curL = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 26), Position = UDim2.new(0, 0, 0, 62), TextSize = Theme.TextSize.Small, Align = Enum.TextXAlignment.Left, Color = Theme.Colors.Accent2, Parent = profileBox })
-	local warn = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 520, 0, 40), Position = UDim2.new(1, -40, 0, 170), Anchor = Vector2.new(1, 0), TextSize = Theme.TextSize.Small, Color = Theme.Colors.Warning, Parent = s.Root, Font = Theme.FontBody })
-	local online = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 400, 0, 30), Position = UDim2.new(1, -40, 1, -40), Anchor = Vector2.new(1, 1), TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Align = Enum.TextXAlignment.Right, Parent = s.Root })
-	local hint = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 700, 0, 30), Position = UDim2.new(0, 40, 1, -40), Anchor = Vector2.new(0, 1), TextSize = 15, Color = Theme.Colors.TextDim, Align = Enum.TextXAlignment.Left, Parent = s.Root, Font = Theme.FontBody })
+	local nameL = UIBuilder.Label({
+		Text = Players.LocalPlayer.DisplayName,
+		Size = UDim2.new(1, 0, 0, 34),
+		TextSize = Theme.TextSize.Header,
+		Align = Enum.TextXAlignment.Left,
+		Parent = profileBox,
+	})
+	local levelL = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 26),
+		Position = UDim2.new(0, 0, 0, 36),
+		TextSize = Theme.TextSize.Small,
+		Align = Enum.TextXAlignment.Left,
+		Color = Theme.Colors.TextDim,
+		Parent = profileBox,
+	})
+	local curL = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 26),
+		Position = UDim2.new(0, 0, 0, 62),
+		TextSize = Theme.TextSize.Small,
+		Align = Enum.TextXAlignment.Left,
+		Color = Theme.Colors.Accent2,
+		Parent = profileBox,
+	})
+	local warn = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 520, 0, 40),
+		Position = UDim2.new(1, -40, 0, 170),
+		Anchor = Vector2.new(1, 0),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.Warning,
+		Parent = s.Root,
+		Font = Theme.FontBody,
+	})
+	local online = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 400, 0, 30),
+		Position = UDim2.new(1, -40, 1, -40),
+		Anchor = Vector2.new(1, 1),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Align = Enum.TextXAlignment.Right,
+		Parent = s.Root,
+	})
+	local hint = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 700, 0, 30),
+		Position = UDim2.new(0, 40, 1, -40),
+		Anchor = Vector2.new(0, 1),
+		TextSize = 15,
+		Color = Theme.Colors.TextDim,
+		Align = Enum.TextXAlignment.Left,
+		Parent = s.Root,
+		Font = Theme.FontBody,
+	})
 	s.Refresh = function()
 		title.Text = GameConfig.ProjectName
 		tagline.Text = Locale.T("UI.TAGLINE")
@@ -235,7 +360,12 @@ function MenuController.BuildMainLobby(self: any)
 		end
 		local p = ClientState.Profile
 		if p then
-			levelL.Text = Locale.T("UI.LEVEL", p.Level) .. "  ·  " .. Locale.FormatNumber(p.XP) .. " / " .. Locale.FormatNumber(p.NextLevelXP) .. " XP"
+			levelL.Text = Locale.T("UI.LEVEL", p.Level)
+				.. "  ·  "
+				.. Locale.FormatNumber(p.XP)
+				.. " / "
+				.. Locale.FormatNumber(p.NextLevelXP)
+				.. " XP"
 			curL.Text = Locale.FormatNumber(p.Currency) .. " " .. Locale.T("UI.CURRENCY")
 			warn.Text = if p.Temporary then Locale.T("UI.PROFILE_TEMP") else ""
 		end
@@ -257,7 +387,13 @@ function MenuController.BuildModeSelect(self: any)
 		if def.Id == "Practice" then
 			continue
 		end
-		local b = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 400, 0, 96), Parent = grid, LayoutOrder = def.SortOrder, Color = Theme.Colors.PanelAlt })
+		local b = UIBuilder.Button({
+			Text = "",
+			Size = UDim2.new(0, 400, 0, 96),
+			Parent = grid,
+			LayoutOrder = def.SortOrder,
+			Color = Theme.Colors.PanelAlt,
+		})
 		b.TextScaled = false
 		b.TextXAlignment = Enum.TextXAlignment.Left
 		b.TextYAlignment = Enum.TextYAlignment.Top
@@ -276,14 +412,26 @@ function MenuController.BuildModeSelect(self: any)
 		first = first or b
 	end
 	s.First = first
-	local back = UIBuilder.Button({ Text = Locale.T("UI.BACK"), Size = UDim2.new(0, 200, 0, 50), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = body, Color = Theme.Colors.PanelAlt, OnClick = function()
-		self:Show("MainLobby")
-	end })
+	local back = UIBuilder.Button({
+		Text = Locale.T("UI.BACK"),
+		Size = UDim2.new(0, 200, 0, 50),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = body,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			self:Show("MainLobby")
+		end,
+	})
 	s.Refresh = function()
 		(p:FindFirstChild("Title") :: TextLabel).Text = Locale.T("UI.MODES")
 		back.Text = Locale.T("UI.BACK")
 		for _, c in cards do
-			c.Button.Text = string.format("<b>%s</b>\n<font size='16' color='#B4B2D2'>%s</font>", Locale.T(c.Def.NameKey), Locale.T(c.Def.DescriptionKey))
+			c.Button.Text = string.format(
+				"<b>%s</b>\n<font size='16' color='#B4B2D2'>%s</font>",
+				Locale.T(c.Def.NameKey),
+				Locale.T(c.Def.DescriptionKey)
+			)
 			c.Button.RichText = true
 		end
 	end
@@ -294,17 +442,52 @@ function MenuController.BuildParty(self: any)
 	local p, body = panel(s.Root, Locale.T("UI.PARTY"), UDim2.new(0, 700, 0, 560))
 	local list = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 260), Transparency = 1, Parent = body })
 	UIBuilder.List(list, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Left)
-	local members = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Align = Enum.TextXAlignment.Left, Parent = list, LayoutOrder = 0 })
-	local inviteRow = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 300), Position = UDim2.new(0, 0, 0, 270), Transparency = 1, Parent = body })
+	local members = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 30),
+		Align = Enum.TextXAlignment.Left,
+		Parent = list,
+		LayoutOrder = 0,
+	})
+	local inviteRow = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 300),
+		Position = UDim2.new(0, 0, 0, 270),
+		Transparency = 1,
+		Parent = body,
+	})
 	UIBuilder.List(inviteRow, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Left)
-	local playersLabel = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 26), Align = Enum.TextXAlignment.Left, Color = Theme.Colors.TextDim, TextSize = Theme.TextSize.Small, Parent = inviteRow, LayoutOrder = 0 })
+	local playersLabel = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 26),
+		Align = Enum.TextXAlignment.Left,
+		Color = Theme.Colors.TextDim,
+		TextSize = Theme.TextSize.Small,
+		Parent = inviteRow,
+		LayoutOrder = 0,
+	})
 	local invites: { TextButton } = {}
-	local leave = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 220, 0, 50), Position = UDim2.new(1, 0, 1, 0), Anchor = Vector2.new(1, 1), Parent = body, Color = Theme.Colors.Danger, OnClick = function()
-		Network.Fire("PartyAction", "Leave")
-	end })
-	local back = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 200, 0, 50), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = body, Color = Theme.Colors.PanelAlt, OnClick = function()
-		self:Show("MainLobby")
-	end })
+	local leave = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 220, 0, 50),
+		Position = UDim2.new(1, 0, 1, 0),
+		Anchor = Vector2.new(1, 1),
+		Parent = body,
+		Color = Theme.Colors.Danger,
+		OnClick = function()
+			Network.Fire("PartyAction", "Leave")
+		end,
+	})
+	local back = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 200, 0, 50),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = body,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			self:Show("MainLobby")
+		end,
+	})
 	s.First = back
 	s.Refresh = function()
 		(p:FindFirstChild("Title") :: TextLabel).Text = Locale.T("UI.PARTY")
@@ -328,10 +511,17 @@ function MenuController.BuildParty(self: any)
 		local i = 1
 		for _, pl in Players:GetPlayers() do
 			if pl ~= Players.LocalPlayer then
-				local b = UIBuilder.Button({ Text = pl.DisplayName, Size = UDim2.new(0, 300, 0, 40), Parent = inviteRow, LayoutOrder = i, Color = Theme.Colors.PanelAlt, OnClick = function()
-					Network.Fire("PartyAction", "Create")
-					Network.Fire("PartyAction", "Invite", pl.UserId)
-				end })
+				local b = UIBuilder.Button({
+					Text = pl.DisplayName,
+					Size = UDim2.new(0, 300, 0, 40),
+					Parent = inviteRow,
+					LayoutOrder = i,
+					Color = Theme.Colors.PanelAlt,
+					OnClick = function()
+						Network.Fire("PartyAction", "Create")
+						Network.Fire("PartyAction", "Invite", pl.UserId)
+					end,
+				})
 				table.insert(invites, b)
 				i += 1
 			end
@@ -342,11 +532,27 @@ end
 function MenuController.BuildQueue(self: any)
 	local s = self:NewScreen("Queue", 20, true)
 	local p, body = panel(s.Root, "", UDim2.new(0, 600, 0, 320))
-	local status = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 60), TextSize = Theme.TextSize.Header, Parent = body })
-	local counts = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 70), TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Parent = body })
-	local leave = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 260, 0, 54), Position = UDim2.new(0.5, 0, 1, 0), Anchor = Vector2.new(0.5, 1), Parent = body, Color = Theme.Colors.Danger, OnClick = function()
-		Network.Fire("QueueAction", "Leave")
-	end })
+	local status =
+		UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 60), TextSize = Theme.TextSize.Header, Parent = body })
+	local counts = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.new(0, 0, 0, 70),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Parent = body,
+	})
+	local leave = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 260, 0, 54),
+		Position = UDim2.new(0.5, 0, 1, 0),
+		Anchor = Vector2.new(0.5, 1),
+		Parent = body,
+		Color = Theme.Colors.Danger,
+		OnClick = function()
+			Network.Fire("QueueAction", "Leave")
+		end,
+	})
 	s.First = leave
 	task.spawn(function()
 		while true do
@@ -358,8 +564,8 @@ function MenuController.BuildQueue(self: any)
 	end)
 	s.Refresh = function()
 		local q = ClientState.Queue
-		local def = q and q.ModeId and ModeDefinitions.ById[q.ModeId]
-		;(p:FindFirstChild("Title") :: TextLabel).Text = if def then Locale.T(def.NameKey) else Locale.T("UI.QUICK_PLAY")
+		local def = q and q.ModeId and ModeDefinitions.ById[q.ModeId];
+		(p:FindFirstChild("Title") :: TextLabel).Text = if def then Locale.T(def.NameKey) else Locale.T("UI.QUICK_PLAY")
 		local waited = if q and q.Since then math.max(0, Workspace:GetServerTimeNow() - q.Since) else 0
 		status.Text = Locale.T("UI.IN_QUEUE", TimeUtil.FormatRaceTime(waited):sub(1, 5))
 		local n = if q and q.Counts and q.ModeId then (q.Counts[q.ModeId] or 0) else 0
@@ -373,13 +579,24 @@ function MenuController.BuildVote(self: any)
 	local p, body = panel(s.Root, Locale.T("UI.VOTE"), UDim2.new(0, 1000, 0, 480))
 	local row = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 300), Transparency = 1, Parent = body })
 	UIBuilder.List(row, Enum.FillDirection.Horizontal, 16, Enum.HorizontalAlignment.Center)
-	local timer = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), TextSize = Theme.TextSize.Header, Color = Theme.Colors.Accent2, Parent = body })
+	local timer = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		TextSize = Theme.TextSize.Header,
+		Color = Theme.Colors.Accent2,
+		Parent = body,
+	})
 	local cards: { TextButton } = {}
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
 			if s.Gui.Enabled and ClientState.Race then
-				local remaining = math.max(0, GameConfig.Race.VoteSeconds - (Workspace:GetServerTimeNow() - ClientState.Race.EnteredAt))
+				local remaining = math.max(
+					0,
+					GameConfig.Race.VoteSeconds - (Workspace:GetServerTimeNow() - ClientState.Race.EnteredAt)
+				)
 				timer.Text = string.format("%d", math.ceil(remaining))
 			end
 		end
@@ -400,13 +617,26 @@ function MenuController.BuildVote(self: any)
 		end
 		for i, id in race.VoteOptions or {} do
 			local def: any = TrackDefinitions.TrackById[id] or TrackDefinitions.ArenaById[id]
-			local b = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 300, 0, 280), Parent = row, LayoutOrder = i, Color = def and def.Atmosphere and def.Atmosphere.SkyColor:Lerp(Theme.Colors.PanelAlt, 0.5) or Theme.Colors.PanelAlt, OnClick = function()
-				Network.Fire("VoteTrack", id)
-			end })
+			local b = UIBuilder.Button({
+				Text = "",
+				Size = UDim2.new(0, 300, 0, 280),
+				Parent = row,
+				LayoutOrder = i,
+				Color = def and def.Atmosphere and def.Atmosphere.SkyColor:Lerp(Theme.Colors.PanelAlt, 0.5)
+					or Theme.Colors.PanelAlt,
+				OnClick = function()
+					Network.Fire("VoteTrack", id)
+				end,
+			})
 			b.TextScaled = false
 			b.RichText = true
 			b.TextYAlignment = Enum.TextYAlignment.Bottom
-			b.Text = string.format("<b>%s</b>\n<font size='16' color='#B4B2D2'>%s</font>\n<font color='#80DCFF'>%s</font>", Locale.T(def and def.NameKey or id), Locale.T(def and def.DescriptionKey or ""), Locale.T("UI.VOTES", tally[id] or 0))
+			b.Text = string.format(
+				"<b>%s</b>\n<font size='16' color='#B4B2D2'>%s</font>\n<font color='#80DCFF'>%s</font>",
+				Locale.T(def and def.NameKey or id),
+				Locale.T(def and def.DescriptionKey or ""),
+				Locale.T("UI.VOTES", tally[id] or 0)
+			)
 			table.insert(cards, b)
 			if i == 1 then
 				s.First = b
@@ -418,21 +648,48 @@ end
 function MenuController.BuildMatchLoading(self: any)
 	local s = self:NewScreen("MatchLoading", 20, true)
 	local p, body = panel(s.Root, "", UDim2.new(0, 700, 0, 360))
-	local sub = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 60), TextSize = Theme.TextSize.Header, Parent = body })
-	local roster = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 120), Position = UDim2.new(0, 0, 0, 70), TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Parent = body, Font = Theme.FontBody })
-	local confirm = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 300, 0, 54), Position = UDim2.new(0.5, 0, 1, 0), Anchor = Vector2.new(0.5, 1), Parent = body, Color = Theme.Colors.Success, OnClick = function()
-		Network.Fire("LoadoutConfirm")
-		self:Hide()
-	end })
-	local garage = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 220, 0, 46), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = body, Color = Theme.Colors.PanelAlt, OnClick = function()
-		self:Show("Garage")
-	end })
+	local sub =
+		UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 60), TextSize = Theme.TextSize.Header, Parent = body })
+	local roster = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 120),
+		Position = UDim2.new(0, 0, 0, 70),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Parent = body,
+		Font = Theme.FontBody,
+	})
+	local confirm = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 300, 0, 54),
+		Position = UDim2.new(0.5, 0, 1, 0),
+		Anchor = Vector2.new(0.5, 1),
+		Parent = body,
+		Color = Theme.Colors.Success,
+		OnClick = function()
+			Network.Fire("LoadoutConfirm")
+			self:Hide()
+		end,
+	})
+	local garage = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 220, 0, 46),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = body,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			self:Show("Garage")
+		end,
+	})
 	s.First = confirm
 	s.Refresh = function()
 		local race = ClientState.Race
-		local def: any = race and (TrackDefinitions.TrackById[race.VenueId] or TrackDefinitions.ArenaById[race.VenueId])
-		;(p:FindFirstChild("Title") :: TextLabel).Text = if def then Locale.T(def.NameKey) else Locale.T("UI.LOADING")
-		sub.Text = if ClientState.RaceStateName == "LoadoutLock" then Locale.T("UI.LOADOUT_LOCK") else Locale.T("UI.LOADING")
+		local def: any = race and (TrackDefinitions.TrackById[race.VenueId] or TrackDefinitions.ArenaById[race.VenueId]);
+		(p:FindFirstChild("Title") :: TextLabel).Text = if def then Locale.T(def.NameKey) else Locale.T("UI.LOADING")
+		sub.Text = if ClientState.RaceStateName == "LoadoutLock"
+			then Locale.T("UI.LOADOUT_LOCK")
+			else Locale.T("UI.LOADING")
 		local names = {}
 		if race and race.Roster then
 			for _, r in race.Roster do
@@ -451,17 +708,37 @@ function MenuController.BuildPause(self: any)
 	local s = self:NewScreen("Pause", 30, true)
 	local p, body = panel(s.Root, Locale.T("UI.MENU"), UDim2.new(0, 460, 0, 380))
 	UIBuilder.List(body, Enum.FillDirection.Vertical, 12)
-	local resume = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 56), Parent = body, LayoutOrder = 1, OnClick = function()
-		self:Hide()
-	end })
-	local settings = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 56), Parent = body, LayoutOrder = 2, Color = Theme.Colors.PanelAlt, OnClick = function()
-		self:Show("Settings")
-	end })
-	local quit = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 56), Parent = body, LayoutOrder = 3, Color = Theme.Colors.Danger, OnClick = function()
-		Network.Fire("PostRaceChoice", "Lobby")
-		Network.Fire("QueueAction", "Leave")
-		self:Hide()
-	end })
+	local resume = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 56),
+		Parent = body,
+		LayoutOrder = 1,
+		OnClick = function()
+			self:Hide()
+		end,
+	})
+	local settings = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 56),
+		Parent = body,
+		LayoutOrder = 2,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			self:Show("Settings")
+		end,
+	})
+	local quit = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 56),
+		Parent = body,
+		LayoutOrder = 3,
+		Color = Theme.Colors.Danger,
+		OnClick = function()
+			Network.Fire("PostRaceChoice", "Lobby")
+			Network.Fire("QueueAction", "Leave")
+			self:Hide()
+		end,
+	})
 	s.First = resume
 	s.Refresh = function()
 		(p:FindFirstChild("Title") :: TextLabel).Text = Locale.T("UI.MENU")
@@ -476,19 +753,47 @@ function MenuController.BuildResults(self: any)
 	local p, body = panel(s.Root, Locale.T("UI.RESULTS"), UDim2.new(0, 1000, 0, 660))
 	local table_ = UIBuilder.Frame({ Size = UDim2.new(0.6, -10, 1, -70), Transparency = 1, Parent = body })
 	UIBuilder.List(table_, Enum.FillDirection.Vertical, 4, Enum.HorizontalAlignment.Left)
-	local rewards = UIBuilder.Frame({ Size = UDim2.new(0.4, -10, 1, -70), Position = UDim2.new(0.6, 10, 0, 0), Color = Theme.Colors.PanelAlt, Parent = body })
+	local rewards = UIBuilder.Frame({
+		Size = UDim2.new(0.4, -10, 1, -70),
+		Position = UDim2.new(0.6, 10, 0, 0),
+		Color = Theme.Colors.PanelAlt,
+		Parent = body,
+	})
 	UIBuilder.Padding(rewards, 12)
 	UIBuilder.List(rewards, Enum.FillDirection.Vertical, 4, Enum.HorizontalAlignment.Left)
 	local rows: { GuiObject } = {}
-	local btnRow = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 56), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Transparency = 1, Parent = body })
+	local btnRow = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 56),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Transparency = 1,
+		Parent = body,
+	})
 	UIBuilder.List(btnRow, Enum.FillDirection.Horizontal, 12, Enum.HorizontalAlignment.Right)
-	local nextBtn = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 280, 0, 54), Parent = btnRow, LayoutOrder = 2, Color = Theme.Colors.Success, OnClick = function()
-		Network.Fire("PostRaceChoice", if ClientState.Race and ClientState.Race.ModeId == "GrandTour" then "ContinueTour" else "NextRace")
-		self:Show("MatchLoading")
-	end })
-	local lobbyBtn = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 240, 0, 54), Parent = btnRow, LayoutOrder = 1, Color = Theme.Colors.PanelAlt, OnClick = function()
-		Network.Fire("PostRaceChoice", "Lobby")
-	end })
+	local nextBtn = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 280, 0, 54),
+		Parent = btnRow,
+		LayoutOrder = 2,
+		Color = Theme.Colors.Success,
+		OnClick = function()
+			Network.Fire(
+				"PostRaceChoice",
+				if ClientState.Race and ClientState.Race.ModeId == "GrandTour" then "ContinueTour" else "NextRace"
+			)
+			self:Show("MatchLoading")
+		end,
+	})
+	local lobbyBtn = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 240, 0, 54),
+		Parent = btnRow,
+		LayoutOrder = 1,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			Network.Fire("PostRaceChoice", "Lobby")
+		end,
+	})
 	s.First = nextBtn
 	s.Refresh = function()
 		for _, r in rows do
@@ -498,10 +803,13 @@ function MenuController.BuildResults(self: any)
 		local results = ClientState.Results
 		local race = ClientState.Race
 		local isTour = race and race.ModeId == "GrandTour"
-		;(p:FindFirstChild("Title") :: TextLabel).Text = if isTour then Locale.T("UI.STANDINGS") else Locale.T("UI.RESULTS")
+		(p:FindFirstChild("Title") :: TextLabel).Text = if isTour
+			then Locale.T("UI.STANDINGS")
+			else Locale.T("UI.RESULTS")
 		nextBtn.Text = if isTour then Locale.T("UI.CONTINUE_TOUR") else Locale.T("UI.NEXT_RACE")
 		lobbyBtn.Text = Locale.T("UI.QUIT_TO_LOBBY")
-		nextBtn.Visible = race ~= nil and race.RaceIndex < (race.RacesPerSession or 1) or (race ~= nil and race.ModeId == "QuickRace")
+		nextBtn.Visible = race ~= nil and race.RaceIndex < (race.RacesPerSession or 1)
+			or (race ~= nil and race.ModeId == "QuickRace")
 		if not results then
 			return
 		end
@@ -514,17 +822,44 @@ function MenuController.BuildResults(self: any)
 		local myKey = ClientState.MyKey()
 		for i, rec in results.Records do
 			local isMe = rec.Key == myKey
-			local timeText = if rec.TimeSeconds then TimeUtil.FormatRaceTime(rec.TimeSeconds) elseif rec.Eliminated then Locale.T("RACE.ELIMINATED") elseif results.ModeId == "CoreClash" or results.ModeId == "ShardRush" then tostring(rec.Score) else Locale.T("RACE.DNF")
-			local pointsText = if isTour then string.format("  +%d  (%d)", rec.Points, (race.TourPoints or {})[rec.Key] or 0) else ""
+			local timeText = if rec.TimeSeconds
+				then TimeUtil.FormatRaceTime(rec.TimeSeconds)
+				elseif rec.Eliminated then Locale.T("RACE.ELIMINATED")
+				elseif results.ModeId == "CoreClash" or results.ModeId == "ShardRush" then tostring(rec.Score)
+				else Locale.T("RACE.DNF")
+			local pointsText = if isTour
+				then string.format("  +%d  (%d)", rec.Points, (race.TourPoints or {})[rec.Key] or 0)
+				else ""
 			local teamColor = ModeDefinitions.TeamColors[rec.Team] and ModeDefinitions.TeamColors[rec.Team].Color or nil
-			local row = UIBuilder.Label({ Text = string.format("%s  %s  %s%s", Locale.Ordinal(i), nameByKey[rec.Key] or rec.Key, timeText, pointsText), Size = UDim2.new(1, 0, 0, 30), Align = Enum.TextXAlignment.Left, Color = if isMe then Theme.Colors.Accent2 else (teamColor or Theme.Colors.Text), Parent = table_, LayoutOrder = i, TextSize = Theme.TextSize.Body })
+			local row = UIBuilder.Label({
+				Text = string.format(
+					"%s  %s  %s%s",
+					Locale.Ordinal(i),
+					nameByKey[rec.Key] or rec.Key,
+					timeText,
+					pointsText
+				),
+				Size = UDim2.new(1, 0, 0, 30),
+				Align = Enum.TextXAlignment.Left,
+				Color = if isMe then Theme.Colors.Accent2 else (teamColor or Theme.Colors.Text),
+				Parent = table_,
+				LayoutOrder = i,
+				TextSize = Theme.TextSize.Body,
+			})
 			table.insert(rows, row)
 		end
 		if results.TeamScores then
 			for team, score in results.TeamScores do
 				local tc = ModeDefinitions.TeamColors[tonumber(team) or 0]
 				if tc then
-					local row = UIBuilder.Label({ Text = Locale.T("RACE.TEAM_SCORE", Locale.T(tc.NameKey), score), Size = UDim2.new(1, 0, 0, 28), Align = Enum.TextXAlignment.Left, Color = tc.Color, Parent = table_, LayoutOrder = 100 + (tonumber(team) or 0) })
+					local row = UIBuilder.Label({
+						Text = Locale.T("RACE.TEAM_SCORE", Locale.T(tc.NameKey), score),
+						Size = UDim2.new(1, 0, 0, 28),
+						Align = Enum.TextXAlignment.Left,
+						Color = tc.Color,
+						Parent = table_,
+						LayoutOrder = 100 + (tonumber(team) or 0),
+					})
 					table.insert(rows, row)
 				end
 			end
@@ -533,20 +868,66 @@ function MenuController.BuildResults(self: any)
 		if mine then
 			local order = 1
 			for _, line in mine.Lines do
-				local row = UIBuilder.Label({ Text = string.format("%s  <font color='#80DCFF'>+%d</font>", Locale.T(line.Key), line.Amount), Size = UDim2.new(1, 0, 0, 26), Align = Enum.TextXAlignment.Left, Parent = rewards, LayoutOrder = order, TextSize = Theme.TextSize.Small })
+				local row = UIBuilder.Label({
+					Text = string.format("%s  <font color='#80DCFF'>+%d</font>", Locale.T(line.Key), line.Amount),
+					Size = UDim2.new(1, 0, 0, 26),
+					Align = Enum.TextXAlignment.Left,
+					Parent = rewards,
+					LayoutOrder = order,
+					TextSize = Theme.TextSize.Small,
+				})
 				table.insert(rows, row)
 				order += 1
 			end
-			local xp = UIBuilder.Label({ Text = string.format("%s  <font color='#80DCFF'>+%d</font>", Locale.T("REWARD.XP"), mine.XP), Size = UDim2.new(1, 0, 0, 26), Align = Enum.TextXAlignment.Left, Parent = rewards, LayoutOrder = order, TextSize = Theme.TextSize.Small })
+			local xp = UIBuilder.Label({
+				Text = string.format("%s  <font color='#80DCFF'>+%d</font>", Locale.T("REWARD.XP"), mine.XP),
+				Size = UDim2.new(1, 0, 0, 26),
+				Align = Enum.TextXAlignment.Left,
+				Parent = rewards,
+				LayoutOrder = order,
+				TextSize = Theme.TextSize.Small,
+			})
 			table.insert(rows, xp)
 			if mine.NewLevel then
-				table.insert(rows, UIBuilder.Label({ Text = Locale.T("REWARD.LEVEL_UP", mine.NewLevel), Size = UDim2.new(1, 0, 0, 30), Align = Enum.TextXAlignment.Left, Parent = rewards, LayoutOrder = order + 1, Color = Theme.Colors.Success }))
+				table.insert(
+					rows,
+					UIBuilder.Label({
+						Text = Locale.T("REWARD.LEVEL_UP", mine.NewLevel),
+						Size = UDim2.new(1, 0, 0, 30),
+						Align = Enum.TextXAlignment.Left,
+						Parent = rewards,
+						LayoutOrder = order + 1,
+						Color = Theme.Colors.Success,
+					})
+				)
 			end
 			for i, u in mine.Unlocks or {} do
-				table.insert(rows, UIBuilder.Label({ Text = Locale.T("REWARD.UNLOCK", Locale.T(u)), Size = UDim2.new(1, 0, 0, 26), Align = Enum.TextXAlignment.Left, Parent = rewards, LayoutOrder = order + 1 + i, Color = Theme.Colors.Warning, TextSize = Theme.TextSize.Small }))
+				table.insert(
+					rows,
+					UIBuilder.Label({
+						Text = Locale.T("REWARD.UNLOCK", Locale.T(u)),
+						Size = UDim2.new(1, 0, 0, 26),
+						Align = Enum.TextXAlignment.Left,
+						Parent = rewards,
+						LayoutOrder = order + 1 + i,
+						Color = Theme.Colors.Warning,
+						TextSize = Theme.TextSize.Small,
+					})
+				)
 			end
 			if mine.NewRecord then
-				table.insert(rows, UIBuilder.Label({ Text = Locale.T("REWARD.RECORD"), Size = UDim2.new(1, 0, 0, 26), Align = Enum.TextXAlignment.Left, Parent = rewards, LayoutOrder = order + 20, Color = Theme.Colors.Success, TextSize = Theme.TextSize.Small }))
+				table.insert(
+					rows,
+					UIBuilder.Label({
+						Text = Locale.T("REWARD.RECORD"),
+						Size = UDim2.new(1, 0, 0, 26),
+						Align = Enum.TextXAlignment.Left,
+						Parent = rewards,
+						LayoutOrder = order + 20,
+						Color = Theme.Colors.Success,
+						TextSize = Theme.TextSize.Small,
+					})
+				)
 			end
 		end
 	end
@@ -563,13 +944,21 @@ function MenuController.BuildSettings(self: any)
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 1100)
 	scroll.Parent = body
 	UIBuilder.List(scroll, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Left)
-	local back = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 200, 0, 50), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = body, Color = Theme.Colors.PanelAlt, OnClick = function()
-		if ClientState.InRace() then
-			self:Show("Pause")
-		else
-			self:Show("MainLobby")
-		end
-	end })
+	local back = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 200, 0, 50),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = body,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			if ClientState.InRace() then
+				self:Show("Pause")
+			else
+				self:Show("MainLobby")
+			end
+		end,
+	})
 	s.First = back
 	local built = false
 	s.Refresh = function()
@@ -609,9 +998,15 @@ function MenuController.BuildSettings(self: any)
 		slider("MusicVolume", "SETTINGS.MUSIC_VOLUME", 0, 1)
 		slider("SfxVolume", "SETTINGS.SFX_VOLUME", 0, 1)
 		order += 1
-		UIBuilder.Toggle(scroll, Locale.T("SETTINGS.MOBILE_LAYOUT") .. " (L)", v.MobileLayout == "Left", order, function(val)
-			st:Set("MobileLayout", if val then "Left" else "Right")
-		end)
+		UIBuilder.Toggle(
+			scroll,
+			Locale.T("SETTINGS.MOBILE_LAYOUT") .. " (L)",
+			v.MobileLayout == "Left",
+			order,
+			function(val)
+				st:Set("MobileLayout", if val then "Left" else "Right")
+			end
+		)
 		slider("MobileControlScale", "SETTINGS.CONTROL_SIZE", 0.6, 1.6)
 		slider("MobileControlAlpha", "SETTINGS.CONTROL_ALPHA", 0.1, 1)
 		toggle("ReducedMotion", "SETTINGS.REDUCED_MOTION")
@@ -633,9 +1028,17 @@ function MenuController.BuildRecords(self: any)
 	local list = UIBuilder.Frame({ Size = UDim2.new(1, 0, 1, -70), Transparency = 1, Parent = body })
 	UIBuilder.List(list, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Left)
 	local rows: { GuiObject } = {}
-	local back = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 200, 0, 50), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = body, Color = Theme.Colors.PanelAlt, OnClick = function()
-		self:Show("ModeSelect")
-	end })
+	local back = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 200, 0, 50),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = body,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			self:Show("ModeSelect")
+		end,
+	})
 	s.Refresh = function()
 		(p:FindFirstChild("Title") :: TextLabel).Text = Locale.T("UI.RECORDS")
 		back.Text = Locale.T("UI.BACK")
@@ -646,11 +1049,23 @@ function MenuController.BuildRecords(self: any)
 		local records = ClientState.Profile and ClientState.Profile.TrackRecords or {}
 		for i, t in TrackDefinitions.Tracks do
 			local rec = records[t.Id]
-			local text = string.format("%s   <font color='#80DCFF'>%s</font>%s", Locale.T(t.NameKey), if rec then TimeUtil.FormatRaceTime(rec.BestTime) else "--:--.---", if rec and rec.Assist then "  (assist)" else "")
-			local b = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 50), Parent = list, LayoutOrder = i, Color = Theme.Colors.PanelAlt, OnClick = function()
-				Network.Fire("StartMode", "TimeTrial", t.Id)
-				self:Show("MatchLoading")
-			end })
+			local text = string.format(
+				"%s   <font color='#80DCFF'>%s</font>%s",
+				Locale.T(t.NameKey),
+				if rec then TimeUtil.FormatRaceTime(rec.BestTime) else "--:--.---",
+				if rec and rec.Assist then "  (assist)" else ""
+			)
+			local b = UIBuilder.Button({
+				Text = "",
+				Size = UDim2.new(1, 0, 0, 50),
+				Parent = list,
+				LayoutOrder = i,
+				Color = Theme.Colors.PanelAlt,
+				OnClick = function()
+					Network.Fire("StartMode", "TimeTrial", t.Id)
+					self:Show("MatchLoading")
+				end,
+			})
 			b.RichText = true
 			b.TextScaled = false
 			b.TextXAlignment = Enum.TextXAlignment.Left
@@ -668,9 +1083,21 @@ function MenuController.BuildRoom(self: any)
 	local p, body = panel(s.Root, Locale.T("UI.PRIVATE_RACE"), UDim2.new(0, 900, 0, 680))
 	local left = UIBuilder.Frame({ Size = UDim2.new(0.55, -8, 1, -70), Transparency = 1, Parent = body })
 	UIBuilder.List(left, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Left)
-	local right = UIBuilder.Frame({ Size = UDim2.new(0.45, -8, 1, -70), Position = UDim2.new(0.55, 8, 0, 0), Color = Theme.Colors.PanelAlt, Parent = body })
+	local right = UIBuilder.Frame({
+		Size = UDim2.new(0.45, -8, 1, -70),
+		Position = UDim2.new(0.55, 8, 0, 0),
+		Color = Theme.Colors.PanelAlt,
+		Parent = body,
+	})
 	UIBuilder.Padding(right, 12)
-	local membersL = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 1, 0), Align = Enum.TextXAlignment.Left, TextSize = Theme.TextSize.Small, Parent = right, Font = Theme.FontBody })
+	local membersL = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 1, 0),
+		Align = Enum.TextXAlignment.Left,
+		TextSize = Theme.TextSize.Small,
+		Parent = right,
+		Font = Theme.FontBody,
+	})
 	membersL.TextYAlignment = Enum.TextYAlignment.Top
 	local rules = self._roomRules
 	rules.Laps = rules.Laps or 3
@@ -688,7 +1115,13 @@ function MenuController.BuildRoom(self: any)
 	end
 	local controls: { GuiObject } = {}
 	local function cycle(label: string, key: string, values: { any }, order: number, display: ((any) -> string)?)
-		local b = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 44), Parent = left, LayoutOrder = order, Color = Theme.Colors.PanelAlt })
+		local b = UIBuilder.Button({
+			Text = "",
+			Size = UDim2.new(1, 0, 0, 44),
+			Parent = left,
+			LayoutOrder = order,
+			Color = Theme.Colors.PanelAlt,
+		})
 		local function refresh()
 			local v = rules[key]
 			b.Text = string.format("%s: %s", Locale.T(label), if display then display(v) else tostring(v))
@@ -727,18 +1160,44 @@ function MenuController.BuildRoom(self: any)
 	cycle("UI.ASSIST", "AssistMode", { false, true }, 10, function(v)
 		return Locale.T(if v then "UI.ON" else "UI.OFF")
 	end)
-	local btnRow = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 56), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Transparency = 1, Parent = body })
+	local btnRow = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 56),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Transparency = 1,
+		Parent = body,
+	})
 	UIBuilder.List(btnRow, Enum.FillDirection.Horizontal, 12, Enum.HorizontalAlignment.Right)
-	local back = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 180, 0, 50), Parent = btnRow, LayoutOrder = 1, Color = Theme.Colors.PanelAlt, OnClick = function()
-		Network.Fire("CustomRoomAction", "Leave", {})
-		self:Show("MainLobby")
-	end })
-	local create = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 220, 0, 50), Parent = btnRow, LayoutOrder = 2, OnClick = function()
-		Network.Fire("CustomRoomAction", "Create", rules)
-	end })
-	local start = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 220, 0, 50), Parent = btnRow, LayoutOrder = 3, Color = Theme.Colors.Success, OnClick = function()
-		Network.Fire("CustomRoomAction", "Start", rules)
-	end })
+	local back = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 180, 0, 50),
+		Parent = btnRow,
+		LayoutOrder = 1,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			Network.Fire("CustomRoomAction", "Leave", {})
+			self:Show("MainLobby")
+		end,
+	})
+	local create = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 220, 0, 50),
+		Parent = btnRow,
+		LayoutOrder = 2,
+		OnClick = function()
+			Network.Fire("CustomRoomAction", "Create", rules)
+		end,
+	})
+	local start = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 220, 0, 50),
+		Parent = btnRow,
+		LayoutOrder = 3,
+		Color = Theme.Colors.Success,
+		OnClick = function()
+			Network.Fire("CustomRoomAction", "Start", rules)
+		end,
+	})
 	s.Refresh = function()
 		(p:FindFirstChild("Title") :: TextLabel).Text = Locale.T("UI.PRIVATE_RACE")
 		back.Text = Locale.T("UI.BACK")
@@ -757,7 +1216,11 @@ function MenuController.BuildRoom(self: any)
 				end
 			end
 		end
-		membersL.Text = (if room then Locale.T("UI.PARTY_MEMBERS", #names, GameConfig.MaxRacers) .. "\n" .. table.concat(names, "\n") else "")
+		membersL.Text = (
+			if room
+				then Locale.T("UI.PARTY_MEMBERS", #names, GameConfig.MaxRacers) .. "\n" .. table.concat(names, "\n")
+				else ""
+		)
 		start.Visible = room ~= nil and room.OwnerId == Players.LocalPlayer.UserId
 		create.Visible = room == nil
 		for _, c in controls do
@@ -771,14 +1234,27 @@ end
 function MenuController.BuildError(self: any)
 	local s = self:NewScreen("Error", 60, true)
 	local p, body = panel(s.Root, "", UDim2.new(0, 640, 0, 300))
-	local msg = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 120), TextSize = Theme.TextSize.Body, Parent = body, Font = Theme.FontBody })
-	local ok = UIBuilder.Button({ Text = "OK", Size = UDim2.new(0, 220, 0, 52), Position = UDim2.new(0.5, 0, 1, 0), Anchor = Vector2.new(0.5, 1), Parent = body, OnClick = function()
-		s.Gui.Enabled = false
-		table.remove(self._errorQueue, 1)
-		if #self._errorQueue > 0 then
-			self:ShowError(self._errorQueue[1].Key, self._errorQueue[1].Data, true)
-		end
-	end })
+	local msg = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 120),
+		TextSize = Theme.TextSize.Body,
+		Parent = body,
+		Font = Theme.FontBody,
+	})
+	local ok = UIBuilder.Button({
+		Text = "OK",
+		Size = UDim2.new(0, 220, 0, 52),
+		Position = UDim2.new(0.5, 0, 1, 0),
+		Anchor = Vector2.new(0.5, 1),
+		Parent = body,
+		OnClick = function()
+			s.Gui.Enabled = false
+			table.remove(self._errorQueue, 1)
+			if #self._errorQueue > 0 then
+				self:ShowError(self._errorQueue[1].Key, self._errorQueue[1].Data, true)
+			end
+		end,
+	})
 	s.Refresh = function()
 		local e = self._errorQueue[1]
 		if e then
@@ -805,11 +1281,32 @@ end
 
 function MenuController.BuildInvite(self: any)
 	local s = self:NewScreen("Invite", 55, false)
-	local box = UIBuilder.Frame({ Size = UDim2.new(0, 420, 0, 120), Position = UDim2.new(0.5, 0, 0, 30), Anchor = Vector2.new(0.5, 0), Color = Theme.Colors.Panel, Stroke = true, Parent = s.Root })
+	local box = UIBuilder.Frame({
+		Size = UDim2.new(0, 420, 0, 120),
+		Position = UDim2.new(0.5, 0, 0, 30),
+		Anchor = Vector2.new(0.5, 0),
+		Color = Theme.Colors.Panel,
+		Stroke = true,
+		Parent = s.Root,
+	})
 	UIBuilder.Padding(box, 12)
 	local text = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 40), Parent = box })
-	local accept = UIBuilder.Button({ Text = "✓", Size = UDim2.new(0.45, 0, 0, 44), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = box, Color = Theme.Colors.Success })
-	local decline = UIBuilder.Button({ Text = "✕", Size = UDim2.new(0.45, 0, 0, 44), Position = UDim2.new(1, 0, 1, 0), Anchor = Vector2.new(1, 1), Parent = box, Color = Theme.Colors.Danger })
+	local accept = UIBuilder.Button({
+		Text = "✓",
+		Size = UDim2.new(0.45, 0, 0, 44),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = box,
+		Color = Theme.Colors.Success,
+	})
+	local decline = UIBuilder.Button({
+		Text = "✕",
+		Size = UDim2.new(0.45, 0, 0, 44),
+		Position = UDim2.new(1, 0, 1, 0),
+		Anchor = Vector2.new(1, 1),
+		Parent = box,
+		Color = Theme.Colors.Danger,
+	})
 	local current: any = nil
 	accept.Activated:Connect(function()
 		if current then

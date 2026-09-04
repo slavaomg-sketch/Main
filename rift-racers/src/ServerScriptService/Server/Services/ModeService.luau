@@ -9,7 +9,19 @@ end
 
 function ModeService.Init(self: any, registry: any)
 	local Modes = (script :: any).Parent.Parent.Modes
-	for _, name in { "QuickRace", "GrandTour", "TimeTrial", "CustomRace", "Knockout", "TeamRace", "CoreClash", "ShardRush", "Practice" } do
+	for _, name in
+		{
+			"QuickRace",
+			"GrandTour",
+			"TimeTrial",
+			"CustomRace",
+			"Knockout",
+			"TeamRace",
+			"CoreClash",
+			"ShardRush",
+			"Practice",
+		}
+	do
 		local module = require(Modes:FindFirstChild(name)) :: any
 		self._modes[name] = module.new()
 	end

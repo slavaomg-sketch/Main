@@ -14,7 +14,12 @@ return function(T, Env)
 
 	describe("Profile migrations", function()
 		it("migrates v1 -> v3 preserving currency and converting unlock arrays to sets", function()
-			local old = { SchemaVersion = 1, Coins = 250, UnlockedHeroes = { "NovaVale", "BoltFinch" }, TrackRecords = { NeonHarborCircuit = { BestTime = 100, BestLap = 30 } } }
+			local old = {
+				SchemaVersion = 1,
+				Coins = 250,
+				UnlockedHeroes = { "NovaVale", "BoltFinch" },
+				TrackRecords = { NeonHarborCircuit = { BestTime = 100, BestLap = 30 } },
+			}
 			local data, applied = Migrations.Apply(old, 1000)
 			expect(applied).toEqual({ 2, 3 })
 			expect(data.SchemaVersion).toBe(3)
@@ -99,7 +104,34 @@ return function(T, Env)
 			local registry = FakeEnv.Boot(env)
 			local rewards = registry:Get("RewardService")
 			local profile = ProfileTemplate.New(0)
-			local ctx = { ModeId = "QuickRace", TrackId = "NeonHarborCircuit", Laps = 3, Record = { Key = "u1", Position = 1, TimeSeconds = 180, BestLap = 60, Finished = true, Team = 0, Points = 15, Shards = 4, Eliminated = false, StageReached = 0, Score = 0 }, Total = 8, TourPosition = nil, TourFinal = false, KnockoutStages = 0, IsBattle = false, BattleWon = false, Assist = false, VehicleId = "CometMk1", HeroId = "NovaVale", Ghost = nil }
+			local ctx = {
+				ModeId = "QuickRace",
+				TrackId = "NeonHarborCircuit",
+				Laps = 3,
+				Record = {
+					Key = "u1",
+					Position = 1,
+					TimeSeconds = 180,
+					BestLap = 60,
+					Finished = true,
+					Team = 0,
+					Points = 15,
+					Shards = 4,
+					Eliminated = false,
+					StageReached = 0,
+					Score = 0,
+				},
+				Total = 8,
+				TourPosition = nil,
+				TourFinal = false,
+				KnockoutStages = 0,
+				IsBattle = false,
+				BattleWon = false,
+				Assist = false,
+				VehicleId = "CometMk1",
+				HeroId = "NovaVale",
+				Ghost = nil,
+			}
 			local b1 = rewards:Apply(profile, "race_1", 1, ctx, true)
 			expect(b1).toBeTruthy()
 			expect(profile.Currency).toBe(b1.Currency)

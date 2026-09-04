@@ -57,19 +57,37 @@ function KartPhysicsModel.ShardBonus(shards: number): number
 end
 
 -- Effective top speed right now (client target and server ceiling share this exact formula).
-function KartPhysicsModel.EffectiveTopSpeed(stats: EffectiveStats, surfaceId: string, boosts: { ActiveBoost }, shards: number, now: number, slowScale: number?): number
+function KartPhysicsModel.EffectiveTopSpeed(
+	stats: EffectiveStats,
+	surfaceId: string,
+	boosts: { ActiveBoost },
+	shards: number,
+	now: number,
+	slowScale: number?
+): number
 	local surf = KartPhysicsModel.SurfaceMultipliers(surfaceId, stats)
 	local bonus = 1 + KartPhysicsModel.ActiveBoostBonus(boosts, now) + KartPhysicsModel.ShardBonus(shards)
 	return stats.TopSpeed * surf.TopSpeed * bonus * (slowScale or 1)
 end
 
-function KartPhysicsModel.MakeBoost(source: GameTypes.BoostSource, seconds: number, bonus: number, stats: EffectiveStats, now: number): ActiveBoost
+function KartPhysicsModel.MakeBoost(
+	source: GameTypes.BoostSource,
+	seconds: number,
+	bonus: number,
+	stats: EffectiveStats,
+	now: number
+): ActiveBoost
 	return { Source = source, EndsAt = now + seconds * stats.BoostEfficiency, SpeedBonus = bonus }
 end
 
 -- Steering -------------------------------------------------------------------------------------------------------
 -- Yaw rate (rad/s) for a full steer input at a given speed fraction (0..1 of top speed).
-function KartPhysicsModel.SteerRate(speedFraction: number, stats: EffectiveStats, surfaceId: string, isDrifting: boolean): number
+function KartPhysicsModel.SteerRate(
+	speedFraction: number,
+	stats: EffectiveStats,
+	surfaceId: string,
+	isDrifting: boolean
+): number
 	local surf = KartPhysicsModel.SurfaceMultipliers(surfaceId, stats)
 	local f = math.clamp(speedFraction, 0, 1.5)
 	local blend = MathUtil.InverseLerp(P.SteerSpeedBlendStart, 1, f)
@@ -138,7 +156,9 @@ function KartPhysicsModel.EvaluateStartBoost(offset: number): StartBoostResult
 	return "None"
 end
 
-function KartPhysicsModel.StartBoostParams(result: StartBoostResult): { BoostSeconds: number, SpeedBonus: number, StallSeconds: number }
+function KartPhysicsModel.StartBoostParams(
+	result: StartBoostResult
+): { BoostSeconds: number, SpeedBonus: number, StallSeconds: number }
 	local s = P.StartBoost
 	if result == "Perfect" then
 		return { BoostSeconds = s.Perfect.BoostSeconds, SpeedBonus = s.Perfect.SpeedBonus, StallSeconds = 0 }
@@ -153,7 +173,10 @@ function KartPhysicsModel.StartBoostParams(result: StartBoostResult): { BoostSec
 end
 
 -- Hit stun --------------------------------------------------------------------------------------------------------
-function KartPhysicsModel.HitStunParams(level: number, stats: EffectiveStats): { Seconds: number, SpeedScale: number, Spin: boolean }
+function KartPhysicsModel.HitStunParams(
+	level: number,
+	stats: EffectiveStats
+): { Seconds: number, SpeedScale: number, Spin: boolean }
 	local h = P.HitStun
 	local rec = math.clamp(stats.Recovery, 0.5, 1.5)
 	if level >= 2 then
@@ -185,10 +208,20 @@ function KartPhysicsModel.InSlipstreamCone(followerPos: Vector3, followerForward
 end
 
 -- Physically plausible speed check used by the server (returns allowed max speed for this racer now).
-function KartPhysicsModel.ValidationSpeedCap(stats: EffectiveStats, surfaceId: string, boosts: { ActiveBoost }, shards: number, now: number, hazardScale: number?): number
+function KartPhysicsModel.ValidationSpeedCap(
+	stats: EffectiveStats,
+	surfaceId: string,
+	boosts: { ActiveBoost },
+	shards: number,
+	now: number,
+	hazardScale: number?
+): number
 	local top = KartPhysicsModel.EffectiveTopSpeed(stats, surfaceId, boosts, shards, now, hazardScale)
 	-- Downhill and pads can exceed the nominal top; SpeedTolerance covers physics jitter.
-	return math.min(math.max(top, stats.TopSpeed) * 1.25 * GameConfig.Security.SpeedTolerance, VehicleStats.AbsoluteSpeedCap(stats))
+	return math.min(
+		math.max(top, stats.TopSpeed) * 1.25 * GameConfig.Security.SpeedTolerance,
+		VehicleStats.AbsoluteSpeedCap(stats)
+	)
 end
 
 return table.freeze(KartPhysicsModel)

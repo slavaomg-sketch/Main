@@ -9,9 +9,26 @@ local GameConfig = require(Shared.Config.GameConfig)
 
 type RacerProgress = RaceTypes.RacerProgress
 
-export type CheckpointEvent = { Kind: "Checkpoint" | "Lap" | "Finish" | "WrongWay" | "Teleport" | "ImpossibleSector" | "InvalidFinishCross" | "Backtrack", Index: number?, Value: number? }
+export type CheckpointEvent = {
+	Kind: "Checkpoint"
+		| "Lap"
+		| "Finish"
+		| "WrongWay"
+		| "Teleport"
+		| "ImpossibleSector"
+		| "InvalidFinishCross"
+		| "Backtrack",
+	Index: number?,
+	Value: number?,
+}
 
-export type TrackShape = { Length: number, CheckpointCount: number, CheckpointDists: { number }, MinSectorTime: number, Laps: number }
+export type TrackShape = {
+	Length: number,
+	CheckpointCount: number,
+	CheckpointDists: { number },
+	MinSectorTime: number,
+	Laps: number,
+}
 
 local CheckpointSystem = {}
 
@@ -74,7 +91,13 @@ local function crossedForward(a: number, b: number, dists: { number }, length: n
 	return out
 end
 
-function CheckpointSystem.Update(p: RacerProgress, newProgress: number, now: number, shape: TrackShape, dt: number): { CheckpointEvent }
+function CheckpointSystem.Update(
+	p: RacerProgress,
+	newProgress: number,
+	now: number,
+	shape: TrackShape,
+	dt: number
+): { CheckpointEvent }
 	local events: { CheckpointEvent } = {}
 	if p.FinishedAt ~= nil then
 		p.Progress = newProgress
@@ -82,7 +105,10 @@ function CheckpointSystem.Update(p: RacerProgress, newProgress: number, now: num
 	end
 	local length = shape.Length
 	local delta = MathUtil.LoopDelta(p.Progress, newProgress, length)
-	local maxJump = math.max(GameConfig.Security.TeleportDistancePerSecond * math.max(dt, 1 / 60), length / shape.CheckpointCount * 0.9)
+	local maxJump = math.max(
+		GameConfig.Security.TeleportDistancePerSecond * math.max(dt, 1 / 60),
+		length / shape.CheckpointCount * 0.9
+	)
 	if math.abs(delta) > maxJump then
 		table.insert(events, { Kind = "Teleport", Value = delta })
 		return events

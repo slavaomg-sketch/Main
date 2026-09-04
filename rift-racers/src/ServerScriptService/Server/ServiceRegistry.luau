@@ -1,6 +1,11 @@
 --!strict
 -- Explicit service lifecycle (Init -> Start -> Destroy) with dependency access by name. No globals.
-export type Service = { Name: string, Init: ((self: any, registry: ServiceRegistry) -> ())?, Start: ((self: any) -> ())?, Destroy: ((self: any) -> ())? }
+export type Service = {
+	Name: string,
+	Init: ((self: any, registry: ServiceRegistry) -> ())?,
+	Start: ((self: any) -> ())?,
+	Destroy: ((self: any) -> ())?,
+}
 export type ServiceRegistry = {
 	Add: (self: ServiceRegistry, service: Service) -> (),
 	Get: (self: ServiceRegistry, name: string) -> any,
@@ -14,7 +19,9 @@ local ServiceRegistry = {}
 ServiceRegistry.__index = ServiceRegistry
 
 function ServiceRegistry.new(): ServiceRegistry
-	return (setmetatable({ _order = {} :: { Service }, _byName = {} :: { [string]: any } }, ServiceRegistry) :: any) :: ServiceRegistry
+	return (
+		setmetatable({ _order = {} :: { Service }, _byName = {} :: { [string]: any } }, ServiceRegistry) :: any
+	) :: ServiceRegistry
 end
 
 function ServiceRegistry.Add(self: any, service: Service)

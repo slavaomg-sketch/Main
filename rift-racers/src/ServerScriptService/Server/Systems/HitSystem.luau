@@ -7,11 +7,23 @@ local RaceTypes = require(Shared.Types.RaceTypes)
 
 type RacerRuntime = RaceTypes.RacerRuntime
 
-export type HitResult = { Outcome: "Hit" | "Shielded" | "Phased" | "Immune" | "Friendly" | "Finished", Level: number, ShardsDropped: number, ShieldBroken: boolean }
+export type HitResult = {
+	Outcome: "Hit" | "Shielded" | "Phased" | "Immune" | "Friendly" | "Finished",
+	Level: number,
+	ShardsDropped: number,
+	ShieldBroken: boolean,
+}
 
 local HitSystem = {}
 
-function HitSystem.Resolve(target: RacerRuntime, attackerTeam: number, level: number, now: number, friendlyFire: boolean, blockedByShield: boolean): HitResult
+function HitSystem.Resolve(
+	target: RacerRuntime,
+	attackerTeam: number,
+	level: number,
+	now: number,
+	friendlyFire: boolean,
+	blockedByShield: boolean
+): HitResult
 	local none: HitResult = { Outcome = "Hit", Level = level, ShardsDropped = 0, ShieldBroken = false }
 	if target.Progress.FinishedAt ~= nil or target.Progress.Eliminated then
 		none.Outcome = "Finished"
@@ -53,9 +65,16 @@ function HitSystem.Resolve(target: RacerRuntime, attackerTeam: number, level: nu
 		target.StrongHitsTaken += 1
 	end
 	target.LastHitAt = now
-	target.HitImmuneUntil = now + GameConfig.Physics.HitStun.ImmunitySeconds + (if level >= 2 then GameConfig.Physics.HitStun.HeavySeconds else GameConfig.Physics.HitStun.LightSeconds)
+	target.HitImmuneUntil = now
+		+ GameConfig.Physics.HitStun.ImmunitySeconds
+		+ (if level >= 2 then GameConfig.Physics.HitStun.HeavySeconds else GameConfig.Physics.HitStun.LightSeconds)
 	target.Boosts = {}
-	target.Effects.HitStun = { Id = "HitStun", EndsAt = now + (if level >= 2 then GameConfig.Physics.HitStun.HeavySeconds else GameConfig.Physics.HitStun.LightSeconds), Params = { Level = level } }
+	target.Effects.HitStun = {
+		Id = "HitStun",
+		EndsAt = now
+			+ (if level >= 2 then GameConfig.Physics.HitStun.HeavySeconds else GameConfig.Physics.HitStun.LightSeconds),
+		Params = { Level = level },
+	}
 	return { Outcome = "Hit", Level = level, ShardsDropped = drop, ShieldBroken = false }
 end
 

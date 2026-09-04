@@ -12,7 +12,16 @@ local GhostController = { Name = "GhostController" }
 GhostController.__index = GhostController
 
 function GhostController.new()
-	return setmetatable({ _ghost = nil :: any, _model = nil :: Model?, _conn = nil :: RBXScriptConnection?, _origin = Vector3.new(), _goAt = 0 }, GhostController)
+	return setmetatable(
+		{
+			_ghost = nil :: any,
+			_model = nil :: Model?,
+			_conn = nil :: RBXScriptConnection?,
+			_origin = Vector3.new(),
+			_goAt = 0,
+		},
+		GhostController
+	)
 end
 
 function GhostController.Init(self: any, _registry: any)

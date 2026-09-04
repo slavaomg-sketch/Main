@@ -8,12 +8,42 @@ local PickupBuilder = {}
 function PickupBuilder.Build(id: string, kind: "ItemPad" | "Shard", position: Vector3, parent: Instance): BasePart
 	local p: Part
 	if kind == "ItemPad" then
-		p = PartUtil.Part({ Size = Vector3.new(6, 6, 0.8), CFrame = CFrame.new(position + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(45)), Color = Color3.fromRGB(80, 220, 255), Material = Enum.Material.Neon, Transparency = 0.15, CanCollide = false, CanQuery = false, Name = id, Tags = { "ItemPad" }, Parent = parent })
+		p = PartUtil.Part({
+			Size = Vector3.new(6, 6, 0.8),
+			CFrame = CFrame.new(position + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(45)),
+			Color = Color3.fromRGB(80, 220, 255),
+			Material = Enum.Material.Neon,
+			Transparency = 0.15,
+			CanCollide = false,
+			CanQuery = false,
+			Name = id,
+			Tags = { "ItemPad" },
+			Parent = parent,
+		})
 		PartUtil.Light(p, Color3.fromRGB(80, 220, 255), 18, 1.2)
-		local core = PartUtil.Part({ Size = Vector3.new(2.5, 2.5, 2.5), CFrame = CFrame.new(position + Vector3.new(0, 3.5, 0)), Color = Color3.fromRGB(255, 255, 255), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false, Name = "Core", Parent = p })
+		local core = PartUtil.Part({
+			Size = Vector3.new(2.5, 2.5, 2.5),
+			CFrame = CFrame.new(position + Vector3.new(0, 3.5, 0)),
+			Color = Color3.fromRGB(255, 255, 255),
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+			CanQuery = false,
+			Name = "Core",
+			Parent = p,
+		})
 		core:SetAttribute("Spin", 1.5)
 	else
-		p = PartUtil.Part({ Size = Vector3.new(1.6, 2.6, 1.6), CFrame = CFrame.new(position + Vector3.new(0, 2, 0)) * CFrame.Angles(0, math.rad(45), 0), Color = Color3.fromRGB(180, 140, 255), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false, Name = id, Tags = { "Shard" }, Parent = parent })
+		p = PartUtil.Part({
+			Size = Vector3.new(1.6, 2.6, 1.6),
+			CFrame = CFrame.new(position + Vector3.new(0, 2, 0)) * CFrame.Angles(0, math.rad(45), 0),
+			Color = Color3.fromRGB(180, 140, 255),
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+			CanQuery = false,
+			Name = id,
+			Tags = { "Shard" },
+			Parent = parent,
+		})
 		p:SetAttribute("Spin", 2)
 	end
 	p:SetAttribute("PickupId", id)

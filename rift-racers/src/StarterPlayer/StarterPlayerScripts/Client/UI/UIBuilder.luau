@@ -68,7 +68,13 @@ function UIBuilder.Padding(parent: Instance, px: number)
 	p.Parent = parent
 end
 
-function UIBuilder.List(parent: Instance, direction: Enum.FillDirection?, gap: number?, align: Enum.HorizontalAlignment?, valign: Enum.VerticalAlignment?): UIListLayout
+function UIBuilder.List(
+	parent: Instance,
+	direction: Enum.FillDirection?,
+	gap: number?,
+	align: Enum.HorizontalAlignment?,
+	valign: Enum.VerticalAlignment?
+): UIListLayout
 	local l = Instance.new("UIListLayout")
 	l.FillDirection = direction or Enum.FillDirection.Vertical
 	l.Padding = UDim.new(0, gap or 10)
@@ -89,7 +95,21 @@ function UIBuilder.Grid(parent: Instance, cell: UDim2, gap: number): UIGridLayou
 	return g
 end
 
-export type FrameOpts = { Size: UDim2?, Position: UDim2?, Anchor: Vector2?, Color: Color3?, Transparency: number?, Name: string?, Corner: UDim?, Stroke: boolean?, Parent: Instance?, LayoutOrder: number?, ZIndex: number?, Aspect: number?, Visible: boolean? }
+export type FrameOpts = {
+	Size: UDim2?,
+	Position: UDim2?,
+	Anchor: Vector2?,
+	Color: Color3?,
+	Transparency: number?,
+	Name: string?,
+	Corner: UDim?,
+	Stroke: boolean?,
+	Parent: Instance?,
+	LayoutOrder: number?,
+	ZIndex: number?,
+	Aspect: number?,
+	Visible: boolean?,
+}
 
 function UIBuilder.Frame(o: FrameOpts): Frame
 	local f = Instance.new("Frame")
@@ -124,7 +144,23 @@ function UIBuilder.Frame(o: FrameOpts): Frame
 	return f
 end
 
-export type LabelOpts = { Text: string, Size: UDim2?, Position: UDim2?, Anchor: Vector2?, TextSize: number?, Color: Color3?, Font: Enum.Font?, Align: Enum.TextXAlignment?, Parent: Instance?, Name: string?, LayoutOrder: number?, Wrap: boolean?, ZIndex: number?, AutoSize: boolean?, Scaled: boolean? }
+export type LabelOpts = {
+	Text: string,
+	Size: UDim2?,
+	Position: UDim2?,
+	Anchor: Vector2?,
+	TextSize: number?,
+	Color: Color3?,
+	Font: Enum.Font?,
+	Align: Enum.TextXAlignment?,
+	Parent: Instance?,
+	Name: string?,
+	LayoutOrder: number?,
+	Wrap: boolean?,
+	ZIndex: number?,
+	AutoSize: boolean?,
+	Scaled: boolean?,
+}
 
 function UIBuilder.Label(o: LabelOpts): TextLabel
 	local l = Instance.new("TextLabel")
@@ -158,7 +194,21 @@ function UIBuilder.Label(o: LabelOpts): TextLabel
 	return l
 end
 
-export type ButtonOpts = { Text: string, Size: UDim2?, Position: UDim2?, Anchor: Vector2?, Color: Color3?, TextSize: number?, Parent: Instance?, Name: string?, LayoutOrder: number?, OnClick: (() -> ())?, Selectable: boolean?, ZIndex: number?, Icon: string? }
+export type ButtonOpts = {
+	Text: string,
+	Size: UDim2?,
+	Position: UDim2?,
+	Anchor: Vector2?,
+	Color: Color3?,
+	TextSize: number?,
+	Parent: Instance?,
+	Name: string?,
+	LayoutOrder: number?,
+	OnClick: (() -> ())?,
+	Selectable: boolean?,
+	ZIndex: number?,
+	Icon: string?,
+}
 
 function UIBuilder.Button(o: ButtonOpts): TextButton
 	local b = Instance.new("TextButton")
@@ -209,18 +259,58 @@ end
 
 -- 0..100 stat bar with label
 function UIBuilder.StatBar(parent: Instance, label: string, value: number, order: number): (Frame, Frame)
-	local row = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 26), Transparency = 1, Parent = parent, LayoutOrder = order })
-	UIBuilder.Label({ Text = label, Size = UDim2.new(0.45, 0, 1, 0), Align = Enum.TextXAlignment.Left, TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Parent = row })
-	local track = UIBuilder.Frame({ Size = UDim2.new(0.55, 0, 0, 12), Position = UDim2.new(0.45, 0, 0.5, 0), Anchor = Vector2.new(0, 0.5), Color = Theme.Colors.PanelAlt, Corner = UDim.new(1, 0), Parent = row })
-	local fill = UIBuilder.Frame({ Size = UDim2.fromScale(math.clamp(value / 100, 0, 1), 1), Color = Theme.Colors.Accent2, Corner = UDim.new(1, 0), Parent = track })
+	local row =
+		UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 26), Transparency = 1, Parent = parent, LayoutOrder = order })
+	UIBuilder.Label({
+		Text = label,
+		Size = UDim2.new(0.45, 0, 1, 0),
+		Align = Enum.TextXAlignment.Left,
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Parent = row,
+	})
+	local track = UIBuilder.Frame({
+		Size = UDim2.new(0.55, 0, 0, 12),
+		Position = UDim2.new(0.45, 0, 0.5, 0),
+		Anchor = Vector2.new(0, 0.5),
+		Color = Theme.Colors.PanelAlt,
+		Corner = UDim.new(1, 0),
+		Parent = row,
+	})
+	local fill = UIBuilder.Frame({
+		Size = UDim2.fromScale(math.clamp(value / 100, 0, 1), 1),
+		Color = Theme.Colors.Accent2,
+		Corner = UDim.new(1, 0),
+		Parent = track,
+	})
 	return row, fill
 end
 
-function UIBuilder.Toggle(parent: Instance, label: string, value: boolean, order: number, onChange: (boolean) -> ()): TextButton
-	local row = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 48), Transparency = 1, Parent = parent, LayoutOrder = order })
-	UIBuilder.Label({ Text = label, Size = UDim2.new(0.65, 0, 1, 0), Align = Enum.TextXAlignment.Left, TextSize = Theme.TextSize.Body, Parent = row })
+function UIBuilder.Toggle(
+	parent: Instance,
+	label: string,
+	value: boolean,
+	order: number,
+	onChange: (boolean) -> ()
+): TextButton
+	local row =
+		UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 48), Transparency = 1, Parent = parent, LayoutOrder = order })
+	UIBuilder.Label({
+		Text = label,
+		Size = UDim2.new(0.65, 0, 1, 0),
+		Align = Enum.TextXAlignment.Left,
+		TextSize = Theme.TextSize.Body,
+		Parent = row,
+	})
 	local state = value
-	local btn = UIBuilder.Button({ Text = "", Size = UDim2.new(0.3, 0, 0, 40), Position = UDim2.new(0.7, 0, 0.5, 0), Anchor = Vector2.new(0, 0.5), Parent = row, Color = if state then Theme.Colors.Success else Theme.Colors.Locked })
+	local btn = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0.3, 0, 0, 40),
+		Position = UDim2.new(0.7, 0, 0.5, 0),
+		Anchor = Vector2.new(0, 0.5),
+		Parent = row,
+		Color = if state then Theme.Colors.Success else Theme.Colors.Locked,
+	})
 	local function refresh()
 		btn.BackgroundColor3 = if state then Theme.Colors.Success else Theme.Colors.Locked
 		btn:SetAttribute("Value", state)
@@ -235,17 +325,62 @@ function UIBuilder.Toggle(parent: Instance, label: string, value: boolean, order
 	return btn
 end
 
-function UIBuilder.Slider(parent: Instance, label: string, value: number, min: number, max: number, order: number, onChange: (number) -> ()): Frame
-	local row = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 48), Transparency = 1, Parent = parent, LayoutOrder = order })
-	local text = UIBuilder.Label({ Text = label, Size = UDim2.new(0.5, 0, 1, 0), Align = Enum.TextXAlignment.Left, TextSize = Theme.TextSize.Body, Parent = row })
+function UIBuilder.Slider(
+	parent: Instance,
+	label: string,
+	value: number,
+	min: number,
+	max: number,
+	order: number,
+	onChange: (number) -> ()
+): Frame
+	local row =
+		UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 48), Transparency = 1, Parent = parent, LayoutOrder = order })
+	local text = UIBuilder.Label({
+		Text = label,
+		Size = UDim2.new(0.5, 0, 1, 0),
+		Align = Enum.TextXAlignment.Left,
+		TextSize = Theme.TextSize.Body,
+		Parent = row,
+	})
 	local v = value
 	local function fmt()
-		text.Text = string.format("%s  <font color='#80DCFF'>%d%%</font>", label, math.floor((v - min) / (max - min) * 100 + 0.5))
+		text.Text = string.format(
+			"%s  <font color='#80DCFF'>%d%%</font>",
+			label,
+			math.floor((v - min) / (max - min) * 100 + 0.5)
+		)
 	end
-	local minus = UIBuilder.Button({ Text = "−", Size = UDim2.new(0, 44, 0, 40), Position = UDim2.new(0.55, 0, 0.5, 0), Anchor = Vector2.new(0, 0.5), Parent = row, Color = Theme.Colors.PanelAlt })
-	local plus = UIBuilder.Button({ Text = "+", Size = UDim2.new(0, 44, 0, 40), Position = UDim2.new(1, 0, 0.5, 0), Anchor = Vector2.new(1, 0.5), Parent = row, Color = Theme.Colors.PanelAlt })
-	local track = UIBuilder.Frame({ Size = UDim2.new(0.28, 0, 0, 10), Position = UDim2.new(0.61, 0, 0.5, 0), Anchor = Vector2.new(0, 0.5), Color = Theme.Colors.PanelAlt, Corner = UDim.new(1, 0), Parent = row })
-	local fill = UIBuilder.Frame({ Size = UDim2.fromScale((v - min) / (max - min), 1), Color = Theme.Colors.Accent2, Corner = UDim.new(1, 0), Parent = track })
+	local minus = UIBuilder.Button({
+		Text = "−",
+		Size = UDim2.new(0, 44, 0, 40),
+		Position = UDim2.new(0.55, 0, 0.5, 0),
+		Anchor = Vector2.new(0, 0.5),
+		Parent = row,
+		Color = Theme.Colors.PanelAlt,
+	})
+	local plus = UIBuilder.Button({
+		Text = "+",
+		Size = UDim2.new(0, 44, 0, 40),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Anchor = Vector2.new(1, 0.5),
+		Parent = row,
+		Color = Theme.Colors.PanelAlt,
+	})
+	local track = UIBuilder.Frame({
+		Size = UDim2.new(0.28, 0, 0, 10),
+		Position = UDim2.new(0.61, 0, 0.5, 0),
+		Anchor = Vector2.new(0, 0.5),
+		Color = Theme.Colors.PanelAlt,
+		Corner = UDim.new(1, 0),
+		Parent = row,
+	})
+	local fill = UIBuilder.Frame({
+		Size = UDim2.fromScale((v - min) / (max - min), 1),
+		Color = Theme.Colors.Accent2,
+		Corner = UDim.new(1, 0),
+		Parent = track,
+	})
 	local step = (max - min) / 10
 	local function set(n: number)
 		v = math.clamp(n, min, max)

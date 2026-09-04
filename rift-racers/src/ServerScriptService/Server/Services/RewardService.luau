@@ -25,7 +25,22 @@ function RewardService.Init(self: any, registry: any)
 	self._telemetry = registry:Get("TelemetryService")
 end
 
-export type RewardContext = { ModeId: string, TrackId: string, Laps: number, Record: FinishRecord, Total: number, TourPosition: number?, TourFinal: boolean, KnockoutStages: number, IsBattle: boolean, BattleWon: boolean, Assist: boolean, VehicleId: string, HeroId: string, Ghost: string? }
+export type RewardContext = {
+	ModeId: string,
+	TrackId: string,
+	Laps: number,
+	Record: FinishRecord,
+	Total: number,
+	TourPosition: number?,
+	TourFinal: boolean,
+	KnockoutStages: number,
+	IsBattle: boolean,
+	BattleWon: boolean,
+	Assist: boolean,
+	VehicleId: string,
+	HeroId: string,
+	Ghost: string?,
+}
 
 function RewardService.Compute(profile: Profile, ctx: RewardContext): RewardBreakdown
 	local c = RewardConfig.Currency
@@ -82,7 +97,14 @@ function RewardService.Compute(profile: Profile, ctx: RewardContext): RewardBrea
 end
 
 -- Idempotent apply. Returns the breakdown or nil if this race was already processed for this profile.
-function RewardService.Apply(self: any, profile: Profile, raceId: string, userId: number, ctx: RewardContext, cleanRace: boolean): RewardBreakdown?
+function RewardService.Apply(
+	self: any,
+	profile: Profile,
+	raceId: string,
+	userId: number,
+	ctx: RewardContext,
+	cleanRace: boolean
+): RewardBreakdown?
 	local key = raceId .. ":" .. tostring(userId)
 	if profile.ProcessedRaceRewards[key] ~= nil then
 		self._telemetry:Count("reward.duplicate")
@@ -118,10 +140,21 @@ function RewardService.Apply(self: any, profile: Profile, raceId: string, userId
 		stats.BattleWins = (stats.BattleWins or 0) + 1
 	end
 	if breakdown.NewRecord and r.TimeSeconds then
-		profile.TrackRecords[ctx.TrackId] = { BestTime = r.TimeSeconds :: number, BestLap = r.BestLap or (r.TimeSeconds :: number), Assist = ctx.Assist, VehicleId = ctx.VehicleId, HeroId = ctx.HeroId, SetAt = self._env.Unix(), Ghost = ctx.Ghost }
+		profile.TrackRecords[ctx.TrackId] = {
+			BestTime = r.TimeSeconds :: number,
+			BestLap = r.BestLap or (r.TimeSeconds :: number),
+			Assist = ctx.Assist,
+			VehicleId = ctx.VehicleId,
+			HeroId = ctx.HeroId,
+			SetAt = self._env.Unix(),
+			Ghost = ctx.Ghost,
+		}
 	end
 	if ctx.TourFinal and ctx.TourPosition then
-		table.insert(profile.GrandTourResults, { At = self._env.Unix(), Position = ctx.TourPosition, Points = r.Points })
+		table.insert(
+			profile.GrandTourResults,
+			{ At = self._env.Unix(), Position = ctx.TourPosition, Points = r.Points }
+		)
 		if #profile.GrandTourResults > 50 then
 			table.remove(profile.GrandTourResults, 1)
 		end
@@ -153,7 +186,10 @@ function RewardService.EvaluateUnlocks(profile: Profile): { string }
 	for _, h in HeroDefinitions.List do
 		if not profile.UnlockedHeroes[h.Id] then
 			local u = h.Unlock
-			if (u.Kind == "Level" and profile.Level >= u.Level) or (u.Kind == "Achievement" and (profile.Achievements[u.Id] or 0) > 0) then
+			if
+				(u.Kind == "Level" and profile.Level >= u.Level)
+				or (u.Kind == "Achievement" and (profile.Achievements[u.Id] or 0) > 0)
+			then
 				profile.UnlockedHeroes[h.Id] = true
 				table.insert(unlocked, h.NameKey)
 			end
@@ -162,7 +198,10 @@ function RewardService.EvaluateUnlocks(profile: Profile): { string }
 	for _, v in VehicleDefinitions.List do
 		if not profile.UnlockedVehicles[v.Id] then
 			local u = v.Unlock
-			if (u.Kind == "Level" and profile.Level >= u.Level) or (u.Kind == "Achievement" and (profile.Achievements[u.Id] or 0) > 0) then
+			if
+				(u.Kind == "Level" and profile.Level >= u.Level)
+				or (u.Kind == "Achievement" and (profile.Achievements[u.Id] or 0) > 0)
+			then
 				profile.UnlockedVehicles[v.Id] = true
 				table.insert(unlocked, v.NameKey)
 			end

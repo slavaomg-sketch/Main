@@ -9,7 +9,10 @@ local SpectatorController = { Name = "SpectatorController" }
 SpectatorController.__index = SpectatorController
 
 function SpectatorController.new()
-	return setmetatable({ _input = nil :: any, _camera = nil :: any, Active = false, TargetKey = nil :: string? }, SpectatorController)
+	return setmetatable(
+		{ _input = nil :: any, _camera = nil :: any, Active = false, TargetKey = nil :: string? },
+		SpectatorController
+	)
 end
 
 function SpectatorController.Init(self: any, registry: any)

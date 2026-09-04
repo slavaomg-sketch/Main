@@ -8,7 +8,16 @@ export type World = {
 	DestroyVenue: (handle: any) -> (),
 	UpdateVenue: (handle: any, now: number) -> (),
 	SetGate: (handle: any, shortcutId: string, open: boolean) -> (),
-	SpawnKart: (sessionId: string, key: string, heroId: string, vehicleId: string, cosmetics: any, cframe: CFrame, player: any?, isBot: boolean) -> any,
+	SpawnKart: (
+		sessionId: string,
+		key: string,
+		heroId: string,
+		vehicleId: string,
+		cosmetics: any,
+		cframe: CFrame,
+		player: any?,
+		isBot: boolean
+	) -> any,
 	DestroyKart: (sessionId: string, key: string) -> (),
 	GetPose: (sessionId: string, key: string) -> KartPose?,
 	SetPose: (sessionId: string, key: string, cframe: CFrame, velocity: Vector3?) -> (),

@@ -13,10 +13,25 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local VenueController = { Name = "VenueController" }
 VenueController.__index = VenueController
 
-local LOBBY_ATMOSPHERE = { SkyColor = Color3.fromRGB(30, 25, 60), FogColor = Color3.fromRGB(40, 30, 80), FogEnd = 1600, Ambient = Color3.fromRGB(90, 80, 140), ClockTime = 21, Brightness = 1.6 }
+local LOBBY_ATMOSPHERE = {
+	SkyColor = Color3.fromRGB(30, 25, 60),
+	FogColor = Color3.fromRGB(40, 30, 80),
+	FogEnd = 1600,
+	Ambient = Color3.fromRGB(90, 80, 140),
+	ClockTime = 21,
+	Brightness = 1.6,
+}
 
 function VenueController.new()
-	return setmetatable({ _conn = nil :: RBXScriptConnection?, _spinners = {} :: { { Part: BasePart, Rate: number, Base: CFrame } }, _spinScanAt = 0, _atmosphere = nil :: any }, VenueController)
+	return setmetatable(
+		{
+			_conn = nil :: RBXScriptConnection?,
+			_spinners = {} :: { { Part: BasePart, Rate: number, Base: CFrame } },
+			_spinScanAt = 0,
+			_atmosphere = nil :: any,
+		},
+		VenueController
+	)
 end
 
 function VenueController.Init(self: any, _registry: any)
@@ -119,7 +134,10 @@ function VenueController.Tick(self: any, dt: number)
 		for _, tag in { "Pickup", "Projectile", "Moving" } do
 			for _, p in CollectionService:GetTagged(tag) do
 				if p:IsA("BasePart") and p:GetAttribute("Spin") then
-					table.insert(self._spinners, { Part = p :: BasePart, Rate = p:GetAttribute("Spin") :: number, Base = (p :: BasePart).CFrame })
+					table.insert(
+						self._spinners,
+						{ Part = p :: BasePart, Rate = p:GetAttribute("Spin") :: number, Base = (p :: BasePart).CFrame }
+					)
 				end
 			end
 		end
@@ -128,7 +146,9 @@ function VenueController.Tick(self: any, dt: number)
 		local p = s.Part
 		if p.Parent and p.Anchored and not CollectionService:HasTag(p, "Moving") then
 			local bob = if CollectionService:HasTag(p, "Pickup") then math.sin(now * 2) * 0.4 else 0
-			p.CFrame = CFrame.new(p.Position.X, s.Base.Position.Y + bob, p.Position.Z) * CFrame.Angles(0, now * s.Rate, 0) * (if p.Shape == Enum.PartType.Cylinder then CFrame.Angles(0, 0, math.rad(90)) else CFrame.new())
+			p.CFrame = CFrame.new(p.Position.X, s.Base.Position.Y + bob, p.Position.Z)
+				* CFrame.Angles(0, now * s.Rate, 0)
+				* (if p.Shape == Enum.PartType.Cylinder then CFrame.Angles(0, 0, math.rad(90)) else CFrame.new())
 		end
 	end
 end

@@ -4,7 +4,14 @@ local TelemetryService = { Name = "TelemetryService" }
 TelemetryService.__index = TelemetryService
 
 function TelemetryService.new()
-	return setmetatable({ _counters = {} :: { [string]: number }, _events = {} :: { { At: number, Tag: string, Message: string } }, _env = nil :: any }, TelemetryService)
+	return setmetatable(
+		{
+			_counters = {} :: { [string]: number },
+			_events = {} :: { { At: number, Tag: string, Message: string } },
+			_env = nil :: any,
+		},
+		TelemetryService
+	)
 end
 
 function TelemetryService.Init(self: any, registry: any)

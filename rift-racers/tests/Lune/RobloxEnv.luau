@@ -46,7 +46,7 @@ Node.__index = function(self: any, key: string): any
 	if child ~= nil then
 		return child
 	end
-	error(string.format("%s is not a valid member of %s \"%s\"", key, rawget(self, "ClassName"), rawget(self, "Name")), 2)
+	error(string.format('%s is not a valid member of %s "%s"', key, rawget(self, "ClassName"), rawget(self, "Name")), 2)
 end
 
 Node.__tostring = function(self: any): string
@@ -99,7 +99,10 @@ function Node.IsA(self: any, className: string): boolean
 	if className == "Instance" then
 		return true
 	end
-	if className == "LuaSourceContainer" and (self.ClassName == "ModuleScript" or self.ClassName == "Script" or self.ClassName == "LocalScript") then
+	if
+		className == "LuaSourceContainer"
+		and (self.ClassName == "ModuleScript" or self.ClassName == "Script" or self.ClassName == "LocalScript")
+	then
 		return true
 	end
 	return false
@@ -270,7 +273,14 @@ function RobloxEnv.MakeService(name: string, game: any): any
 		local counter = 0
 		svc.GenerateGUID = function(_, wrap)
 			counter += 1
-			local g = string.format("%08x-%04x-%04x-%04x-%012x", os.clock() * 1e6 % 0xFFFFFFFF, counter % 0xFFFF, 0x4000, 0x8000, counter)
+			local g = string.format(
+				"%08x-%04x-%04x-%04x-%012x",
+				os.clock() * 1e6 % 0xFFFFFFFF,
+				counter % 0xFFFF,
+				0x4000,
+				0x8000,
+				counter
+			)
 			return if wrap == false then g else "{" .. g .. "}"
 		end
 		svc.JSONEncode = function(_, t)
@@ -279,11 +289,18 @@ function RobloxEnv.MakeService(name: string, game: any): any
 		svc.JSONDecode = function(_, s)
 			return (require("@lune/serde") :: any).decode("json", s)
 		end
-	elseif name == "DataStoreService" or name == "MemoryStoreService" or name == "TeleportService" or name == "MessagingService" then
+	elseif
+		name == "DataStoreService"
+		or name == "MemoryStoreService"
+		or name == "TeleportService"
+		or name == "MessagingService"
+	then
 		-- Real access is injected by tests through service adapters; bare calls error loudly.
-		setmetatable(svc, { __index = function(_, k)
-			error("Fake " .. name .. " has no member " .. tostring(k) .. " (inject an adapter in tests)")
-		end })
+		setmetatable(svc, {
+			__index = function(_, k)
+				error("Fake " .. name .. " has no member " .. tostring(k) .. " (inject an adapter in tests)")
+			end,
+		})
 	end
 	return svc
 end
@@ -357,7 +374,8 @@ function RobloxEnv.Require(node: any): any
 	end
 	loading[path] = true
 	local source = fs.readFile(path)
-	local chunk = luau.load(source, { debugName = node:GetFullName(), environment = makeEnvironment(node), injectGlobals = true })
+	local chunk =
+		luau.load(source, { debugName = node:GetFullName(), environment = makeEnvironment(node), injectGlobals = true })
 	local result = chunk()
 	loading[path] = nil
 	if result == nil then

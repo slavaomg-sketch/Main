@@ -12,10 +12,21 @@ local Theme = require(script.Parent.Parent.UI.Theme)
 local TutorialController = { Name = "TutorialController" }
 TutorialController.__index = TutorialController
 
-local STEPS = { "TUTORIAL.STEP_1", "TUTORIAL.STEP_2", "TUTORIAL.STEP_3", "TUTORIAL.STEP_4", "TUTORIAL.STEP_5", "TUTORIAL.DONE" }
+local STEPS =
+	{ "TUTORIAL.STEP_1", "TUTORIAL.STEP_2", "TUTORIAL.STEP_3", "TUTORIAL.STEP_4", "TUTORIAL.STEP_5", "TUTORIAL.DONE" }
 
 function TutorialController.new()
-	return setmetatable({ _kart = nil :: any, Step = 0, _gui = nil :: ScreenGui?, _label = nil :: TextLabel?, _active = false, _driftBoosts = 0 }, TutorialController)
+	return setmetatable(
+		{
+			_kart = nil :: any,
+			Step = 0,
+			_gui = nil :: ScreenGui?,
+			_label = nil :: TextLabel?,
+			_active = false,
+			_driftBoosts = 0,
+		},
+		TutorialController
+	)
 end
 
 function TutorialController.Init(self: any, registry: any)
@@ -61,12 +72,34 @@ end
 function TutorialController.Begin(self: any, step: number)
 	if not self._gui then
 		self._gui = UIBuilder.ScreenGui("Tutorial", Players.LocalPlayer:WaitForChild("PlayerGui"), 15, false)
-		local box = UIBuilder.Frame({ Size = UDim2.new(0, 700, 0, 90), Position = UDim2.new(0.5, 0, 1, -140), Anchor = Vector2.new(0.5, 1), Color = Theme.Colors.Panel, Stroke = true, Parent = self._gui })
+		local box = UIBuilder.Frame({
+			Size = UDim2.new(0, 700, 0, 90),
+			Position = UDim2.new(0.5, 0, 1, -140),
+			Anchor = Vector2.new(0.5, 1),
+			Color = Theme.Colors.Panel,
+			Stroke = true,
+			Parent = self._gui,
+		})
 		UIBuilder.Padding(box, 12)
-		self._label = UIBuilder.Label({ Text = "", Size = UDim2.fromScale(1, 0.7), TextSize = Theme.TextSize.Body, Parent = box, Font = Theme.FontBody })
-		local skip = UIBuilder.Button({ Text = "▶", Size = UDim2.new(0, 60, 0, 30), Position = UDim2.new(1, 0, 1, 0), Anchor = Vector2.new(1, 1), Parent = box, Color = Theme.Colors.PanelAlt, TextSize = 16, OnClick = function()
-			self:Advance(self.Step + 1)
-		end })
+		self._label = UIBuilder.Label({
+			Text = "",
+			Size = UDim2.fromScale(1, 0.7),
+			TextSize = Theme.TextSize.Body,
+			Parent = box,
+			Font = Theme.FontBody,
+		})
+		local skip = UIBuilder.Button({
+			Text = "▶",
+			Size = UDim2.new(0, 60, 0, 30),
+			Position = UDim2.new(1, 0, 1, 0),
+			Anchor = Vector2.new(1, 1),
+			Parent = box,
+			Color = Theme.Colors.PanelAlt,
+			TextSize = 16,
+			OnClick = function()
+				self:Advance(self.Step + 1)
+			end,
+		})
 		local _ = skip
 	end
 	self._active = true

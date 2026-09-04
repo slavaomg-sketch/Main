@@ -18,7 +18,13 @@ export type Dispatcher = {
 	SetStateProvider: (self: Dispatcher, fn: (player: any) -> string) -> (),
 	SetPermissionCheck: (self: Dispatcher, name: string, fn: (player: any, ...any) -> boolean) -> (),
 	On: (self: Dispatcher, name: string, handler: (player: any, ...any) -> ...any) -> (),
-	Handle: (self: Dispatcher, name: string, player: any, argCount: number, args: { any }) -> (boolean, Rejection?, ...any),
+	Handle: (
+		self: Dispatcher,
+		name: string,
+		player: any,
+		argCount: number,
+		args: { any }
+	) -> (boolean, Rejection?, ...any),
 	ForgetPlayer: (self: Dispatcher, player: any) -> (),
 }
 
@@ -86,7 +92,13 @@ local function reject(self: any, player: any, name: string, reason: string, deta
 	return false, r
 end
 
-function Dispatcher.Handle(self: any, name: string, player: any, argCount: number, args: { any }): (boolean, Rejection?, ...any)
+function Dispatcher.Handle(
+	self: any,
+	name: string,
+	player: any,
+	argCount: number,
+	args: { any }
+): (boolean, Rejection?, ...any)
 	local def: RemoteDefinition? = NetworkSchemas.ByName[name]
 	if def == nil or def.Direction == "ServerToClient" then
 		return reject(self, player, name, "UnknownRemote")
@@ -214,16 +226,16 @@ end
 
 function Network.FireAllClients(name: string, ...: any)
 	local def = NetworkSchemas.ByName[name]
-	assert(def and def.Direction == "ServerToClient", "not a server->client remote: " .. name)
-	;(getRemote(name) :: RemoteEvent):FireAllClients(...)
+	assert(def and def.Direction == "ServerToClient", "not a server->client remote: " .. name);
+	(getRemote(name) :: RemoteEvent):FireAllClients(...)
 end
 
 -- Client API ------------------------------------------------------------------------------------------------------
 function Network.Fire(name: string, ...: any)
 	assert(RunService:IsClient(), "Network.Fire on server")
 	local def = NetworkSchemas.ByName[name]
-	assert(def and def.Direction == "ClientToServer", "not a client->server remote: " .. name)
-	;(getRemote(name) :: RemoteEvent):FireServer(...)
+	assert(def and def.Direction == "ClientToServer", "not a client->server remote: " .. name);
+	(getRemote(name) :: RemoteEvent):FireServer(...)
 end
 
 function Network.Invoke(name: string, ...: any): ...any
@@ -240,8 +252,8 @@ function Network.OnClient(name: string, handler: (...any) -> ()): () -> ()
 	local list = clientHandlers[name]
 	if list == nil then
 		list = {}
-		clientHandlers[name] = list
-		;(getRemote(name) :: RemoteEvent).OnClientEvent:Connect(function(...)
+		clientHandlers[name] = list;
+		(getRemote(name) :: RemoteEvent).OnClientEvent:Connect(function(...)
 			for _, fn in table.clone(clientHandlers[name]) do
 				task.spawn(fn, ...)
 			end

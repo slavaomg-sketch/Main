@@ -10,7 +10,10 @@ local KartValidationService = { Name = "KartValidationService" }
 KartValidationService.__index = KartValidationService
 
 function KartValidationService.new()
-	return setmetatable({ _env = nil :: any, _security = nil :: any, _progress = nil :: any, _telemetry = nil :: any }, KartValidationService)
+	return setmetatable(
+		{ _env = nil :: any, _security = nil :: any, _progress = nil :: any, _telemetry = nil :: any },
+		KartValidationService
+	)
 end
 
 function KartValidationService.Init(self: any, registry: any)
@@ -23,7 +26,21 @@ end
 export type Verdict = { Ok: boolean, Reason: string?, Detail: string?, Correct: boolean }
 
 -- Pure check so tests can feed synthetic poses.
-function KartValidationService.Check(stats: any, surface: string, boosts: any, shards: number, now: number, prevPos: Vector3?, pos: Vector3, velocity: Vector3, angular: Vector3, dt: number, hitStun: boolean, pathY: number?, inCorridor: boolean): Verdict
+function KartValidationService.Check(
+	stats: any,
+	surface: string,
+	boosts: any,
+	shards: number,
+	now: number,
+	prevPos: Vector3?,
+	pos: Vector3,
+	velocity: Vector3,
+	angular: Vector3,
+	dt: number,
+	hitStun: boolean,
+	pathY: number?,
+	inCorridor: boolean
+): Verdict
 	local speed = velocity.Magnitude
 	local cap = KartPhysicsModel.ValidationSpeedCap(stats, surface, boosts, shards, now)
 	if hitStun then
@@ -35,14 +52,24 @@ function KartValidationService.Check(stats: any, surface: string, boosts: any, s
 	if prevPos then
 		local jump = (pos - prevPos).Magnitude
 		if jump > GameConfig.Security.TeleportDistancePerSecond * math.max(dt, 0.05) + 5 then
-			return { Ok = false, Reason = "Teleport", Detail = string.format("%.0f studs in %.2fs", jump, dt), Correct = true }
+			return {
+				Ok = false,
+				Reason = "Teleport",
+				Detail = string.format("%.0f studs in %.2fs", jump, dt),
+				Correct = true,
+			}
 		end
 	end
 	if pathY ~= nil and pos.Y - pathY > GameConfig.Security.MaxHeightAbovePath then
 		return { Ok = false, Reason = "Fly", Detail = string.format("%.0f above path", pos.Y - pathY), Correct = true }
 	end
 	if angular.Magnitude > GameConfig.Security.MaxAngularVelocity * 1.5 then
-		return { Ok = false, Reason = "AngularVelocity", Detail = string.format("%.1f rad/s", angular.Magnitude), Correct = false }
+		return {
+			Ok = false,
+			Reason = "AngularVelocity",
+			Detail = string.format("%.1f rad/s", angular.Magnitude),
+			Correct = false,
+		}
 	end
 	if not inCorridor then
 		return { Ok = false, Reason = "OffCorridor", Detail = nil, Correct = false }
@@ -80,7 +107,21 @@ function KartValidationService.Validate(self: any, session: any, key: string, no
 		inCorridor = session.Arena:InBounds(pos)
 	end
 	local hazardScale = 1
-	local verdict = KartValidationService.Check(e.Stats, e.Surface, r.Boosts, r.Shards, now, e.LastValidPos, pos, pose.Velocity, pose.AngularVelocity, dt, r.Effects.HitStun ~= nil, pathY, inCorridor)
+	local verdict = KartValidationService.Check(
+		e.Stats,
+		e.Surface,
+		r.Boosts,
+		r.Shards,
+		now,
+		e.LastValidPos,
+		pos,
+		pose.Velocity,
+		pose.AngularVelocity,
+		dt,
+		r.Effects.HitStun ~= nil,
+		pathY,
+		inCorridor
+	)
 	local _ = hazardScale
 	if verdict.Ok then
 		e.LastValidPos = pos
@@ -91,7 +132,12 @@ function KartValidationService.Validate(self: any, session: any, key: string, no
 	if verdict.Correct then
 		-- Soft correction: back to the last valid position (or safe checkpoint when we have none).
 		if e.LastValidPos and verdict.Reason ~= "Fly" then
-			self._env.World.SetPose(session.Id, key, CFrame.new(e.LastValidPos :: Vector3) * (pose.CFrame - pose.CFrame.Position), Vector3.new())
+			self._env.World.SetPose(
+				session.Id,
+				key,
+				CFrame.new(e.LastValidPos :: Vector3) * (pose.CFrame - pose.CFrame.Position),
+				Vector3.new()
+			)
 			r.RespawnLockUntil = now + 0.5
 		else
 			self._progress:Respawn(session, key, "OffTrack")

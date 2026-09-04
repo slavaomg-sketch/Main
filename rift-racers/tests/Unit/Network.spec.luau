@@ -46,8 +46,17 @@ return function(T, Env)
 				big[i] = i
 			end
 			expect((Validator.CheckValue(big, { Type = "table", MaxEntries = 32 }))).toBe(false)
-			expect((Validator.CheckValue({ Laps = 3, Evil = 1 }, { Type = "table", Fields = { Laps = { Type = "integer" } } }))).toBe(false)
-			expect((Validator.CheckValue({ Laps = 3 }, { Type = "table", Fields = { Laps = { Type = "integer" } } }))).toBe(true)
+			expect(
+				(
+					Validator.CheckValue(
+						{ Laps = 3, Evil = 1 },
+						{ Type = "table", Fields = { Laps = { Type = "integer" } } }
+					)
+				)
+			).toBe(false)
+			expect((Validator.CheckValue({ Laps = 3 }, { Type = "table", Fields = { Laps = { Type = "integer" } } }))).toBe(
+				true
+			)
 		end)
 	end)
 

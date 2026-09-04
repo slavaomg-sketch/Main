@@ -12,13 +12,33 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local VFXController = { Name = "VFXController" }
 VFXController.__index = VFXController
 
-local TRAIL_COLORS: { [string]: Color3 } = { Trail_Comet = Color3.fromRGB(255, 200, 80), Trail_Prism = Color3.fromRGB(200, 120, 255) }
+local TRAIL_COLORS: { [string]: Color3 } =
+	{ Trail_Comet = Color3.fromRGB(255, 200, 80), Trail_Prism = Color3.fromRGB(200, 120, 255) }
 
 function VFXController.new()
-	return setmetatable({ _kart = nil :: any, _settings = nil :: any, _emitters = {} :: { [string]: ParticleEmitter }, _trails = {} :: { Trail }, _pool = {} :: { Part }, _highlights = {} :: { [string]: Highlight }, _lastSurface = "Asphalt" }, VFXController)
+	return setmetatable(
+		{
+			_kart = nil :: any,
+			_settings = nil :: any,
+			_emitters = {} :: { [string]: ParticleEmitter },
+			_trails = {} :: { Trail },
+			_pool = {} :: { Part },
+			_highlights = {} :: { [string]: Highlight },
+			_lastSurface = "Asphalt",
+		},
+		VFXController
+	)
 end
 
-local function emitter(parent: Instance, name: string, color: Color3, size: number, rate: number, speed: number, life: number): ParticleEmitter
+local function emitter(
+	parent: Instance,
+	name: string,
+	color: Color3,
+	size: number,
+	rate: number,
+	speed: number,
+	life: number
+): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Name = name
 	e.Color = ColorSequence.new(color)
@@ -58,7 +78,12 @@ function VFXController.Init(self: any, registry: any)
 	self._kart.DriftTierChanged:Connect(function(tier)
 		local e = self._emitters.Drift
 		if e then
-			e.Color = ColorSequence.new(if tier >= 3 then Color3.fromRGB(200, 120, 255) elseif tier == 2 then Color3.fromRGB(255, 200, 60) else Color3.fromRGB(80, 220, 255))
+			e.Color = ColorSequence.new(
+				if tier >= 3
+					then Color3.fromRGB(200, 120, 255)
+					elseif tier == 2 then Color3.fromRGB(255, 200, 60)
+					else Color3.fromRGB(80, 220, 255)
+			)
 		end
 	end)
 end
@@ -117,14 +142,22 @@ function VFXController.Tick(self: any)
 		boostE.Rate = if state == "Boosting" then (if reduced then 25 else 60) else 0
 	end
 	if driftE then
-		driftE.Rate = if (state == "DriftingLeft" or state == "DriftingRight") then (if reduced then 15 else 40) else 0
+		driftE.Rate = if state == "DriftingLeft" or state == "DriftingRight" then (if reduced then 15 else 40) else 0
 	end
 	if dustE then
 		local surf = SurfaceDefinitions[k.Surface]
-		local wantsDust = surf and (surf.VFX == "Dust" or surf.VFX == "Frost" or surf.VFX == "Splash") and k.Speed > 15 and k.Grounded
+		local wantsDust = surf
+			and (surf.VFX == "Dust" or surf.VFX == "Frost" or surf.VFX == "Splash")
+			and k.Speed > 15
+			and k.Grounded
 		dustE.Rate = if wantsDust then 20 else 0
 		if surf then
-			dustE.Color = ColorSequence.new(if surf.VFX == "Frost" then Color3.fromRGB(220, 240, 255) elseif surf.VFX == "Splash" then Color3.fromRGB(120, 170, 220) else Color3.fromRGB(180, 160, 130))
+			dustE.Color = ColorSequence.new(
+				if surf.VFX == "Frost"
+					then Color3.fromRGB(220, 240, 255)
+					elseif surf.VFX == "Splash" then Color3.fromRGB(120, 170, 220)
+					else Color3.fromRGB(180, 160, 130)
+			)
 		end
 	end
 	for _, t in self._trails do
@@ -197,7 +230,13 @@ function VFXController.OnVisual(self: any, name: string, data: any)
 			ring.CanCollide = false
 			ring.CanQuery = false
 			ring.Material = Enum.Material.Neon
-			ring.Color = if name == "Wave" then (ItemDefinitions.ById[data.Item] and ItemDefinitions.ById[data.Item].Color or Color3.fromRGB(180, 140, 255)) else Color3.fromRGB(255, 90, 60)
+			ring.Color = if name == "Wave"
+				then (ItemDefinitions.ById[data.Item] and ItemDefinitions.ById[data.Item].Color or Color3.fromRGB(
+					180,
+					140,
+					255
+				))
+				else Color3.fromRGB(255, 90, 60)
 			ring.Transparency = 0.4
 			ring.Size = Vector3.new(0.4, 2, 2)
 			ring.CFrame = CFrame.new(ch.Position) * CFrame.Angles(0, 0, math.rad(90))

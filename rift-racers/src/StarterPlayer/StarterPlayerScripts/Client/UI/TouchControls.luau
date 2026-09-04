@@ -15,7 +15,16 @@ function TouchControls.Build(parent: Instance, input: any, onItem: (string) -> (
 	scale.Parent = root
 
 	local function pad(name: string, text: string, size: number, pos: UDim2, anchor: Vector2, color: Color3): TextButton
-		local b = UIBuilder.Button({ Text = text, Size = UDim2.new(0, size, 0, size), Position = pos, Anchor = anchor, Color = color, Parent = root, Name = name, Selectable = false })
+		local b = UIBuilder.Button({
+			Text = text,
+			Size = UDim2.new(0, size, 0, size),
+			Position = pos,
+			Anchor = anchor,
+			Color = color,
+			Parent = root,
+			Name = name,
+			Selectable = false,
+		})
 		b.AutoButtonColor = false
 		return b
 	end
@@ -26,10 +35,38 @@ function TouchControls.Build(parent: Instance, input: any, onItem: (string) -> (
 	local brake = pad("Brake", "▼", 84, UDim2.new(0, 30, 1, -30), Vector2.new(0, 1), Theme.Colors.Danger)
 	local look = pad("LookBack", "◀▶", 64, UDim2.new(0, 30, 0.5, 0), Vector2.new(0, 0.5), Theme.Colors.PanelAlt)
 	local reset = pad("Reset", "⟲", 64, UDim2.new(0, 110, 0.5, 0), Vector2.new(0, 0.5), Theme.Colors.PanelAlt)
-	local steerZone = UIBuilder.Frame({ Size = UDim2.new(0, 260, 0, 130), Position = UDim2.new(0, 130, 1, -30), Anchor = Vector2.new(0, 1), Color = Theme.Colors.Panel, Transparency = 0.6, Parent = root, Name = "SteerZone", Corner = UDim.new(1, 0) })
-	local knob = UIBuilder.Frame({ Size = UDim2.new(0, 70, 0, 70), Position = UDim2.fromScale(0.5, 0.5), Anchor = Vector2.new(0.5, 0.5), Color = Theme.Colors.Accent, Corner = UDim.new(1, 0), Parent = steerZone })
-	UIBuilder.Label({ Text = "◀", Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(0, 8, 0, 0), Parent = steerZone, Color = Theme.Colors.TextDim })
-	UIBuilder.Label({ Text = "▶", Size = UDim2.new(0, 40, 1, 0), Position = UDim2.new(1, -48, 0, 0), Parent = steerZone, Color = Theme.Colors.TextDim })
+	local steerZone = UIBuilder.Frame({
+		Size = UDim2.new(0, 260, 0, 130),
+		Position = UDim2.new(0, 130, 1, -30),
+		Anchor = Vector2.new(0, 1),
+		Color = Theme.Colors.Panel,
+		Transparency = 0.6,
+		Parent = root,
+		Name = "SteerZone",
+		Corner = UDim.new(1, 0),
+	})
+	local knob = UIBuilder.Frame({
+		Size = UDim2.new(0, 70, 0, 70),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Anchor = Vector2.new(0.5, 0.5),
+		Color = Theme.Colors.Accent,
+		Corner = UDim.new(1, 0),
+		Parent = steerZone,
+	})
+	UIBuilder.Label({
+		Text = "◀",
+		Size = UDim2.new(0, 40, 1, 0),
+		Position = UDim2.new(0, 8, 0, 0),
+		Parent = steerZone,
+		Color = Theme.Colors.TextDim,
+	})
+	UIBuilder.Label({
+		Text = "▶",
+		Size = UDim2.new(0, 40, 1, 0),
+		Position = UDim2.new(1, -48, 0, 0),
+		Parent = steerZone,
+		Color = Theme.Colors.TextDim,
+	})
 
 	local function hold(btn: TextButton, field: string, down: any, up: any)
 		btn.InputBegan:Connect(function(io)
@@ -102,9 +139,13 @@ function TouchControls.Build(parent: Instance, input: any, onItem: (string) -> (
 		steerZone.AnchorPoint = if left then Vector2.new(1, 1) else Vector2.new(0, 1)
 		gas.Visible = not (settings.AutoAccelerate == true)
 	end
-	return { Gui = gui, Apply = apply, Destroy = function()
-		gui:Destroy()
-	end }
+	return {
+		Gui = gui,
+		Apply = apply,
+		Destroy = function()
+			gui:Destroy()
+		end,
+	}
 end
 
 return TouchControls

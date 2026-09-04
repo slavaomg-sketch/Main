@@ -1,13 +1,26 @@
 --!strict
 -- Same lifecycle shape as the server registry: Init -> Start, dependency lookup by name, ordered Destroy.
-export type Controller = { Name: string, Init: ((self: any, registry: ClientRegistry) -> ())?, Start: ((self: any) -> ())?, Destroy: ((self: any) -> ())? }
-export type ClientRegistry = { Add: (self: ClientRegistry, c: Controller) -> (), Get: (self: ClientRegistry, name: string) -> any, InitAll: (self: ClientRegistry) -> (), StartAll: (self: ClientRegistry) -> (), DestroyAll: (self: ClientRegistry) -> () }
+export type Controller = {
+	Name: string,
+	Init: ((self: any, registry: ClientRegistry) -> ())?,
+	Start: ((self: any) -> ())?,
+	Destroy: ((self: any) -> ())?,
+}
+export type ClientRegistry = {
+	Add: (self: ClientRegistry, c: Controller) -> (),
+	Get: (self: ClientRegistry, name: string) -> any,
+	InitAll: (self: ClientRegistry) -> (),
+	StartAll: (self: ClientRegistry) -> (),
+	DestroyAll: (self: ClientRegistry) -> (),
+}
 
 local ClientRegistry = {}
 ClientRegistry.__index = ClientRegistry
 
 function ClientRegistry.new(): ClientRegistry
-	return (setmetatable({ _order = {} :: { Controller }, _byName = {} :: { [string]: any } }, ClientRegistry) :: any) :: ClientRegistry
+	return (
+		setmetatable({ _order = {} :: { Controller }, _byName = {} :: { [string]: any } }, ClientRegistry) :: any
+	) :: ClientRegistry
 end
 
 function ClientRegistry.Add(self: any, c: Controller)

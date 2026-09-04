@@ -34,7 +34,14 @@ function BotRacerService.Fill(self: any, session: any, count: number, difficulty
 		local hero = HeroDefinitions.List[rng:NextInteger(1, #HeroDefinitions.List)]
 		local vehicle = VehicleDefinitions.List[rng:NextInteger(1, #VehicleDefinitions.List)]
 		local key = "b" .. self._counter
-		local identity: GameTypes.RacerIdentity = { Key = key, UserId = -self._counter, DisplayName = name, IsBot = true, BotDifficulty = difficulty, Team = 0 }
+		local identity: GameTypes.RacerIdentity = {
+			Key = key,
+			UserId = -self._counter,
+			DisplayName = name,
+			IsBot = true,
+			BotDifficulty = difficulty,
+			Team = 0,
+		}
 		session:AddRacer(identity, { HeroId = hero.Id, VehicleId = vehicle.Id, Cosmetics = {} }, nil)
 	end
 end
@@ -136,7 +143,13 @@ function BotRacerService.TickBot(self: any, session: any, key: string, now: numb
 			RubberBand = rubber,
 		}
 		local decision = BotBrain.Think(e.BotMemory, session.Track, obs)
-		input = { Steer = decision.Steer, Throttle = decision.Throttle, Brake = decision.Brake, Drift = decision.Drift, Trick = decision.Trick }
+		input = {
+			Steer = decision.Steer,
+			Throttle = decision.Throttle,
+			Brake = decision.Brake,
+			Drift = decision.Drift,
+			Trick = decision.Trick,
+		}
 		if decision.UseItem and r.Items.Active then
 			self._items:Use(session, key, "Active", sim:Forward(), nil)
 		end
@@ -151,8 +164,20 @@ function BotRacerService.TickBot(self: any, session: any, key: string, now: numb
 		input.Throttle = 0.3
 		input.Steer = 0
 		local decision = BotBrain.Think(e.BotMemory, session.Track, {
-			Position = sim.Position, Forward = sim:Forward(), Speed = sim.Speed, TopSpeed = e.Stats.TopSpeed, Progress = sim.Progress, Grounded = true,
-			HasItem = false, ItemKind = nil, RivalAhead = nil, RivalBehind = nil, Obstacles = {}, OnJump = false, Now = now, RubberBand = 0.6,
+			Position = sim.Position,
+			Forward = sim:Forward(),
+			Speed = sim.Speed,
+			TopSpeed = e.Stats.TopSpeed,
+			Progress = sim.Progress,
+			Grounded = true,
+			HasItem = false,
+			ItemKind = nil,
+			RivalAhead = nil,
+			RivalBehind = nil,
+			Obstacles = {},
+			OnJump = false,
+			Now = now,
+			RubberBand = 0.6,
 		})
 		input.Steer = decision.Steer
 	end
@@ -230,7 +255,10 @@ function BotRacerService.TickArenaBot(self: any, session: any, key: string, now:
 	local fake = session.Arena
 	local before = sim.Position
 	local _ = before
-	sim.Speed = math.min(sim.Speed + (if input.Throttle > 0 then e.Stats.Acceleration * dt else -sim.Speed * dt), e.Stats.TopSpeed * 0.9)
+	sim.Speed = math.min(
+		sim.Speed + (if input.Throttle > 0 then e.Stats.Acceleration * dt else -sim.Speed * dt),
+		e.Stats.TopSpeed * 0.9
+	)
 	if now < sim.StunUntil then
 		sim.Speed = math.min(sim.Speed, e.Stats.TopSpeed * sim.StunScale)
 	end

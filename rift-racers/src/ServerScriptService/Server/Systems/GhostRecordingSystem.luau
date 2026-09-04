@@ -30,7 +30,11 @@ function GhostRecordingSystem.Sample(rec: Recorder, now: number, cframe: CFrame)
 		return
 	end
 	local rx, ry, rz = cframe:ToEulerAnglesYXZ()
-	local frame: GhostFrame = { T = q(now - rec.StartedAt), P = Vector3.new(q(cframe.X), q(cframe.Y), q(cframe.Z)), R = Vector3.new(q(rx), q(ry), q(rz)) }
+	local frame: GhostFrame = {
+		T = q(now - rec.StartedAt),
+		P = Vector3.new(q(cframe.X), q(cframe.Y), q(cframe.Z)),
+		R = Vector3.new(q(rx), q(ry), q(rz)),
+	}
 	local last = rec.Last
 	if last then
 		local moved = (frame.P - last.P).Magnitude >= MIN_MOVE
@@ -44,8 +48,26 @@ function GhostRecordingSystem.Sample(rec: Recorder, now: number, cframe: CFrame)
 	rec.LastSampleAt = now
 end
 
-function GhostRecordingSystem.Finish(rec: Recorder, trackId: string, vehicleId: string, heroId: string, laps: number, timeSeconds: number, assist: boolean): GhostRecording
-	return { Version = VERSION, TrackId = trackId, VehicleId = vehicleId, HeroId = heroId, Laps = laps, TimeSeconds = timeSeconds, Assist = assist, Frames = rec.Frames, SampleHz = SAMPLE_HZ }
+function GhostRecordingSystem.Finish(
+	rec: Recorder,
+	trackId: string,
+	vehicleId: string,
+	heroId: string,
+	laps: number,
+	timeSeconds: number,
+	assist: boolean
+): GhostRecording
+	return {
+		Version = VERSION,
+		TrackId = trackId,
+		VehicleId = vehicleId,
+		HeroId = heroId,
+		Laps = laps,
+		TimeSeconds = timeSeconds,
+		Assist = assist,
+		Frames = rec.Frames,
+		SampleHz = SAMPLE_HZ,
+	}
 end
 
 -- Interpolated pose at time t for playback.
@@ -80,9 +102,24 @@ end
 
 -- Serialise to a compact string for DataStore (~12 bytes per frame as text).
 function GhostRecordingSystem.Serialize(ghost: GhostRecording): string
-	local parts = { string.format("%d|%s|%s|%s|%d|%.3f|%d|%d", ghost.Version, ghost.TrackId, ghost.VehicleId, ghost.HeroId, ghost.Laps, ghost.TimeSeconds, if ghost.Assist then 1 else 0, ghost.SampleHz) }
+	local parts = {
+		string.format(
+			"%d|%s|%s|%s|%d|%.3f|%d|%d",
+			ghost.Version,
+			ghost.TrackId,
+			ghost.VehicleId,
+			ghost.HeroId,
+			ghost.Laps,
+			ghost.TimeSeconds,
+			if ghost.Assist then 1 else 0,
+			ghost.SampleHz
+		),
+	}
 	for _, f in ghost.Frames do
-		table.insert(parts, string.format("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", f.T, f.P.X, f.P.Y, f.P.Z, f.R.X, f.R.Y, f.R.Z))
+		table.insert(
+			parts,
+			string.format("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", f.T, f.P.X, f.P.Y, f.P.Z, f.R.X, f.R.Y, f.R.Z)
+		)
 	end
 	return table.concat(parts, ";")
 end

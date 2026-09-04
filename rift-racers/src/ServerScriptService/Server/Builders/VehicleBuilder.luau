@@ -36,14 +36,36 @@ local PAINTS: { [string]: Color3 } = {
 	Paint_MossGlow = Color3.fromRGB(110, 200, 90),
 }
 
-export type BuiltKart = { Model: Model, Chassis: Part, Wheels: { { Part: BasePart, Weld: Weld, Offset: Vector3, Steer: boolean } }, Attachments: { Attachment }, Forces: { VectorForce }, Drive: VectorForce, Align: AlignOrientation, Seat: Attachment }
+export type BuiltKart = {
+	Model: Model,
+	Chassis: Part,
+	Wheels: { { Part: BasePart, Weld: Weld, Offset: Vector3, Steer: boolean } },
+	Attachments: { Attachment },
+	Forces: { VectorForce },
+	Drive: VectorForce,
+	Align: AlignOrientation,
+	Seat: Attachment,
+}
 
-function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, cosmetics: any, cframe: CFrame, collisions: boolean, isBot: boolean, parent: Instance): BuiltKart
+function VehicleBuilder.Build(
+	key: string,
+	heroId: string,
+	vehicleId: string,
+	cosmetics: any,
+	cframe: CFrame,
+	collisions: boolean,
+	isBot: boolean,
+	parent: Instance
+): BuiltKart
 	VehicleBuilder.EnsureCollisionGroups()
 	local def = VehicleDefinitions.ById[vehicleId] or VehicleDefinitions.ById[VehicleDefinitions.DefaultVehicleId]
 	local hero = HeroDefinitions.ById[heroId] or HeroDefinitions.ById[HeroDefinitions.DefaultHeroId]
 	local v = def.Visual
-	local paint = if cosmetics and cosmetics.Paint and PAINTS[cosmetics.Paint] then PAINTS[cosmetics.Paint] else v.PrimaryColor
+	local paint = if cosmetics
+			and cosmetics.Paint
+			and PAINTS[cosmetics.Paint]
+		then PAINTS[cosmetics.Paint]
+		else v.PrimaryColor
 	local model = Instance.new("Model")
 	model.Name = "Kart_" .. key
 
@@ -58,7 +80,8 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 	chassis.CanQuery = true
 	chassis.Anchored = false
 	chassis.Massless = false
-	chassis.CustomPhysicalProperties = PhysicalProperties.new(def.Physics.Mass / (chassis.Size.X * chassis.Size.Y * chassis.Size.Z), 0.3, 0.2, 1, 1)
+	chassis.CustomPhysicalProperties =
+		PhysicalProperties.new(def.Physics.Mass / (chassis.Size.X * chassis.Size.Y * chassis.Size.Z), 0.3, 0.2, 1, 1)
 	chassis.CollisionGroup = if collisions then GROUP_KARTS else GROUP_KARTS_NOCOLLIDE
 	chassis.Parent = model
 	model.PrimaryPart = chassis
@@ -68,7 +91,14 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 	chassis:SetAttribute("HeroId", hero.Id)
 	chassis:SetAttribute("IsBot", isBot)
 
-	local function visual(size: Vector3, offset: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?, name: string?): Part
+	local function visual(
+		size: Vector3,
+		offset: CFrame,
+		color: Color3,
+		material: Enum.Material?,
+		shape: Enum.PartType?,
+		name: string?
+	): Part
 		local p = Instance.new("Part")
 		p.Name = name or "Body"
 		p.Size = size
@@ -98,7 +128,13 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 	local bodyY = -0.2
 	if v.Silhouette == "Wedge" then
 		visual(Vector3.new(bs.X, bs.Y, bs.Z * 0.6), CFrame.new(0, bodyY, bs.Z * 0.15), paint)
-		local nose = PartUtil.Wedge(Vector3.new(bs.X * 0.9, bs.Y, bs.Z * 0.4), cframe * CFrame.new(0, bodyY, -bs.Z * 0.35) * CFrame.Angles(0, math.pi, 0), paint, v.Material, model)
+		local nose = PartUtil.Wedge(
+			Vector3.new(bs.X * 0.9, bs.Y, bs.Z * 0.4),
+			cframe * CFrame.new(0, bodyY, -bs.Z * 0.35) * CFrame.Angles(0, math.pi, 0),
+			paint,
+			v.Material,
+			model
+		)
 		nose.Anchored = false
 		nose.CanCollide = false
 		nose.Massless = true
@@ -108,23 +144,76 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 		wn.Parent = nose
 	elseif v.Silhouette == "Pod" then
 		visual(Vector3.new(bs.X, bs.Y * 1.6, bs.Z * 0.8), CFrame.new(0, bodyY + 0.3, 0), paint, nil, Enum.PartType.Ball)
-		visual(Vector3.new(bs.X * 0.8, bs.Y * 0.6, bs.Z * 0.5), CFrame.new(0, bodyY - 0.2, -bs.Z * 0.3), v.SecondaryColor)
+		visual(
+			Vector3.new(bs.X * 0.8, bs.Y * 0.6, bs.Z * 0.5),
+			CFrame.new(0, bodyY - 0.2, -bs.Z * 0.3),
+			v.SecondaryColor
+		)
 	elseif v.Silhouette == "Long" then
 		visual(Vector3.new(bs.X * 0.8, bs.Y, bs.Z), CFrame.new(0, bodyY, 0), paint)
-		visual(Vector3.new(bs.X, bs.Y * 0.5, bs.Z * 0.35), CFrame.new(0, bodyY + 0.2, bs.Z * 0.28), v.SecondaryColor, nil, nil, "Spoiler")
-		visual(Vector3.new(bs.X * 0.5, bs.Y * 0.4, bs.Z * 0.3), CFrame.new(0, bodyY - 0.1, -bs.Z * 0.38), v.AccentColor, Enum.Material.Neon, nil, "Nose")
+		visual(
+			Vector3.new(bs.X, bs.Y * 0.5, bs.Z * 0.35),
+			CFrame.new(0, bodyY + 0.2, bs.Z * 0.28),
+			v.SecondaryColor,
+			nil,
+			nil,
+			"Spoiler"
+		)
+		visual(
+			Vector3.new(bs.X * 0.5, bs.Y * 0.4, bs.Z * 0.3),
+			CFrame.new(0, bodyY - 0.1, -bs.Z * 0.38),
+			v.AccentColor,
+			Enum.Material.Neon,
+			nil,
+			"Nose"
+		)
 	elseif v.Silhouette == "Wide" then
 		visual(Vector3.new(bs.X, bs.Y, bs.Z * 0.9), CFrame.new(0, bodyY, 0), paint)
-		visual(Vector3.new(bs.X * 1.05, bs.Y * 0.3, bs.Z * 0.2), CFrame.new(0, bodyY + 0.5, -bs.Z * 0.35), v.AccentColor, Enum.Material.Metal, nil, "Bumper")
+		visual(
+			Vector3.new(bs.X * 1.05, bs.Y * 0.3, bs.Z * 0.2),
+			CFrame.new(0, bodyY + 0.5, -bs.Z * 0.35),
+			v.AccentColor,
+			Enum.Material.Metal,
+			nil,
+			"Bumper"
+		)
 	else -- Box
 		visual(Vector3.new(bs.X, bs.Y, bs.Z), CFrame.new(0, bodyY, 0), paint)
-		visual(Vector3.new(bs.X * 0.9, bs.Y * 0.4, bs.Z * 0.3), CFrame.new(0, bodyY + bs.Y * 0.6, bs.Z * 0.2), v.SecondaryColor, nil, nil, "Rack")
+		visual(
+			Vector3.new(bs.X * 0.9, bs.Y * 0.4, bs.Z * 0.3),
+			CFrame.new(0, bodyY + bs.Y * 0.6, bs.Z * 0.2),
+			v.SecondaryColor,
+			nil,
+			nil,
+			"Rack"
+		)
 	end
 	-- Cabin + accents + light
-	local cabin = visual(v.CabinSize, CFrame.new(0, bodyY + bs.Y / 2 + v.CabinSize.Y / 2 - 0.1, bs.Z * 0.05), v.SecondaryColor, nil, nil, "Cabin")
+	local cabin = visual(
+		v.CabinSize,
+		CFrame.new(0, bodyY + bs.Y / 2 + v.CabinSize.Y / 2 - 0.1, bs.Z * 0.05),
+		v.SecondaryColor,
+		nil,
+		nil,
+		"Cabin"
+	)
 	local _ = cabin
-	visual(Vector3.new(bs.X * 0.7, 0.3, 0.4), CFrame.new(0, bodyY + 0.2, -bs.Z / 2 + 0.2), v.AccentColor, Enum.Material.Neon, nil, "HeadLight")
-	local tail = visual(Vector3.new(bs.X * 0.6, 0.3, 0.3), CFrame.new(0, bodyY + 0.2, bs.Z / 2 - 0.1), Color3.fromRGB(255, 60, 60), Enum.Material.Neon, nil, "TailLight")
+	visual(
+		Vector3.new(bs.X * 0.7, 0.3, 0.4),
+		CFrame.new(0, bodyY + 0.2, -bs.Z / 2 + 0.2),
+		v.AccentColor,
+		Enum.Material.Neon,
+		nil,
+		"HeadLight"
+	)
+	local tail = visual(
+		Vector3.new(bs.X * 0.6, 0.3, 0.3),
+		CFrame.new(0, bodyY + 0.2, bs.Z / 2 - 0.1),
+		Color3.fromRGB(255, 60, 60),
+		Enum.Material.Neon,
+		nil,
+		"TailLight"
+	)
 	local _t = tail
 	-- Exhaust/boost emitter anchor
 	local exhaust = Instance.new("Attachment")
@@ -137,9 +226,18 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 	local wheelY = -0.9
 	local positions: { { Pos: Vector3, Steer: boolean } } = {}
 	if v.WheelCount == 3 then
-		positions = { { Pos = Vector3.new(0, wheelY, -bs.Z * 0.42), Steer = true }, { Pos = Vector3.new(-bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false }, { Pos = Vector3.new(bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false } }
+		positions = {
+			{ Pos = Vector3.new(0, wheelY, -bs.Z * 0.42), Steer = true },
+			{ Pos = Vector3.new(-bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false },
+			{ Pos = Vector3.new(bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false },
+		}
 	else
-		positions = { { Pos = Vector3.new(-bs.X * 0.5, wheelY, -bs.Z * 0.35), Steer = true }, { Pos = Vector3.new(bs.X * 0.5, wheelY, -bs.Z * 0.35), Steer = true }, { Pos = Vector3.new(-bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false }, { Pos = Vector3.new(bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false } }
+		positions = {
+			{ Pos = Vector3.new(-bs.X * 0.5, wheelY, -bs.Z * 0.35), Steer = true },
+			{ Pos = Vector3.new(bs.X * 0.5, wheelY, -bs.Z * 0.35), Steer = true },
+			{ Pos = Vector3.new(-bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false },
+			{ Pos = Vector3.new(bs.X * 0.5, wheelY, bs.Z * 0.35), Steer = false },
+		}
 	end
 	for i, entry in positions do
 		local offset, steer = entry.Pos, entry.Steer
@@ -161,7 +259,8 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 		wheel.CanTouch = false
 		wheel.Massless = true
 		wheel.Anchored = false
-		local base = CFrame.new(offset) * (if v.Kind == "Hover" then CFrame.Angles(0, 0, math.rad(90)) else CFrame.Angles(0, 0, math.rad(90)))
+		local base = CFrame.new(offset)
+			* (if v.Kind == "Hover" then CFrame.Angles(0, 0, math.rad(90)) else CFrame.Angles(0, 0, math.rad(90)))
 		wheel.CFrame = cframe * base
 		wheel.Parent = model
 		local weld = Instance.new("Weld")
@@ -230,7 +329,16 @@ function VehicleBuilder.Build(key: string, heroId: string, vehicleId: string, co
 		end)
 	end
 	local _g = GameConfig
-	return { Model = model, Chassis = chassis, Wheels = wheels, Attachments = attachments, Forces = forces, Drive = drive, Align = align, Seat = seat }
+	return {
+		Model = model,
+		Chassis = chassis,
+		Wheels = wheels,
+		Attachments = attachments,
+		Forces = forces,
+		Drive = drive,
+		Align = align,
+		Seat = seat,
+	}
 end
 
 return VehicleBuilder

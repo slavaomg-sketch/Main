@@ -6,7 +6,13 @@ local Shared = ReplicatedStorage.Shared
 local Network = require(Shared.Net.Network)
 local ProfileStore = require(script.Parent.Systems.ProfileStore)
 
-export type PlayerLike = { UserId: number, Name: string, DisplayName: string, Parent: any?, Kick: ((self: any, reason: string?) -> ())? }
+export type PlayerLike = {
+	UserId: number,
+	Name: string,
+	DisplayName: string,
+	Parent: any?,
+	Kick: ((self: any, reason: string?) -> ())?,
+}
 
 export type MemoryQueue = {
 	Add: (self: MemoryQueue, key: string, value: any, ttl: number) -> boolean,
@@ -27,13 +33,19 @@ export type Env = {
 	Dispatcher: Network.Dispatcher,
 	FireClient: (name: string, player: PlayerLike, ...any) -> (),
 	FireAll: (name: string, ...any) -> (),
-	Players: { PlayerAdded: any, PlayerRemoving: any, GetPlayers: () -> { PlayerLike }, GetPlayerByUserId: (number) -> PlayerLike? },
+	Players: {
+		PlayerAdded: any,
+		PlayerRemoving: any,
+		GetPlayers: () -> { PlayerLike },
+		GetPlayerByUserId: (number) -> PlayerLike?,
+	},
 	ProfileBackend: ProfileStore.Backend,
 	MemoryQueue: MemoryQueue,
 	Teleport: TeleportAdapter,
 	Heartbeat: any, -- signal with Connect(fn(dt))
 	BindToClose: (fn: () -> ()) -> (),
 	SessionId: string,
+	Sleep: (seconds: number) -> (),
 	Random: Random,
 	Log: (level: "Info" | "Warn" | "Error", tag: string, message: string) -> (),
 	World: any, -- World adapter (see RaceService); Roblox or fake

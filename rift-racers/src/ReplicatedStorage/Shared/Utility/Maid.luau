@@ -1,7 +1,18 @@
 --!strict
 -- Tracks connections, instances, threads and callbacks so every system can clean up deterministically.
-export type Task = RBXScriptConnection | Instance | thread | (() -> ()) | { Destroy: (any) -> () } | { Disconnect: (any) -> () }
-export type Maid = { Give: (self: Maid, task: any) -> any, GiveKey: (self: Maid, key: string, task: any) -> (), Clean: (self: Maid, key: string) -> (), Destroy: (self: Maid) -> () }
+export type Task =
+	RBXScriptConnection
+	| Instance
+	| thread
+	| (() -> ())
+	| { Destroy: (any) -> () }
+	| { Disconnect: (any) -> () }
+export type Maid = {
+	Give: (self: Maid, task: any) -> any,
+	GiveKey: (self: Maid, key: string, task: any) -> (),
+	Clean: (self: Maid, key: string) -> (),
+	Destroy: (self: Maid) -> (),
+}
 
 local Maid = {}
 Maid.__index = Maid

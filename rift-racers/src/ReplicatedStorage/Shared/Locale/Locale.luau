@@ -23,10 +23,12 @@ end
 
 function Locale.Format(template: string, ...: any): string
 	local args = table.pack(...)
-	return (template:gsub("{(%d+)}", function(idx)
-		local v = args[tonumber(idx) :: number + 1]
-		return if v == nil then "" else tostring(v)
-	end))
+	return (
+		template:gsub("{(%d+)}", function(idx)
+			local v = args[tonumber(idx) :: number + 1]
+			return if v == nil then "" else tostring(v)
+		end)
+	)
 end
 
 function Locale.T(key: string, ...: any): string

@@ -21,11 +21,29 @@ function ArenaBuilder.Build(rt: any, origin: Vector3, parent: Instance): Built
 	local floorSurf = SurfaceDefinitions[def.FloorSurface] or SurfaceDefinitions.Asphalt
 	local atm = def.Atmosphere
 	local size = def.Radius * 2 + 20
-	local floor = PartUtil.Part({ Size = Vector3.new(size, 2, size), CFrame = CFrame.new(origin + Vector3.new(0, -1, 0)), Color = floorSurf.Color, Material = floorSurf.Material, Name = "Floor", Tags = { "Road", floorSurf.Tag }, Parent = road, CanQuery = true })
+	local floor = PartUtil.Part({
+		Size = Vector3.new(size, 2, size),
+		CFrame = CFrame.new(origin + Vector3.new(0, -1, 0)),
+		Color = floorSurf.Color,
+		Material = floorSurf.Material,
+		Name = "Floor",
+		Tags = { "Road", floorSurf.Tag },
+		Parent = road,
+		CanQuery = true,
+	})
 	floor:SetAttribute("Surface", def.FloorSurface)
 	for _, patch in def.SurfacePatches do
 		local s = SurfaceDefinitions[patch.Surface] or SurfaceDefinitions.Asphalt
-		local p = PartUtil.Part({ Size = Vector3.new(patch.Size.X, 0.4, patch.Size.Z), CFrame = CFrame.new(origin + patch.Position + Vector3.new(0, 0.2, 0)), Color = s.Color, Material = s.Material, Name = "Patch", Tags = { "Road", s.Tag }, Parent = road, CanQuery = true })
+		local p = PartUtil.Part({
+			Size = Vector3.new(patch.Size.X, 0.4, patch.Size.Z),
+			CFrame = CFrame.new(origin + patch.Position + Vector3.new(0, 0.2, 0)),
+			Color = s.Color,
+			Material = s.Material,
+			Name = "Patch",
+			Tags = { "Road", s.Tag },
+			Parent = road,
+			CanQuery = true,
+		})
 		p:SetAttribute("Surface", patch.Surface)
 	end
 	-- Perimeter walls
@@ -35,19 +53,50 @@ function ArenaBuilder.Build(rt: any, origin: Vector3, parent: Instance): Built
 			local a = (i / segments) * math.pi * 2
 			local pos = origin + Vector3.new(math.cos(a) * def.Radius, 4, math.sin(a) * def.Radius)
 			local cf = CFrame.lookAt(pos, origin + Vector3.new(0, 4, 0))
-			PartUtil.Part({ Size = Vector3.new(def.Radius * 2 * math.pi / segments + 1, 8, 2), CFrame = cf, Color = atm.WallColor, Material = Enum.Material.Glass, Transparency = 0.3, Name = "BowlWall", Tags = { "Wall", "RiftWall" }, Parent = walls, CanQuery = true })
+			PartUtil.Part({
+				Size = Vector3.new(def.Radius * 2 * math.pi / segments + 1, 8, 2),
+				CFrame = cf,
+				Color = atm.WallColor,
+				Material = Enum.Material.Glass,
+				Transparency = 0.3,
+				Name = "BowlWall",
+				Tags = { "Wall", "RiftWall" },
+				Parent = walls,
+				CanQuery = true,
+			})
 		end
 	else
 		for _, side in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) } do
 			local pos = origin + side * def.Radius + Vector3.new(0, 4, 0)
 			local cf = CFrame.lookAt(pos, origin + Vector3.new(0, 4, 0))
-			PartUtil.Part({ Size = Vector3.new(def.Radius * 2 + 4, 8, 2), CFrame = cf, Color = atm.WallColor, Material = Enum.Material.Metal, Name = "YardWall", Tags = { "Wall", "RiftWall" }, Parent = walls, CanQuery = true })
+			PartUtil.Part({
+				Size = Vector3.new(def.Radius * 2 + 4, 8, 2),
+				CFrame = cf,
+				Color = atm.WallColor,
+				Material = Enum.Material.Metal,
+				Name = "YardWall",
+				Tags = { "Wall", "RiftWall" },
+				Parent = walls,
+				CanQuery = true,
+			})
 		end
 	end
 	for _, ob in def.Obstacles do
 		local color = ob.Color or Color3.fromRGB(120, 120, 140)
-		local mat = if ob.Kind == "Crystal" then Enum.Material.Glass elseif ob.Kind == "TirePile" then Enum.Material.Rubber else Enum.Material.Metal
-		local p = PartUtil.Part({ Size = ob.Size, CFrame = CFrame.new(origin + ob.Position), Color = color, Material = mat, Name = ob.Kind, Tags = { "Wall", "Obstacle" }, Parent = decor, CanQuery = true })
+		local mat = if ob.Kind == "Crystal"
+			then Enum.Material.Glass
+			elseif ob.Kind == "TirePile" then Enum.Material.Rubber
+			else Enum.Material.Metal
+		local p = PartUtil.Part({
+			Size = ob.Size,
+			CFrame = CFrame.new(origin + ob.Position),
+			Color = color,
+			Material = mat,
+			Name = ob.Kind,
+			Tags = { "Wall", "Obstacle" },
+			Parent = decor,
+			CanQuery = true,
+		})
 		if ob.Kind == "Crystal" then
 			p.Transparency = 0.25
 			PartUtil.Light(p, color, 30, 1.2)

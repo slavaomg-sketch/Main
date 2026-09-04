@@ -14,21 +14,23 @@ local registry = ServiceRegistry.new()
 local env = RobloxEnvFactory.Build()
 registry:Set("Env", env)
 
-for _, name in {
-	"TelemetryService",
-	"SecurityService",
-	"ModeService",
-	"ProfileService",
-	"RewardService",
-	"PartyService",
-	"RaceProgressService",
-	"KartValidationService",
-	"ItemService",
-	"BotRacerService",
-	"RaceService",
-	"MatchmakingService",
-	"LobbyService",
-} do
+for _, name in
+	{
+		"TelemetryService",
+		"SecurityService",
+		"ModeService",
+		"ProfileService",
+		"RewardService",
+		"PartyService",
+		"RaceProgressService",
+		"KartValidationService",
+		"ItemService",
+		"BotRacerService",
+		"RaceService",
+		"MatchmakingService",
+		"LobbyService",
+	}
+do
 	local module = require(Services:FindFirstChild(name)) :: any
 	registry:Add(module.new())
 end
@@ -48,4 +50,13 @@ LobbyBuilder.Build()
 
 registry:InitAll()
 registry:StartAll()
-env.Log("Info", "Bootstrap", string.format("%s server ready (MaxRacers=%d, localMode=%s)", GameConfig.ProjectName, GameConfig.MaxRacers, tostring(env.Teleport.LocalMode)))
+env.Log(
+	"Info",
+	"Bootstrap",
+	string.format(
+		"%s server ready (MaxRacers=%d, localMode=%s)",
+		GameConfig.ProjectName,
+		GameConfig.MaxRacers,
+		tostring(env.Teleport.LocalMode)
+	)
+)

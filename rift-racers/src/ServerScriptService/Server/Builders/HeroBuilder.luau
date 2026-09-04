@@ -27,7 +27,12 @@ local function part(name: string, size: Vector3, color: Color3, material: Enum.M
 end
 
 -- Builds the figure welded to `root` (a chassis or a lobby pedestal). Returns the figure model.
-function HeroBuilder.Build(hero: HeroDefinitions.HeroDefinition, cframe: CFrame, root: BasePart, parent: Instance): Model
+function HeroBuilder.Build(
+	hero: HeroDefinitions.HeroDefinition,
+	cframe: CFrame,
+	root: BasePart,
+	parent: Instance
+): Model
 	local c = hero.Cosmetics
 	local model = Instance.new("Model")
 	model.Name = "Hero_" .. hero.Id
@@ -36,7 +41,8 @@ function HeroBuilder.Build(hero: HeroDefinitions.HeroDefinition, cframe: CFrame,
 	table.insert(pieces, { P = torso, C = CFrame.new(0, 0.8, 0) })
 	local head: Part
 	if c.HeadShape == "Round" then
-		head = part("Head", Vector3.new(1.2, 1.2, 1.2), c.SecondaryColor, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		head =
+			part("Head", Vector3.new(1.2, 1.2, 1.2), c.SecondaryColor, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
 	elseif c.HeadShape == "Dome" then
 		head = part("Head", Vector3.new(1.2, 1.1, 1.2), c.SecondaryColor, Enum.Material.Glass, Enum.PartType.Ball)
 	elseif c.HeadShape == "Block" then
@@ -46,14 +52,50 @@ function HeroBuilder.Build(hero: HeroDefinitions.HeroDefinition, cframe: CFrame,
 	end
 	table.insert(pieces, { P = head, C = CFrame.new(0, 2.3, 0) })
 	if c.HeadShape == "Visor" then
-		table.insert(pieces, { P = part("Visor", Vector3.new(1.0, 0.4, 0.2), c.AccentColor, Enum.Material.Neon), C = CFrame.new(0, 2.35, -0.55) })
+		table.insert(
+			pieces,
+			{
+				P = part("Visor", Vector3.new(1.0, 0.4, 0.2), c.AccentColor, Enum.Material.Neon),
+				C = CFrame.new(0, 2.35, -0.55),
+			}
+		)
 	else
-		table.insert(pieces, { P = part("Eyes", Vector3.new(0.8, 0.2, 0.15), c.AccentColor, Enum.Material.Neon), C = CFrame.new(0, 2.4, -0.55) })
+		table.insert(
+			pieces,
+			{
+				P = part("Eyes", Vector3.new(0.8, 0.2, 0.15), c.AccentColor, Enum.Material.Neon),
+				C = CFrame.new(0, 2.4, -0.55),
+			}
+		)
 	end
-	table.insert(pieces, { P = part("ArmL", Vector3.new(0.4, 1.2, 0.4), c.PrimaryColor, Enum.Material.SmoothPlastic), C = CFrame.new(-1.0, 1.1, -0.3) * CFrame.Angles(math.rad(-50), 0, 0) })
-	table.insert(pieces, { P = part("ArmR", Vector3.new(0.4, 1.2, 0.4), c.PrimaryColor, Enum.Material.SmoothPlastic), C = CFrame.new(1.0, 1.1, -0.3) * CFrame.Angles(math.rad(-50), 0, 0) })
-	table.insert(pieces, { P = part("LegL", Vector3.new(0.5, 1.1, 0.5), c.SecondaryColor, Enum.Material.SmoothPlastic), C = CFrame.new(-0.45, 0.1, -0.5) * CFrame.Angles(math.rad(-80), 0, 0) })
-	table.insert(pieces, { P = part("LegR", Vector3.new(0.5, 1.1, 0.5), c.SecondaryColor, Enum.Material.SmoothPlastic), C = CFrame.new(0.45, 0.1, -0.5) * CFrame.Angles(math.rad(-80), 0, 0) })
+	table.insert(
+		pieces,
+		{
+			P = part("ArmL", Vector3.new(0.4, 1.2, 0.4), c.PrimaryColor, Enum.Material.SmoothPlastic),
+			C = CFrame.new(-1.0, 1.1, -0.3) * CFrame.Angles(math.rad(-50), 0, 0),
+		}
+	)
+	table.insert(
+		pieces,
+		{
+			P = part("ArmR", Vector3.new(0.4, 1.2, 0.4), c.PrimaryColor, Enum.Material.SmoothPlastic),
+			C = CFrame.new(1.0, 1.1, -0.3) * CFrame.Angles(math.rad(-50), 0, 0),
+		}
+	)
+	table.insert(
+		pieces,
+		{
+			P = part("LegL", Vector3.new(0.5, 1.1, 0.5), c.SecondaryColor, Enum.Material.SmoothPlastic),
+			C = CFrame.new(-0.45, 0.1, -0.5) * CFrame.Angles(math.rad(-80), 0, 0),
+		}
+	)
+	table.insert(
+		pieces,
+		{
+			P = part("LegR", Vector3.new(0.5, 1.1, 0.5), c.SecondaryColor, Enum.Material.SmoothPlastic),
+			C = CFrame.new(0.45, 0.1, -0.5) * CFrame.Angles(math.rad(-80), 0, 0),
+		}
+	)
 	-- Accessory silhouette (kept tiny and readable).
 	local acc: Part? = nil
 	local accCf = CFrame.new(0, 2.95, 0)

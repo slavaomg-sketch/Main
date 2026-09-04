@@ -71,7 +71,8 @@ function Spline.new(controlPoints: { Vector3 }, scale: number?, closed: boolean?
 		for k = 0, lastStep do
 			local t = k / steps
 			local pos = catmull(p0, p1, p2, p3, t)
-			local tangent = catmull(p0, p1, p2, p3, math.min(t + 1 / steps, 1)) - catmull(p0, p1, p2, p3, math.max(t - 1 / steps, 0))
+			local tangent = catmull(p0, p1, p2, p3, math.min(t + 1 / steps, 1))
+				- catmull(p0, p1, p2, p3, math.max(t - 1 / steps, 0))
 			if last then
 				dist += (pos - (last :: Vector3)).Magnitude
 			end

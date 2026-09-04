@@ -106,7 +106,13 @@ function LobbyService.OnPlayerJoined(self: any, player: any)
 		self._pendingArrivals = self._pendingArrivals or {}
 		local pending = self._pendingArrivals[data.Token]
 		if not pending then
-			pending = { ModeId = data.ModeId, Expected = data.UserIds or {}, Arrived = {}, BotCount = data.BotCount or 0, CreatedAt = self._env.Now() }
+			pending = {
+				ModeId = data.ModeId,
+				Expected = data.UserIds or {},
+				Arrived = {},
+				BotCount = data.BotCount or 0,
+				CreatedAt = self._env.Now(),
+			}
 			self._pendingArrivals[data.Token] = pending
 		end
 		table.insert(pending.Arrived, player)
@@ -152,7 +158,10 @@ function LobbyService.OnMatchFormed(self: any, match: any)
 	pcall(function()
 		self._env.MemoryQueue:Add("tp:" .. token, { ModeId = match.ModeId, UserIds = match.UserIds }, 120)
 	end)
-	local ok, err = self._env.Teleport:ReserveAndTeleport(players, { ModeId = match.ModeId, UserIds = match.UserIds, BotCount = match.BotCount, Token = token })
+	local ok, err = self._env.Teleport:ReserveAndTeleport(
+		players,
+		{ ModeId = match.ModeId, UserIds = match.UserIds, BotCount = match.BotCount, Token = token }
+	)
 	if not ok then
 		self._telemetry:Log("Warn", "Lobby", "teleport failed: " .. tostring(err))
 		for _, pl in players do
@@ -313,7 +322,13 @@ function LobbyService.RoomAction(self: any, player: any, action: string, rules: 
 		self._mm:Leave(uid)
 		self._nextRoom += 1
 		local clean, changed = LobbyService.SanitizeRules(rules)
-		local room: Room = { Id = "room_" .. self._nextRoom, OwnerId = uid, Members = { uid }, Rules = clean, CreatedAt = self._env.Now() }
+		local room: Room = {
+			Id = "room_" .. self._nextRoom,
+			OwnerId = uid,
+			Members = { uid },
+			Rules = clean,
+			CreatedAt = self._env.Now(),
+		}
 		-- Party members join automatically.
 		for _, m in self._party:Members(uid) do
 			if m ~= uid then
@@ -393,7 +408,12 @@ function LobbyService.RoomAction(self: any, player: any, action: string, rules: 
 		}
 		local venue = r.TrackId or TrackDefinitions.Tracks[self._env.Random:NextInteger(1, #TrackDefinitions.Tracks)].Id
 		override.TrackId = venue
-		self._race:StartSession("CustomRace", players, override, { Venue = venue, BotCount = override.BotCount, BotDifficulty = override.BotDifficulty })
+		self._race:StartSession(
+			"CustomRace",
+			players,
+			override,
+			{ Venue = venue, BotCount = override.BotCount, BotDifficulty = override.BotDifficulty }
+		)
 		for _, m in table.clone(room.Members) do
 			self:LeaveRoom(m)
 		end

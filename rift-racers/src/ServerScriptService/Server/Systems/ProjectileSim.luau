@@ -41,11 +41,23 @@ function ProjectileSim.new()
 	return setmetatable({ List = {} :: { Projectile } }, ProjectileSim)
 end
 
-function ProjectileSim.Spawn(self: any, itemId: string, ownerKey: string, ownerTeam: number, position: Vector3, direction: Vector3, now: number, targetKey: string?): Projectile
+function ProjectileSim.Spawn(
+	self: any,
+	itemId: string,
+	ownerKey: string,
+	ownerTeam: number,
+	position: Vector3,
+	direction: Vector3,
+	now: number,
+	targetKey: string?
+): Projectile
 	local def = ItemDefinitions.ById[itemId]
 	assert(def, "unknown item " .. itemId)
 	nextId += 1
-	local kind: "Projectile" | "Homing" | "Trap" = if def.Kind == "Homing" then "Homing" elseif def.Kind == "Trap" then "Trap" else "Projectile"
+	local kind: "Projectile" | "Homing" | "Trap" = if def.Kind == "Homing"
+		then "Homing"
+		elseif def.Kind == "Trap" then "Trap"
+		else "Projectile"
 	local speed = def.Params.Speed or 0
 	local dir = if direction.Magnitude > 1e-3 then direction.Unit else Vector3.new(0, 0, -1)
 	local p: Projectile = {
@@ -161,7 +173,12 @@ function ProjectileSim.CountByOwner(self: any, ownerKey: string): number
 end
 
 -- Picks the nearest valid target ahead of the owner along the track (for Hunter Wisp).
-function ProjectileSim.PickTargetAhead(world: World, ownerKey: string, ownerTeam: number, friendlyFire: boolean): string?
+function ProjectileSim.PickTargetAhead(
+	world: World,
+	ownerKey: string,
+	ownerTeam: number,
+	friendlyFire: boolean
+): string?
 	local owner = world.Racers[ownerKey]
 	if not owner then
 		return nil

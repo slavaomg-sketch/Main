@@ -4,7 +4,21 @@ local CollectionService = game:GetService("CollectionService")
 
 local PartUtil = {}
 
-export type PartOpts = { Size: Vector3, CFrame: CFrame, Color: Color3?, Material: Enum.Material?, Transparency: number?, CanCollide: boolean?, Shape: Enum.PartType?, Name: string?, Tags: { string }?, CanQuery: boolean?, CanTouch: boolean?, Parent: Instance?, Reflectance: number? }
+export type PartOpts = {
+	Size: Vector3,
+	CFrame: CFrame,
+	Color: Color3?,
+	Material: Enum.Material?,
+	Transparency: number?,
+	CanCollide: boolean?,
+	Shape: Enum.PartType?,
+	Name: string?,
+	Tags: { string }?,
+	CanQuery: boolean?,
+	CanTouch: boolean?,
+	Parent: Instance?,
+	Reflectance: number?,
+}
 
 function PartUtil.Part(opts: PartOpts): Part
 	local p = Instance.new("Part")
@@ -38,7 +52,13 @@ function PartUtil.Part(opts: PartOpts): Part
 	return p
 end
 
-function PartUtil.Wedge(size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?, parent: Instance?): WedgePart
+function PartUtil.Wedge(
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	material: Enum.Material?,
+	parent: Instance?
+): WedgePart
 	local w = Instance.new("WedgePart")
 	w.Anchored = true
 	w.Size = size

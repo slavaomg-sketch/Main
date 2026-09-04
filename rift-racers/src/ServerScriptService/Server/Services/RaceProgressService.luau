@@ -55,7 +55,12 @@ function RaceProgressService.Respawn(self: any, session: any, key: string, reaso
 	e.LastValidPos = cf.Position
 	e.Drifting = false
 	RespawnSystem.MarkRespawned(e.Watch, now)
-	session:SendTo(key, "KartEffect", "Respawn", { Reason = reason, CFrame = cf, Lock = GameConfig.Race.RespawnInvulnerabilitySeconds })
+	session:SendTo(
+		key,
+		"KartEffect",
+		"Respawn",
+		{ Reason = reason, CFrame = cf, Lock = GameConfig.Race.RespawnInvulnerabilitySeconds }
+	)
 	self._telemetry:Count("race.respawn." .. reason)
 end
 
@@ -83,7 +88,18 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 
 	if session.IsArena then
 		e.Surface = session.Arena:SurfaceAt(pos)
-		local reason = RespawnSystem.Evaluate(e.Watch, { Y = pos.Y, Speed = speed, UpDot = pose.CFrame.UpVector.Y, InCorridor = session.Arena:InBounds(pos), WrongWay = false, Racing = racing }, now)
+		local reason = RespawnSystem.Evaluate(
+			e.Watch,
+			{
+				Y = pos.Y,
+				Speed = speed,
+				UpDot = pose.CFrame.UpVector.Y,
+				InCorridor = session.Arena:InBounds(pos),
+				WrongWay = false,
+				Racing = racing,
+			},
+			now
+		)
 		if reason then
 			self:Respawn(session, key, reason)
 		end
@@ -104,7 +120,12 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 		if ev.Kind == "Checkpoint" then
 			session:SendTo(key, "RaceEvent", "Checkpoint", { Index = ev.Index })
 		elseif ev.Kind == "Lap" then
-			session:SendTo(key, "RaceEvent", "Lap", { Lap = ev.Index, Laps = session.Rules.Laps, LapTime = r.Progress.LapTimes[#r.Progress.LapTimes] })
+			session:SendTo(
+				key,
+				"RaceEvent",
+				"Lap",
+				{ Lap = ev.Index, Laps = session.Rules.Laps, LapTime = r.Progress.LapTimes[#r.Progress.LapTimes] }
+			)
 			session.Events:Fire("Lap", { Key = key, Lap = ev.Index })
 		elseif ev.Kind == "Finish" then
 			self:OnFinish(session, key, now)
@@ -115,7 +136,11 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 			end
 		elseif ev.Kind == "ImpossibleSector" then
 			if e.Player then
-				self._security:Flag(e.Player, "ImpossibleSector", string.format("cp %d in %.2fs", ev.Index or 0, ev.Value or 0))
+				self._security:Flag(
+					e.Player,
+					"ImpossibleSector",
+					string.format("cp %d in %.2fs", ev.Index or 0, ev.Value or 0)
+				)
 			end
 		elseif ev.Kind == "InvalidFinishCross" then
 			session:SendTo(key, "RaceEvent", "MissedCheckpoints", { Checkpoint = ev.Index })
@@ -123,8 +148,21 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 	end
 
 	-- Corridor / fall / stuck / flipped / wrong way handling.
-	local wrongWay = r.Progress.Direction < 0 and r.Progress.WrongWaySince ~= nil and now - (r.Progress.WrongWaySince :: number) >= GameConfig.Race.WrongWaySeconds
-	local reason = RespawnSystem.Evaluate(e.Watch, { Y = pos.Y, Speed = speed, UpDot = pose.CFrame.UpVector.Y, InCorridor = loc.InCorridor, WrongWay = wrongWay, Racing = racing and r.Progress.FinishedAt == nil }, now)
+	local wrongWay = r.Progress.Direction < 0
+		and r.Progress.WrongWaySince ~= nil
+		and now - (r.Progress.WrongWaySince :: number) >= GameConfig.Race.WrongWaySeconds
+	local reason = RespawnSystem.Evaluate(
+		e.Watch,
+		{
+			Y = pos.Y,
+			Speed = speed,
+			UpDot = pose.CFrame.UpVector.Y,
+			InCorridor = loc.InCorridor,
+			WrongWay = wrongWay,
+			Racing = racing and r.Progress.FinishedAt == nil,
+		},
+		now
+	)
 	if reason then
 		self:Respawn(session, key, reason)
 		return
@@ -141,7 +179,11 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 	end
 
 	-- Slipstream: behind a rival within cone for ChargeSeconds -> boost (server-validated).
-	if racing and r.Progress.FinishedAt == nil and now - e.LastSlipstreamAt > GameConfig.Physics.Slipstream.CooldownSeconds then
+	if
+		racing
+		and r.Progress.FinishedAt == nil
+		and now - e.LastSlipstreamAt > GameConfig.Physics.Slipstream.CooldownSeconds
+	then
 		local inCone = false
 		for otherKey, other in session.Racers do
 			if otherKey ~= key and other.Connected then
@@ -168,9 +210,17 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 				e.LastSlipstreamAt = now
 				e.SlipstreamSince = nil
 				if e.Sim then
-					table.insert(e.Sim.Boosts, KartPhysicsModel.MakeBoost("Slipstream", s.BoostSeconds, bonus, e.Stats, now))
+					table.insert(
+						e.Sim.Boosts,
+						KartPhysicsModel.MakeBoost("Slipstream", s.BoostSeconds, bonus, e.Stats, now)
+					)
 				end
-				session:SendTo(key, "KartEffect", "Boost", { Source = "Slipstream", Seconds = s.BoostSeconds, Bonus = bonus })
+				session:SendTo(
+					key,
+					"KartEffect",
+					"Boost",
+					{ Source = "Slipstream", Seconds = s.BoostSeconds, Bonus = bonus }
+				)
 			end
 		else
 			e.SlipstreamSince = nil
@@ -193,7 +243,9 @@ function RaceProgressService.TickRacer(self: any, session: any, key: string, now
 	elseif #r.Boosts > 0 then
 		state = "Boosting"
 	elseif e.Drifting then
-		state = if e.DriftTier >= 0 and (e.LastPose and e.LastPose.AngularVelocity.Y > 0) then "DriftingLeft" else "DriftingRight"
+		state = if e.DriftTier >= 0 and (e.LastPose and e.LastPose.AngularVelocity.Y > 0)
+			then "DriftingLeft"
+			else "DriftingRight"
 	elseif not pose.Grounded then
 		state = "Airborne"
 	elseif speed > 3 then
@@ -217,7 +269,12 @@ function RaceProgressService.OnFinish(self: any, session: any, key: string, now:
 	if session.FirstFinishAt == nil then
 		session.FirstFinishAt = now
 	end
-	session:SendTo(key, "RaceEvent", "Finished", { Position = r.Progress.FinishPosition, Time = now - session.RaceStartedAt })
+	session:SendTo(
+		key,
+		"RaceEvent",
+		"Finished",
+		{ Position = r.Progress.FinishPosition, Time = now - session.RaceStartedAt }
+	)
 	session:Broadcast("RaceEvent", "RacerFinished", { Key = key, Position = r.Progress.FinishPosition })
 	session.Mode:OnRacerFinished(session, key, now)
 	session.Events:Fire("Finish", { Key = key, Position = r.Progress.FinishPosition })
@@ -244,7 +301,12 @@ function RaceProgressService.OnDriftEvent(self: any, session: any, player: any, 
 	local now = self._env.Now()
 	local pose = e.LastPose
 	if action == "Start" then
-		if pose and pose.Grounded and pose.Velocity.Magnitude / e.Stats.TopSpeed >= GameConfig.Physics.DriftMinSpeedFraction * 0.8 and not r.Effects.HitStun then
+		if
+			pose
+			and pose.Grounded
+			and pose.Velocity.Magnitude / e.Stats.TopSpeed >= GameConfig.Physics.DriftMinSpeedFraction * 0.8
+			and not r.Effects.HitStun
+		then
 			e.Drifting = true
 			e.DriftStartedAt = now
 			e.DriftTier = 0
@@ -261,15 +323,33 @@ function RaceProgressService.OnDriftEvent(self: any, session: any, player: any, 
 		local serverTier = KartPhysicsModel.DriftTier(held * 1.05)
 		local tier = math.min(serverTier, claimedTier)
 		if claimedTier > serverTier + 1 and e.Player then
-			self._security:Flag(e.Player, "SchemaViolation", string.format("drift tier claim %d held %.2fs", claimedTier, held), 2)
+			self._security:Flag(
+				e.Player,
+				"SchemaViolation",
+				string.format("drift tier claim %d held %.2fs", claimedTier, held),
+				2
+			)
 		end
 		e.Drifting = false
 		e.DriftTier = 0
 		local b = KartPhysicsModel.DriftBoostFor(tier)
 		if b and pose and pose.Velocity.Magnitude > 8 then
-			table.insert(r.Boosts, KartPhysicsModel.MakeBoost(("Drift" .. tier) :: any, b.BoostSeconds, b.SpeedBonus, e.Stats, now))
+			table.insert(
+				r.Boosts,
+				KartPhysicsModel.MakeBoost(("Drift" .. tier) :: any, b.BoostSeconds, b.SpeedBonus, e.Stats, now)
+			)
 			e.DriftBoosts += 1
-			session:SendTo(key, "KartEffect", "Boost", { Source = "Drift" .. tier, Seconds = b.BoostSeconds * e.Stats.BoostEfficiency, Bonus = b.SpeedBonus, Tier = tier })
+			session:SendTo(
+				key,
+				"KartEffect",
+				"Boost",
+				{
+					Source = "Drift" .. tier,
+					Seconds = b.BoostSeconds * e.Stats.BoostEfficiency,
+					Bonus = b.SpeedBonus,
+					Tier = tier,
+				}
+			)
 			session:Broadcast("VisualEvent", "DriftBoost", { Key = key, Tier = tier })
 		end
 	end
@@ -300,7 +380,11 @@ function RaceProgressService.OnTrickEvent(self: any, session: any, player: any, 
 	e.LastTrickAt = now
 	e.Tricks += 1
 	-- Boost is applied when the kart lands; keep it pending as a short-fuse effect.
-	r.Effects.TrickPending = { Id = "TrickPending", EndsAt = now + 3, Params = { Seconds = t.BoostSeconds * e.Stats.TrickEfficiency, Bonus = t.SpeedBonus } }
+	r.Effects.TrickPending = {
+		Id = "TrickPending",
+		EndsAt = now + 3,
+		Params = { Seconds = t.BoostSeconds * e.Stats.TrickEfficiency, Bonus = t.SpeedBonus },
+	}
 	session:SendTo(key, "KartEffect", "Trick", { Jump = jumpId })
 	session:Broadcast("VisualEvent", "Trick", { Key = key })
 end
@@ -312,8 +396,16 @@ function RaceProgressService.OnLanded(self: any, session: any, key: string, now:
 	local pending = r.Effects.TrickPending
 	if pending then
 		r.Effects.TrickPending = nil
-		table.insert(r.Boosts, KartPhysicsModel.MakeBoost("Trick", pending.Params.Seconds, pending.Params.Bonus, e.Stats, now))
-		session:SendTo(key, "KartEffect", "Boost", { Source = "Trick", Seconds = pending.Params.Seconds, Bonus = pending.Params.Bonus })
+		table.insert(
+			r.Boosts,
+			KartPhysicsModel.MakeBoost("Trick", pending.Params.Seconds, pending.Params.Bonus, e.Stats, now)
+		)
+		session:SendTo(
+			key,
+			"KartEffect",
+			"Boost",
+			{ Source = "Trick", Seconds = pending.Params.Seconds, Bonus = pending.Params.Bonus }
+		)
 	end
 end
 

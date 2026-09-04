@@ -8,7 +8,13 @@ local Signal = require(Shared.Utility.Signal)
 local SecurityService = { Name = "SecurityService" }
 SecurityService.__index = SecurityService
 
-export type Record = { Score: number, LastDecayAt: number, Incidents: { { At: number, Reason: string, Weight: number, Detail: string? } }, Kicked: boolean, ActionLocks: { [string]: number } }
+export type Record = {
+	Score: number,
+	LastDecayAt: number,
+	Incidents: { { At: number, Reason: string, Weight: number, Detail: string? } },
+	Kicked: boolean,
+	ActionLocks: { [string]: number },
+}
 
 local WEIGHTS: { [string]: number } = {
 	RateLimited = 1,
@@ -102,7 +108,18 @@ function SecurityService.Flag(self: any, player: any, reason: string, detail: st
 	end
 	self._telemetry:Count("security." .. reason)
 	if w >= 4 then
-		self._telemetry:Log("Warn", "Security", string.format("%s (%d) %s %s score=%.1f", tostring(player.Name), player.UserId, reason, detail or "", r.Score))
+		self._telemetry:Log(
+			"Warn",
+			"Security",
+			string.format(
+				"%s (%d) %s %s score=%.1f",
+				tostring(player.Name),
+				player.UserId,
+				reason,
+				detail or "",
+				r.Score
+			)
+		)
 	end
 	self.Flagged:Fire(player, reason, r.Score)
 	if r.Score >= GameConfig.Security.SuspicionKick and not r.Kicked then
@@ -116,7 +133,11 @@ function SecurityService.Flag(self: any, player: any, reason: string, detail: st
 		if heavy >= 3 then
 			r.Kicked = true
 			self.Kicked:Fire(player, reason)
-			self._telemetry:Log("Error", "Security", string.format("kicking %s after %d heavy incidents", tostring(player.Name), heavy))
+			self._telemetry:Log(
+				"Error",
+				"Security",
+				string.format("kicking %s after %d heavy incidents", tostring(player.Name), heavy)
+			)
 			if type(player.Kick) == "function" then
 				pcall(player.Kick, player, "Suspicious activity detected. Please rejoin.")
 			end

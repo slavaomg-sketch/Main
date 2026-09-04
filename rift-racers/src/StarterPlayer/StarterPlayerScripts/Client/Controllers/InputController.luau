@@ -41,7 +41,11 @@ end
 function InputController.Init(self: any, registry: any)
 	self._settings = registry:Get("SettingsController")
 	local function detect()
-		if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not UserInputService.GamepadEnabled then
+		if
+			UserInputService.TouchEnabled
+			and not UserInputService.KeyboardEnabled
+			and not UserInputService.GamepadEnabled
+		then
 			self.Device = "Touch"
 		elseif UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then
 			self.Device = "Gamepad"
@@ -136,7 +140,9 @@ function InputController.Bind(self: any)
 	end, false, 2000, Enum.KeyCode.H, Enum.KeyCode.DPadDown)
 	ContextActionService:BindActionAtPriority("RR_Spectate", function(_, state, input)
 		if pressed(state) then
-			self.SpectatePressed:Fire(if input.KeyCode == Enum.KeyCode.DPadLeft or input.KeyCode == Enum.KeyCode.Z then "Prev" else "Next")
+			self.SpectatePressed:Fire(
+				if input.KeyCode == Enum.KeyCode.DPadLeft or input.KeyCode == Enum.KeyCode.Z then "Prev" else "Next"
+			)
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, 1000, Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.DPadLeft, Enum.KeyCode.DPadRight)
@@ -159,7 +165,11 @@ function InputController.Bind(self: any)
 		if processed then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.ButtonStart or input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.Tab then
+		if
+			input.KeyCode == Enum.KeyCode.ButtonStart
+			or input.KeyCode == Enum.KeyCode.Escape
+			or input.KeyCode == Enum.KeyCode.Tab
+		then
 			self.MenuPressed:Fire()
 		end
 	end)
@@ -179,7 +189,26 @@ function InputController.Unbind(self: any)
 		return
 	end
 	self._bound = false
-	for _, name in { "RR_Gas", "RR_Brake", "RR_SteerL", "RR_SteerR", "RR_GasArrow", "RR_BrakeArrow", "RR_SteerLArrow", "RR_SteerRArrow", "RR_Drift", "RR_Item", "RR_ItemReserve", "RR_LookBack", "RR_Respawn", "RR_Horn", "RR_Spectate", "RR_Gamepad" } do
+	for _, name in
+		{
+			"RR_Gas",
+			"RR_Brake",
+			"RR_SteerL",
+			"RR_SteerR",
+			"RR_GasArrow",
+			"RR_BrakeArrow",
+			"RR_SteerLArrow",
+			"RR_SteerRArrow",
+			"RR_Drift",
+			"RR_Item",
+			"RR_ItemReserve",
+			"RR_LookBack",
+			"RR_Respawn",
+			"RR_Horn",
+			"RR_Spectate",
+			"RR_Gamepad",
+		}
+	do
 		ContextActionService:UnbindAction(name)
 	end
 end
@@ -211,9 +240,9 @@ function InputController.Read(self: any): InputFrame
 	local sens = if s then s.SteerSensitivity else 1
 	local auto = if s then s.AutoAccelerate else false
 	local k = self._keys
-	local throttle = if (k.W or k.Up) then 1 else 0
-	local brake = if (k.S or k.Down) then 1 else 0
-	local steer = (if (k.D or k.Right) then 1 else 0) - (if (k.A or k.Left) then 1 else 0)
+	local throttle = if k.W or k.Up then 1 else 0
+	local brake = if k.S or k.Down then 1 else 0
+	local steer = (if k.D or k.Right then 1 else 0) - (if k.A or k.Left then 1 else 0)
 	throttle = math.max(throttle, self._gamepad.Throttle, self._touch.Throttle)
 	brake = math.max(brake, self._gamepad.Brake, self._touch.Brake)
 	if steer == 0 then

@@ -135,7 +135,10 @@ function KartSim.Step(self: any, input: Input, dt: number, now: number, track: T
 				self.LastDriftTier = tier
 				local b = KartPhysicsModel.DriftBoostFor(tier)
 				if b then
-					table.insert(self.Boosts, KartPhysicsModel.MakeBoost(("Drift" .. tier) :: any, b.BoostSeconds, b.SpeedBonus, stats, now))
+					table.insert(
+						self.Boosts,
+						KartPhysicsModel.MakeBoost(("Drift" .. tier) :: any, b.BoostSeconds, b.SpeedBonus, stats, now)
+					)
 				end
 				self.Drifting = false
 				self.DriftCharge = 0
@@ -156,7 +159,8 @@ function KartSim.Step(self: any, input: Input, dt: number, now: number, track: T
 	elseif input.Brake > 0 and self.Speed > 1 then
 		self.Speed = MathUtil.MoveToward(self.Speed, 0, accel * GameConfig.Physics.BrakeDecel * input.Brake * dt)
 	elseif input.Brake > 0 then
-		self.Speed = MathUtil.MoveToward(self.Speed, -stats.TopSpeed * GameConfig.Physics.ReverseSpeedFraction, accel * 0.6 * dt)
+		self.Speed =
+			MathUtil.MoveToward(self.Speed, -stats.TopSpeed * GameConfig.Physics.ReverseSpeedFraction, accel * 0.6 * dt)
 	elseif input.Throttle > 0 then
 		local target = top * math.clamp(input.Throttle, 0, 1)
 		if self.Speed < target then
@@ -181,7 +185,7 @@ function KartSim.Step(self: any, input: Input, dt: number, now: number, track: T
 	local move = forward * self.Speed * dt
 	if self.Drifting then
 		local right = Vector3.new(-forward.Z, 0, forward.X)
-		move += right * (-self.DriftDir) * self.Speed * 0.25 * dt
+		move += right * -self.DriftDir * self.Speed * 0.25 * dt
 	end
 	self.Position += move
 
@@ -207,7 +211,10 @@ function KartSim.Step(self: any, input: Input, dt: number, now: number, track: T
 		self.Airborne = false
 		if input.Trick and jump then
 			local t = GameConfig.Physics.Trick
-			table.insert(self.Boosts, KartPhysicsModel.MakeBoost("Trick", t.BoostSeconds * stats.TrickEfficiency, t.SpeedBonus, stats, now))
+			table.insert(
+				self.Boosts,
+				KartPhysicsModel.MakeBoost("Trick", t.BoostSeconds * stats.TrickEfficiency, t.SpeedBonus, stats, now)
+			)
 		end
 	end
 	local targetY = roadCf.Position.Y + 2.5 + (if self.Airborne then 6 else 0)

@@ -34,7 +34,8 @@ function ProfileService.Init(self: any, registry: any)
 	self._env = registry:Get("Env")
 	self._telemetry = registry:Get("TelemetryService")
 	self._security = registry:Get("SecurityService")
-	self._store = ProfileStore.new(self._env.ProfileBackend, self._env.SessionId, self._env.Unix, task.wait)
+	self._store =
+		ProfileStore.new(self._env.ProfileBackend, self._env.SessionId, self._env.Unix, self._env.Sleep or task.wait)
 	local d = self._env.Dispatcher
 	d:On("SelectLoadout", function(player, heroId: string, vehicleId: string)
 		self:SelectLoadout(player, heroId, vehicleId)
@@ -121,12 +122,20 @@ function ProfileService.OnPlayerAdded(self: any, player: any)
 		handle = result.Handle
 		self._telemetry:Count("profile.loaded")
 		if result.Migrated and #result.Migrated > 0 then
-			self._telemetry:Log("Info", "Profile", string.format("migrated %d to v%d", player.UserId, handle.Data.SchemaVersion))
+			self._telemetry:Log(
+				"Info",
+				"Profile",
+				string.format("migrated %d to v%d", player.UserId, handle.Data.SchemaVersion)
+			)
 		end
 	else
 		handle = self._store:Temporary(player.UserId)
 		self._telemetry:Count("profile.failed")
-		self._telemetry:Log("Warn", "Profile", string.format("load failed for %d: %s", player.UserId, tostring(result.Reason)))
+		self._telemetry:Log(
+			"Warn",
+			"Profile",
+			string.format("load failed for %d: %s", player.UserId, tostring(result.Reason))
+		)
 		self._env.FireClient("ErrorDialog", player, "ERROR.PROFILE_LOAD_FAILED", { Temporary = true })
 	end
 	self:Push(player, handle)
@@ -134,11 +143,14 @@ function ProfileService.OnPlayerAdded(self: any, player: any)
 end
 
 function ProfileService.OnPlayerRemoving(self: any, player: any)
-	local handle = self._store:Get(player.UserId)
-	if handle then
-		self._store:Release(handle)
-		self.ProfileReleased:Fire(player)
-	end
+	-- Deferred so race/reward handlers connected to the same event can still touch the profile.
+	task.defer(function()
+		local handle = self._store:Get(player.UserId)
+		if handle then
+			self._store:Release(handle)
+			self.ProfileReleased:Fire(player)
+		end
+	end)
 end
 
 function ProfileService.Get(self: any, player: any): ProfileHandle?

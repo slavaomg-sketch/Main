@@ -15,7 +15,10 @@ local ItemService = { Name = "ItemService" }
 ItemService.__index = ItemService
 
 function ItemService.new()
-	return setmetatable({ _env = nil :: any, _security = nil :: any, _telemetry = nil :: any, _progress = nil :: any }, ItemService)
+	return setmetatable(
+		{ _env = nil :: any, _security = nil :: any, _telemetry = nil :: any, _progress = nil :: any },
+		ItemService
+	)
 end
 
 function ItemService.Init(self: any, registry: any)
@@ -175,7 +178,9 @@ function ItemService.TickPickups(self: any, session: any, now: number)
 				end
 			end
 		end
-		local magnetR = if e.MagnetUntil > now then (ItemDefinitions.ById.MagnetCoil.Params.PullRadius or 22) else shardR
+		local magnetR = if e.MagnetUntil > now
+			then (ItemDefinitions.ById.MagnetCoil.Params.PullRadius or 22)
+			else shardR
 		for _, shard in session.Shards do
 			if shard.Active and (shard.Position - pos).Magnitude <= magnetR then
 				if r.Shards < GameConfig.Shards.MaxHeld then
@@ -266,13 +271,32 @@ local function worldForSession(session: any, now: number): ProjectileSim.World
 	for key, r in session.Racers do
 		local e = session.Extra[key]
 		if r.Connected and e.LastPose then
-			racers[key] = { Position = e.LastPose.CFrame.Position, Forward = e.LastPose.CFrame.LookVector, Team = r.Team, Finished = r.Progress.FinishedAt ~= nil or r.Progress.Eliminated, Progress = r.Progress.Lap * (if session.Shape then session.Shape.Length else 0) + r.Progress.Progress }
+			racers[key] = {
+				Position = e.LastPose.CFrame.Position,
+				Forward = e.LastPose.CFrame.LookVector,
+				Team = r.Team,
+				Finished = r.Progress.FinishedAt ~= nil or r.Progress.Eliminated,
+				Progress = r.Progress.Lap * (if session.Shape then session.Shape.Length else 0) + r.Progress.Progress,
+			}
 		end
 	end
-	return { Now = now, Racers = racers, Raycast = nil, TrackLength = if session.Shape then session.Shape.Length * math.max(1, session.Rules.Laps) else 1e9 }
+	return {
+		Now = now,
+		Racers = racers,
+		Raycast = nil,
+		TrackLength = if session.Shape then session.Shape.Length * math.max(1, session.Rules.Laps) else 1e9,
+	}
 end
 
-function ItemService.Resolve(self: any, session: any, key: string, def: any, pose: any, aim: Vector3?, now: number): boolean
+function ItemService.Resolve(
+	self: any,
+	session: any,
+	key: string,
+	def: any,
+	pose: any,
+	aim: Vector3?,
+	now: number
+): boolean
 	local r = session.Racers[key]
 	local e = session.Extra[key]
 	local p = def.Params
@@ -296,19 +320,34 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 		if e.Sim then
 			table.insert(e.Sim.Boosts, KartPhysicsModel.MakeBoost("Item", p.BoostSeconds, p.SpeedBonus, e.Stats, now))
 		end
-		session:SendTo(key, "KartEffect", "Boost", { Source = "Item", Seconds = p.BoostSeconds * e.Stats.BoostEfficiency, Bonus = p.SpeedBonus })
+		session:SendTo(
+			key,
+			"KartEffect",
+			"Boost",
+			{ Source = "Item", Seconds = p.BoostSeconds * e.Stats.BoostEfficiency, Bonus = p.SpeedBonus }
+		)
 		return true
 	elseif def.Kind == "Multi" then
 		e.OverchargePulses = p.Pulses
 		e.NextOverchargeAt = now
 		return true
 	elseif def.Kind == "Projectile" then
-		local proj = session.Projectiles:Spawn(def.Id, key, r.Team, pos + aimDir * 5 + Vector3.new(0, 1.5, 0), aimDir, now)
+		local proj =
+			session.Projectiles:Spawn(def.Id, key, r.Team, pos + aimDir * 5 + Vector3.new(0, 1.5, 0), aimDir, now)
 		world.SpawnProjectileVisual(session.Id, proj.Id, def.Id, proj.Position)
 		return true
 	elseif def.Kind == "Homing" then
-		local target = ProjectileSim.PickTargetAhead(worldForSession(session, now), key, r.Team, session.Rules.FriendlyFire)
-		local proj = session.Projectiles:Spawn(def.Id, key, r.Team, pos + forward * 5 + Vector3.new(0, 2, 0), forward, now, target)
+		local target =
+			ProjectileSim.PickTargetAhead(worldForSession(session, now), key, r.Team, session.Rules.FriendlyFire)
+		local proj = session.Projectiles:Spawn(
+			def.Id,
+			key,
+			r.Team,
+			pos + forward * 5 + Vector3.new(0, 2, 0),
+			forward,
+			now,
+			target
+		)
 		world.SpawnProjectileVisual(session.Id, proj.Id, def.Id, proj.Position)
 		if target then
 			session:SendTo(target, "RaceEvent", "Incoming", { Item = def.Id, Seconds = p.WarnSeconds })
@@ -328,13 +367,21 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 					return false
 				end
 			end
-			place = session.Track.Spline:CFrameAt(loc.Progress, math.clamp(loc.Lateral, -loc.Width * 0.4, loc.Width * 0.4), 1.5).Position
+			place = session.Track.Spline:CFrameAt(
+				loc.Progress,
+				math.clamp(loc.Lateral, -loc.Width * 0.4, loc.Width * 0.4),
+				1.5
+			).Position
 		end
 		local proj = session.Projectiles:Spawn(def.Id, key, r.Team, place, forward, now)
 		world.SpawnProjectileVisual(session.Id, proj.Id, def.Id, proj.Position)
 		return true
 	elseif def.Kind == "Shield" then
-		r.Effects.AegisBubble = { Id = "AegisBubble", EndsAt = now + p.DurationSeconds, Params = { StrongAbsorb = p.StrongAbsorb, WeakAbsorb = p.WeakAbsorb } }
+		r.Effects.AegisBubble = {
+			Id = "AegisBubble",
+			EndsAt = now + p.DurationSeconds,
+			Params = { StrongAbsorb = p.StrongAbsorb, WeakAbsorb = p.WeakAbsorb },
+		}
 		session:Broadcast("VisualEvent", "Shield", { Key = key, Seconds = p.DurationSeconds })
 		return true
 	elseif def.Kind == "Wave" then
@@ -349,7 +396,8 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 						if r.Team == 0 or other.Team ~= r.Team or session.Rules.FriendlyFire then
 							world.ApplyImpulse(session.Id, otherKey, delta.Unit * p.PushImpulse * 100)
 							if p.SlowSeconds then
-								other.Effects.Slow = { Id = "Slow", EndsAt = now + p.SlowSeconds, Params = { Scale = p.SlowScale } }
+								other.Effects.Slow =
+									{ Id = "Slow", EndsAt = now + p.SlowSeconds, Params = { Scale = p.SlowScale } }
 								local oe = session.Extra[otherKey]
 								if oe.Sim then
 									oe.Sim.SlowScale = p.SlowScale
@@ -382,7 +430,12 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 		local targetProgress = prog.Progress + warp
 		local gain = 0
 		for otherKey, other in session.Racers do
-			if otherKey ~= key and other.Progress.Lap == prog.Lap and other.Progress.Progress > prog.Progress and other.Progress.Progress < targetProgress then
+			if
+				otherKey ~= key
+				and other.Progress.Lap == prog.Lap
+				and other.Progress.Progress > prog.Progress
+				and other.Progress.Progress < targetProgress
+			then
 				gain += 1
 			end
 		end
@@ -416,10 +469,16 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 		session.StormCrownAvailableAt = now + (def.GlobalCooldown or GameConfig.Items.StormCrownGlobalCooldownSeconds)
 		local targets = {}
 		for otherKey, other in session.Racers do
-			if otherKey ~= key and other.Connected and other.Position <= p.TargetsTop and other.Progress.FinishedAt == nil then
+			if
+				otherKey ~= key
+				and other.Connected
+				and other.Position <= p.TargetsTop
+				and other.Progress.FinishedAt == nil
+			then
 				if r.Team == 0 or other.Team ~= r.Team or session.Rules.FriendlyFire then
 					table.insert(targets, otherKey)
-					other.Effects.StormCrownWarn = { Id = "StormCrownWarn", EndsAt = now + p.WarnSeconds, Params = { Attacker = 0 } }
+					other.Effects.StormCrownWarn =
+						{ Id = "StormCrownWarn", EndsAt = now + p.WarnSeconds, Params = { Attacker = 0 } }
 					session:SendTo(otherKey, "RaceEvent", "Incoming", { Item = def.Id, Seconds = p.WarnSeconds })
 				end
 			end
@@ -443,7 +502,15 @@ function ItemService.Resolve(self: any, session: any, key: string, def: any, pos
 end
 
 -- Hits -------------------------------------------------------------------------------------------------------------
-function ItemService.ApplyHit(self: any, session: any, attackerKey: string?, targetKey: string, itemId: string, level: number, now: number)
+function ItemService.ApplyHit(
+	self: any,
+	session: any,
+	attackerKey: string?,
+	targetKey: string,
+	itemId: string,
+	level: number,
+	now: number
+)
 	local target = session.Racers[targetKey]
 	local te = session.Extra[targetKey]
 	local def = ItemDefinitions.ById[itemId]
@@ -451,7 +518,11 @@ function ItemService.ApplyHit(self: any, session: any, attackerKey: string?, tar
 	local result = HitSystem.Resolve(target, attackerTeam, level, now, session.Rules.FriendlyFire, def.BlockedByShield)
 	if result.Outcome == "Hit" then
 		local stun = KartPhysicsModel.HitStunParams(level, te.Stats)
-		target.Effects.HitStun = { Id = "HitStun", EndsAt = now + stun.Seconds, Params = { Level = level, SpeedScale = stun.SpeedScale, Spin = if stun.Spin then 1 else 0 } }
+		target.Effects.HitStun = {
+			Id = "HitStun",
+			EndsAt = now + stun.Seconds,
+			Params = { Level = level, SpeedScale = stun.SpeedScale, Spin = if stun.Spin then 1 else 0 },
+		}
 		if level >= 2 then
 			te.CleanRace = false
 		end
@@ -467,8 +538,12 @@ function ItemService.ApplyHit(self: any, session: any, attackerKey: string?, tar
 			if pose then
 				for i = 1, result.ShardsDropped do
 					local id = string.format("drop%d_%d", session.Ticks, i)
-					local offset = Vector3.new(self._env.Random:NextNumber(-6, 6), 2, self._env.Random:NextNumber(-6, 6))
-					table.insert(session.Shards, { Id = id, Position = pose.CFrame.Position + offset, Active = true, RespawnAt = math.huge })
+					local offset =
+						Vector3.new(self._env.Random:NextNumber(-6, 6), 2, self._env.Random:NextNumber(-6, 6))
+					table.insert(
+						session.Shards,
+						{ Id = id, Position = pose.CFrame.Position + offset, Active = true, RespawnAt = math.huge }
+					)
 					self._env.World.SpawnPickup(session.Id, id, "Shard", pose.CFrame.Position + offset)
 				end
 			end
@@ -476,7 +551,12 @@ function ItemService.ApplyHit(self: any, session: any, attackerKey: string?, tar
 		if attackerKey and attackerKey ~= targetKey then
 			session.Extra[attackerKey].HitsLanded += 1
 		end
-		session:SendTo(targetKey, "KartEffect", "Hit", { Level = level, Seconds = stun.Seconds, SpeedScale = stun.SpeedScale, Spin = stun.Spin, Item = itemId })
+		session:SendTo(
+			targetKey,
+			"KartEffect",
+			"Hit",
+			{ Level = level, Seconds = stun.Seconds, SpeedScale = stun.SpeedScale, Spin = stun.Spin, Item = itemId }
+		)
 		session:Broadcast("VisualEvent", "Hit", { Key = targetKey, Item = itemId, Level = level })
 		session.Mode:OnHit(session, attackerKey, targetKey, level, now)
 		self._telemetry:Count("item.hit." .. itemId)
@@ -514,7 +594,11 @@ function ItemService.TickEffects(self: any, session: any, now: number, dt: numbe
 					other.Effects.StormCrownWarn = nil
 					local result = self:ApplyHit(session, t.OwnerKey, otherKey, "StormCrown", def.Params.StunLevel, now)
 					if result.Outcome == "Hit" then
-						other.Effects.Slow = { Id = "Slow", EndsAt = now + def.Params.SlowSeconds, Params = { Scale = def.Params.SlowScale } }
+						other.Effects.Slow = {
+							Id = "Slow",
+							EndsAt = now + def.Params.SlowSeconds,
+							Params = { Scale = def.Params.SlowScale },
+						}
 						local oe = session.Extra[otherKey]
 						if oe.Sim then
 							oe.Sim.SlowScale = def.Params.SlowScale
@@ -535,11 +619,28 @@ function ItemService.TickEffects(self: any, session: any, now: number, dt: numbe
 			local def = ItemDefinitions.ById.OverchargePack
 			e.OverchargePulses -= 1
 			e.NextOverchargeAt = now + def.Params.PulseSeconds + def.Params.GapSeconds
-			table.insert(r.Boosts, KartPhysicsModel.MakeBoost("Overcharge", def.Params.PulseSeconds, def.Params.SpeedBonus, e.Stats, now))
+			table.insert(
+				r.Boosts,
+				KartPhysicsModel.MakeBoost("Overcharge", def.Params.PulseSeconds, def.Params.SpeedBonus, e.Stats, now)
+			)
 			if e.Sim then
-				table.insert(e.Sim.Boosts, KartPhysicsModel.MakeBoost("Overcharge", def.Params.PulseSeconds, def.Params.SpeedBonus, e.Stats, now))
+				table.insert(
+					e.Sim.Boosts,
+					KartPhysicsModel.MakeBoost(
+						"Overcharge",
+						def.Params.PulseSeconds,
+						def.Params.SpeedBonus,
+						e.Stats,
+						now
+					)
+				)
 			end
-			session:SendTo(key, "KartEffect", "Boost", { Source = "Overcharge", Seconds = def.Params.PulseSeconds, Bonus = def.Params.SpeedBonus })
+			session:SendTo(
+				key,
+				"KartEffect",
+				"Boost",
+				{ Source = "Overcharge", Seconds = def.Params.PulseSeconds, Bonus = def.Params.SpeedBonus }
+			)
 		end
 		if e.PhaseUntil > 0 and e.PhaseUntil <= now then
 			e.PhaseUntil = 0

@@ -5,7 +5,13 @@ local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Config.GameConfig)
 local Signal = require(Shared.Utility.Signal)
 
-export type Party = { Id: string, LeaderId: number, Members: { number }, Invites: { [number]: number }, CreatedAt: number }
+export type Party = {
+	Id: string,
+	LeaderId: number,
+	Members: { number },
+	Invites: { [number]: number },
+	CreatedAt: number,
+}
 
 local PartyService = { Name = "PartyService" }
 PartyService.__index = PartyService
@@ -47,7 +53,13 @@ function PartyService.GetOrCreate(self: any, userId: number): Party
 		return p
 	end
 	self._nextId += 1
-	local party: Party = { Id = "party_" .. self._nextId, LeaderId = userId, Members = { userId }, Invites = {}, CreatedAt = self._env.Now() }
+	local party: Party = {
+		Id = "party_" .. self._nextId,
+		LeaderId = userId,
+		Members = { userId },
+		Invites = {},
+		CreatedAt = self._env.Now(),
+	}
 	self._parties[party.Id] = party
 	self._byUser[userId] = party.Id
 	self:Broadcast(party)
@@ -87,7 +99,11 @@ function PartyService.Handle(self: any, player: any, action: string, targetUserI
 			return
 		end
 		party.Invites[targetUserId] = self._env.Now()
-		self._env.FireClient("PartyState", target, { Invite = { PartyId = party.Id, From = player.DisplayName, FromId = uid } })
+		self._env.FireClient(
+			"PartyState",
+			target,
+			{ Invite = { PartyId = party.Id, From = player.DisplayName, FromId = uid } }
+		)
 	elseif action == "Accept" and targetUserId then
 		local leaderParty = self:GetParty(targetUserId)
 		if not leaderParty or leaderParty.Invites[uid] == nil then

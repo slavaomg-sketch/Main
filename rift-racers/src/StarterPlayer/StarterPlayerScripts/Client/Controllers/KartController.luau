@@ -157,7 +157,8 @@ end
 -- Finds the kart model the server spawned for us (by RacerKey attribute) and wires up the physics handles.
 function KartController.Attach(self: any, info: any, loadout: any)
 	self:Detach()
-	self.Stats = VehicleStats.Compute(loadout.HeroId, loadout.VehicleId, info.Rules and info.Rules.SpeedClass or "Standard")
+	self.Stats =
+		VehicleStats.Compute(loadout.HeroId, loadout.VehicleId, info.Rules and info.Rules.SpeedClass or "Standard")
 	self.Finished = false
 	local key = info.Key
 	local chassis: Part? = nil
@@ -194,11 +195,27 @@ function KartController.Attach(self: any, info: any, loadout: any)
 			local weld = w:FindFirstChild("WheelWeld")
 			if weld then
 				local idx = tonumber(string.sub(w.Name, 6)) or 3
-				table.insert(wheels, { Part = w :: BasePart, Weld = weld :: Weld, Base = (weld :: Weld).C0, Steer = idx <= 2 and #attachments == 4 or (idx == 1 and #attachments == 3) })
+				table.insert(
+					wheels,
+					{
+						Part = w :: BasePart,
+						Weld = weld :: Weld,
+						Base = (weld :: Weld).C0,
+						Steer = idx <= 2 and #attachments == 4 or (idx == 1 and #attachments == 3),
+					}
+				)
 			end
 		end
 	end
-	self.Kart = { Chassis = ch, Model = model, Forces = forces, Attachments = attachments, Drive = ch:FindFirstChild("DriveForce") :: VectorForce, Align = ch:FindFirstChild("Upright") :: AlignOrientation, Wheels = wheels }
+	self.Kart = {
+		Chassis = ch,
+		Model = model,
+		Forces = forces,
+		Attachments = attachments,
+		Drive = ch:FindFirstChild("DriveForce") :: VectorForce,
+		Align = ch:FindFirstChild("Upright") :: AlignOrientation,
+		Wheels = wheels,
+	}
 	self._rayParams.FilterDescendantsInstances = { model }
 	local karts = Workspace:FindFirstChild("RiftRacers")
 	if karts then
@@ -222,17 +239,23 @@ function KartController.Attach(self: any, info: any, loadout: any)
 		self:Step(dt)
 	end)
 	self._maid:GiveKey("step", self._stepConn)
-	self._maid:GiveKey("impulse", ch:GetAttributeChangedSignal("ImpulseAt"):Connect(function()
-		local imp = ch:GetAttribute("Impulse")
-		if typeof(imp) == "Vector3" then
-			ch:ApplyImpulse(imp)
-		end
-	end))
-	self._maid:GiveKey("ancestry", model.AncestryChanged:Connect(function(_, parent)
-		if parent == nil then
-			self:Detach()
-		end
-	end))
+	self._maid:GiveKey(
+		"impulse",
+		ch:GetAttributeChangedSignal("ImpulseAt"):Connect(function()
+			local imp = ch:GetAttribute("Impulse")
+			if typeof(imp) == "Vector3" then
+				ch:ApplyImpulse(imp)
+			end
+		end)
+	)
+	self._maid:GiveKey(
+		"ancestry",
+		model.AncestryChanged:Connect(function(_, parent)
+			if parent == nil then
+				self:Detach()
+			end
+		end)
+	)
 	self:SetState("Idle")
 end
 
@@ -271,7 +294,9 @@ function KartController.OnEffect(self: any, name: string, data: any)
 	elseif name == "Respawn" then
 		local kart = self.Kart
 		if kart and typeof(data.CFrame) == "CFrame" then
-			local origin = kart.Model.Parent and kart.Model.Parent.Parent and (kart.Model.Parent.Parent :: Instance):GetAttribute("Origin")
+			local origin = kart.Model.Parent
+				and kart.Model.Parent.Parent
+				and (kart.Model.Parent.Parent :: Instance):GetAttribute("Origin")
 			local cf = data.CFrame
 			if typeof(origin) == "Vector3" then
 				cf = cf + origin
@@ -304,7 +329,13 @@ function KartController.OnDriftPressed(self: any)
 	end
 	local now = Workspace:GetServerTimeNow()
 	-- Trick: pressing drift in the air shortly after a ramp.
-	if not self.Grounded and self.OnJump and now <= self.TrickWindowUntil and not self.TrickDone and now - self.LastTrickAt > P.Trick.CooldownSeconds then
+	if
+		not self.Grounded
+		and self.OnJump
+		and now <= self.TrickWindowUntil
+		and not self.TrickDone
+		and now - self.LastTrickAt > P.Trick.CooldownSeconds
+	then
 		self.TrickDone = true
 		self.LastTrickAt = now
 		Network.Fire("TrickEvent", self.OnJump)
@@ -333,7 +364,16 @@ function KartController.OnDriftReleased(self: any)
 	local b = KartPhysicsModel.DriftBoostFor(tier)
 	if b and self.Stats then
 		-- Predict locally for responsiveness; the server's confirmation replaces it.
-		table.insert(self.Predicted, KartPhysicsModel.MakeBoost(("Drift" .. tier) :: any, b.BoostSeconds, b.SpeedBonus, self.Stats, Workspace:GetServerTimeNow()))
+		table.insert(
+			self.Predicted,
+			KartPhysicsModel.MakeBoost(
+				("Drift" .. tier) :: any,
+				b.BoostSeconds,
+				b.SpeedBonus,
+				self.Stats,
+				Workspace:GetServerTimeNow()
+			)
+		)
 	end
 	self:SetDriftTier(0)
 end
@@ -374,7 +414,8 @@ function KartController.Step(self: any, dt: number)
 			local compression = math.clamp(P.SuspensionRestLength - result.Distance, -0.5, P.SuspensionRestLength)
 			local pointVel = ch:GetVelocityAtPosition(origin)
 			local relVel = pointVel:Dot(result.Normal)
-			local spring = (P.SuspensionStiffness * compression - P.SuspensionDamping * relVel) * (mass / #kart.Attachments)
+			local spring = (P.SuspensionStiffness * compression - P.SuspensionDamping * relVel)
+				* (mass / #kart.Attachments)
 			force = result.Normal * math.max(0, spring)
 			local part = result.Instance
 			local surf = part:GetAttribute("Surface")
@@ -414,7 +455,8 @@ function KartController.Step(self: any, dt: number)
 	if not grounded then
 		self.AirSince = self.AirSince or now
 		if self.OnJump then
-			self.TrickWindowUntil = math.max(self.TrickWindowUntil, (self.AirSince :: number) + P.Trick.WindowSeconds + 0.6)
+			self.TrickWindowUntil =
+				math.max(self.TrickWindowUntil, (self.AirSince :: number) + P.Trick.WindowSeconds + 0.6)
 		end
 	else
 		if self.AirSince ~= nil and wasGrounded == false then
@@ -562,14 +604,20 @@ function KartController.Step(self: any, dt: number)
 	end
 	if assist and grounded and up.Y < 0.3 then
 		-- Auto flip
-		ch.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 2, 0), cf.Position + Vector3.new(0, 2, 0) + Vector3.new(look.X, 0, look.Z))
+		ch.CFrame = CFrame.lookAt(
+			cf.Position + Vector3.new(0, 2, 0),
+			cf.Position + Vector3.new(0, 2, 0) + Vector3.new(look.X, 0, look.Z)
+		)
 	end
 
 	-- Wheels visual
 	self.WheelSpin += forwardSpeed * dt / 1.0
 	for _, w in kart.Wheels do
 		local steerAngle = if w.Steer then -steer * math.rad(22) else 0
-		w.Weld.C0 = w.Base * CFrame.Angles(0, steerAngle, 0) * CFrame.Angles(0, 0, 0) * CFrame.fromAxisAngle(Vector3.new(1, 0, 0), self.WheelSpin)
+		w.Weld.C0 = w.Base
+			* CFrame.Angles(0, steerAngle, 0)
+			* CFrame.Angles(0, 0, 0)
+			* CFrame.fromAxisAngle(Vector3.new(1, 0, 0), self.WheelSpin)
 	end
 	-- Attributes for camera/VFX (local only)
 	ch:SetAttribute("Grounded", grounded)

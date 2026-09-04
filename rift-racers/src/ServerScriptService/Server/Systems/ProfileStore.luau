@@ -75,12 +75,17 @@ function ProfileStore.Load(self: any, userId: number): LoadResult
 		lockedByOther = false
 		local success, result = pcall(function()
 			return self._backend:UpdateAsync(keyFor(userId), function(old: Record?): Record?
-				local record: Record = old or { Data = ProfileTemplate.New(now) :: any, SessionLock = nil, SavedAt = now }
+				local record: Record = old
+					or { Data = ProfileTemplate.New(now) :: any, SessionLock = nil, SavedAt = now }
 				if type(record.Data) ~= "table" then
 					record.Data = ProfileTemplate.New(now) :: any
 				end
 				local lock = record.SessionLock
-				if lock and lock.SessionId ~= self._sessionId and (now - lock.LockedAt) < GameConfig.Profile.SessionLockTimeoutSeconds then
+				if
+					lock
+					and lock.SessionId ~= self._sessionId
+					and (now - lock.LockedAt) < GameConfig.Profile.SessionLockTimeoutSeconds
+				then
 					lockedByOther = true
 					return nil -- abort the write
 				end
@@ -108,7 +113,14 @@ function ProfileStore.Load(self: any, userId: number): LoadResult
 	end
 	local data = loadedData :: { [string]: any }
 	data.LastSeenAt = now
-	local handle: ProfileHandle = { UserId = userId, Data = data :: any, Status = "Loaded", Dirty = false, LoadedAt = now, SessionId = self._sessionId }
+	local handle: ProfileHandle = {
+		UserId = userId,
+		Data = data :: any,
+		Status = "Loaded",
+		Dirty = false,
+		LoadedAt = now,
+		SessionId = self._sessionId,
+	}
 	self._handles[userId] = handle
 	return { Ok = true, Handle = handle, Migrated = migrated }
 end
@@ -124,12 +136,20 @@ function ProfileStore.Save(self: any, handle: ProfileHandle): boolean
 		local success, result = pcall(function()
 			return self._backend:UpdateAsync(keyFor(handle.UserId), function(old: Record?): Record?
 				local lock = old and old.SessionLock
-				if lock and lock.SessionId ~= self._sessionId and (now - lock.LockedAt) < GameConfig.Profile.SessionLockTimeoutSeconds then
+				if
+					lock
+					and lock.SessionId ~= self._sessionId
+					and (now - lock.LockedAt) < GameConfig.Profile.SessionLockTimeoutSeconds
+				then
 					lost = true
 					return nil
 				end
 				handle.Data.LastSeenAt = now
-				return { Data = handle.Data, SessionLock = { SessionId = self._sessionId, LockedAt = now }, SavedAt = now }
+				return {
+					Data = handle.Data,
+					SessionLock = { SessionId = self._sessionId, LockedAt = now },
+					SavedAt = now,
+				}
 			end)
 		end)
 		if lost then
@@ -186,7 +206,14 @@ end
 -- A non-persistent profile for players whose real profile failed to load. Never saved.
 function ProfileStore.Temporary(self: any, userId: number): ProfileHandle
 	local now = self._clock()
-	local handle: ProfileHandle = { UserId = userId, Data = ProfileTemplate.New(now), Status = "Temporary", Dirty = false, LoadedAt = now, SessionId = self._sessionId }
+	local handle: ProfileHandle = {
+		UserId = userId,
+		Data = ProfileTemplate.New(now),
+		Status = "Temporary",
+		Dirty = false,
+		LoadedAt = now,
+		SessionId = self._sessionId,
+	}
 	self._handles[userId] = handle
 	return handle
 end

@@ -52,7 +52,12 @@ function HUDController.Init(self: any, registry: any)
 	end)
 	ClientState.KartEffect:Connect(function(name, data)
 		if name == "StartBoost" then
-			local key = if data.Result == "Perfect" then "RACE.START_PERFECT" elseif data.Result == "Good" then "RACE.START_GOOD" elseif data.Result == "Okay" then "RACE.START_OKAY" elseif data.Result == "Early" then "RACE.START_EARLY" else nil
+			local key = if data.Result == "Perfect"
+				then "RACE.START_PERFECT"
+				elseif data.Result == "Good" then "RACE.START_GOOD"
+				elseif data.Result == "Okay" then "RACE.START_OKAY"
+				elseif data.Result == "Early" then "RACE.START_EARLY"
+				else nil
 			if key then
 				self:Toast(Locale.T(key))
 			end
@@ -102,38 +107,203 @@ function HUDController.Build(self: any)
 	self._gui = gui
 	local e = self._els
 	-- Top-left: position & lap
-	local topLeft = UIBuilder.Frame({ Size = UDim2.new(0, 260, 0, 120), Position = UDim2.new(0, 24, 0, 24), Transparency = 1, Parent = gui })
-	e.Position = UIBuilder.Label({ Text = "1/8", Size = UDim2.new(1, 0, 0, 70), TextSize = 64, Align = Enum.TextXAlignment.Left, Parent = topLeft, Scaled = true })
-	e.Lap = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.new(0, 0, 0, 72), TextSize = Theme.TextSize.Header, Align = Enum.TextXAlignment.Left, Color = Theme.Colors.Accent2, Parent = topLeft })
+	local topLeft = UIBuilder.Frame({
+		Size = UDim2.new(0, 260, 0, 120),
+		Position = UDim2.new(0, 24, 0, 24),
+		Transparency = 1,
+		Parent = gui,
+	})
+	e.Position = UIBuilder.Label({
+		Text = "1/8",
+		Size = UDim2.new(1, 0, 0, 70),
+		TextSize = 64,
+		Align = Enum.TextXAlignment.Left,
+		Parent = topLeft,
+		Scaled = true,
+	})
+	e.Lap = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 34),
+		Position = UDim2.new(0, 0, 0, 72),
+		TextSize = Theme.TextSize.Header,
+		Align = Enum.TextXAlignment.Left,
+		Color = Theme.Colors.Accent2,
+		Parent = topLeft,
+	})
 	-- Top-center: time / gap / countdown / toasts
-	e.Time = UIBuilder.Label({ Text = "00:00.000", Size = UDim2.new(0, 300, 0, 40), Position = UDim2.new(0.5, 0, 0, 20), Anchor = Vector2.new(0.5, 0), TextSize = Theme.TextSize.Header, Parent = gui })
-	e.Gap = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 300, 0, 28), Position = UDim2.new(0.5, 0, 0, 60), Anchor = Vector2.new(0.5, 0), TextSize = Theme.TextSize.Small, Color = Theme.Colors.TextDim, Parent = gui })
-	e.Countdown = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 400, 0, 140), Position = UDim2.new(0.5, 0, 0.3, 0), Anchor = Vector2.new(0.5, 0.5), TextSize = Theme.TextSize.Huge, Color = Theme.Colors.Accent2, Parent = gui })
-	e.Toast = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 500, 0, 50), Position = UDim2.new(0.5, 0, 0.42, 0), Anchor = Vector2.new(0.5, 0.5), TextSize = Theme.TextSize.Title, Color = Theme.Colors.Warning, Parent = gui })
-	e.WrongWay = UIBuilder.Label({ Text = Locale.T("RACE.WRONG_WAY"), Size = UDim2.new(0, 400, 0, 60), Position = UDim2.new(0.5, 0, 0.2, 0), Anchor = Vector2.new(0.5, 0.5), TextSize = Theme.TextSize.Title, Color = Theme.Colors.Danger, Parent = gui })
+	e.Time = UIBuilder.Label({
+		Text = "00:00.000",
+		Size = UDim2.new(0, 300, 0, 40),
+		Position = UDim2.new(0.5, 0, 0, 20),
+		Anchor = Vector2.new(0.5, 0),
+		TextSize = Theme.TextSize.Header,
+		Parent = gui,
+	})
+	e.Gap = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 300, 0, 28),
+		Position = UDim2.new(0.5, 0, 0, 60),
+		Anchor = Vector2.new(0.5, 0),
+		TextSize = Theme.TextSize.Small,
+		Color = Theme.Colors.TextDim,
+		Parent = gui,
+	})
+	e.Countdown = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 400, 0, 140),
+		Position = UDim2.new(0.5, 0, 0.3, 0),
+		Anchor = Vector2.new(0.5, 0.5),
+		TextSize = Theme.TextSize.Huge,
+		Color = Theme.Colors.Accent2,
+		Parent = gui,
+	})
+	e.Toast = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 500, 0, 50),
+		Position = UDim2.new(0.5, 0, 0.42, 0),
+		Anchor = Vector2.new(0.5, 0.5),
+		TextSize = Theme.TextSize.Title,
+		Color = Theme.Colors.Warning,
+		Parent = gui,
+	})
+	e.WrongWay = UIBuilder.Label({
+		Text = Locale.T("RACE.WRONG_WAY"),
+		Size = UDim2.new(0, 400, 0, 60),
+		Position = UDim2.new(0.5, 0, 0.2, 0),
+		Anchor = Vector2.new(0.5, 0.5),
+		TextSize = Theme.TextSize.Title,
+		Color = Theme.Colors.Danger,
+		Parent = gui,
+	})
 	e.WrongWay.Visible = false
-	e.Incoming = UIBuilder.Label({ Text = Locale.T("RACE.INCOMING"), Size = UDim2.new(0, 300, 0, 40), Position = UDim2.new(0.5, 0, 0.52, 0), Anchor = Vector2.new(0.5, 0.5), TextSize = Theme.TextSize.Header, Color = Theme.Colors.Danger, Parent = gui })
+	e.Incoming = UIBuilder.Label({
+		Text = Locale.T("RACE.INCOMING"),
+		Size = UDim2.new(0, 300, 0, 40),
+		Position = UDim2.new(0.5, 0, 0.52, 0),
+		Anchor = Vector2.new(0.5, 0.5),
+		TextSize = Theme.TextSize.Header,
+		Color = Theme.Colors.Danger,
+		Parent = gui,
+	})
 	e.Incoming.Visible = false
 	-- Top-right: team / knockout info
-	e.Team = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 300, 0, 34), Position = UDim2.new(1, -24, 0, 24), Anchor = Vector2.new(1, 0), TextSize = Theme.TextSize.Body, Align = Enum.TextXAlignment.Right, Parent = gui })
-	e.Knockout = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 300, 0, 30), Position = UDim2.new(1, -24, 0, 58), Anchor = Vector2.new(1, 0), TextSize = Theme.TextSize.Small, Align = Enum.TextXAlignment.Right, Color = Theme.Colors.Warning, Parent = gui })
+	e.Team = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 300, 0, 34),
+		Position = UDim2.new(1, -24, 0, 24),
+		Anchor = Vector2.new(1, 0),
+		TextSize = Theme.TextSize.Body,
+		Align = Enum.TextXAlignment.Right,
+		Parent = gui,
+	})
+	e.Knockout = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 300, 0, 30),
+		Position = UDim2.new(1, -24, 0, 58),
+		Anchor = Vector2.new(1, 0),
+		TextSize = Theme.TextSize.Small,
+		Align = Enum.TextXAlignment.Right,
+		Color = Theme.Colors.Warning,
+		Parent = gui,
+	})
 	-- Bottom-left: minimap
-	local mm = UIBuilder.Frame({ Size = UDim2.new(0, 220, 0, 220), Position = UDim2.new(0, 24, 1, -24), Anchor = Vector2.new(0, 1), Color = Theme.Colors.Panel, Transparency = 0.35, Parent = gui, Name = "Minimap" })
+	local mm = UIBuilder.Frame({
+		Size = UDim2.new(0, 220, 0, 220),
+		Position = UDim2.new(0, 24, 1, -24),
+		Anchor = Vector2.new(0, 1),
+		Color = Theme.Colors.Panel,
+		Transparency = 0.35,
+		Parent = gui,
+		Name = "Minimap",
+	})
 	e.Minimap = mm
 	e.MinimapPath = UIBuilder.Frame({ Transparency = 1, Parent = mm, Name = "Path" })
 	e.MinimapDots = UIBuilder.Frame({ Transparency = 1, Parent = mm, Name = "Dots", ZIndex = 3 })
 	-- Bottom-right: items, shards, speed, drift
-	local br = UIBuilder.Frame({ Size = UDim2.new(0, 320, 0, 200), Position = UDim2.new(1, -24, 1, -24), Anchor = Vector2.new(1, 1), Transparency = 1, Parent = gui })
-	e.Speed = UIBuilder.Label({ Text = "0", Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), TextSize = 54, Align = Enum.TextXAlignment.Right, Parent = br })
-	e.Drift = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 12), Position = UDim2.new(0, 0, 1, -66), Anchor = Vector2.new(0, 1), Color = Theme.Colors.PanelAlt, Corner = UDim.new(1, 0), Parent = br })
-	e.DriftFill = UIBuilder.Frame({ Size = UDim2.fromScale(0, 1), Color = Theme.Colors.Accent2, Corner = UDim.new(1, 0), Parent = e.Drift })
-	e.Shards = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 26), Position = UDim2.new(0, 0, 1, -84), Anchor = Vector2.new(0, 1), TextSize = Theme.TextSize.Small, Align = Enum.TextXAlignment.Right, Color = Color3.fromRGB(200, 160, 255), Parent = br })
-	e.ItemActive = UIBuilder.Frame({ Size = UDim2.new(0, 84, 0, 84), Position = UDim2.new(1, 0, 0, 0), Anchor = Vector2.new(1, 0), Color = Theme.Colors.Panel, Stroke = true, Parent = br, Name = "Active" })
-	e.ItemActiveLabel = UIBuilder.Label({ Text = "", Size = UDim2.fromScale(1, 1), TextSize = Theme.TextSize.Small, Parent = e.ItemActive, Scaled = true })
-	e.ItemReserve = UIBuilder.Frame({ Size = UDim2.new(0, 60, 0, 60), Position = UDim2.new(1, -96, 0, 12), Anchor = Vector2.new(1, 0), Color = Theme.Colors.Panel, Parent = br, Name = "Reserve" })
-	e.ItemReserveLabel = UIBuilder.Label({ Text = "", Size = UDim2.fromScale(1, 1), TextSize = 14, Parent = e.ItemReserve, Scaled = true, Color = Theme.Colors.TextDim })
+	local br = UIBuilder.Frame({
+		Size = UDim2.new(0, 320, 0, 200),
+		Position = UDim2.new(1, -24, 1, -24),
+		Anchor = Vector2.new(1, 1),
+		Transparency = 1,
+		Parent = gui,
+	})
+	e.Speed = UIBuilder.Label({
+		Text = "0",
+		Size = UDim2.new(1, 0, 0, 60),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		TextSize = 54,
+		Align = Enum.TextXAlignment.Right,
+		Parent = br,
+	})
+	e.Drift = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 12),
+		Position = UDim2.new(0, 0, 1, -66),
+		Anchor = Vector2.new(0, 1),
+		Color = Theme.Colors.PanelAlt,
+		Corner = UDim.new(1, 0),
+		Parent = br,
+	})
+	e.DriftFill = UIBuilder.Frame({
+		Size = UDim2.fromScale(0, 1),
+		Color = Theme.Colors.Accent2,
+		Corner = UDim.new(1, 0),
+		Parent = e.Drift,
+	})
+	e.Shards = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 26),
+		Position = UDim2.new(0, 0, 1, -84),
+		Anchor = Vector2.new(0, 1),
+		TextSize = Theme.TextSize.Small,
+		Align = Enum.TextXAlignment.Right,
+		Color = Color3.fromRGB(200, 160, 255),
+		Parent = br,
+	})
+	e.ItemActive = UIBuilder.Frame({
+		Size = UDim2.new(0, 84, 0, 84),
+		Position = UDim2.new(1, 0, 0, 0),
+		Anchor = Vector2.new(1, 0),
+		Color = Theme.Colors.Panel,
+		Stroke = true,
+		Parent = br,
+		Name = "Active",
+	})
+	e.ItemActiveLabel = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.fromScale(1, 1),
+		TextSize = Theme.TextSize.Small,
+		Parent = e.ItemActive,
+		Scaled = true,
+	})
+	e.ItemReserve = UIBuilder.Frame({
+		Size = UDim2.new(0, 60, 0, 60),
+		Position = UDim2.new(1, -96, 0, 12),
+		Anchor = Vector2.new(1, 0),
+		Color = Theme.Colors.Panel,
+		Parent = br,
+		Name = "Reserve",
+	})
+	e.ItemReserveLabel = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.fromScale(1, 1),
+		TextSize = 14,
+		Parent = e.ItemReserve,
+		Scaled = true,
+		Color = Theme.Colors.TextDim,
+	})
 	-- Diagnostics (F3 toggles)
-	e.Diag = UIBuilder.Label({ Text = "", Size = UDim2.new(0, 380, 0, 100), Position = UDim2.new(0.5, 0, 1, -10), Anchor = Vector2.new(0.5, 1), TextSize = 14, Color = Theme.Colors.TextDim, Font = Theme.FontBody, Parent = gui, Align = Enum.TextXAlignment.Left })
+	e.Diag = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(0, 380, 0, 100),
+		Position = UDim2.new(0.5, 0, 1, -10),
+		Anchor = Vector2.new(0.5, 1),
+		TextSize = 14,
+		Color = Theme.Colors.TextDim,
+		Font = Theme.FontBody,
+		Parent = gui,
+		Align = Enum.TextXAlignment.Left,
+	})
 	e.Diag.Visible = false
 	game:GetService("UserInputService").InputBegan:Connect(function(io, processed)
 		if not processed and io.KeyCode == Enum.KeyCode.F3 then
@@ -291,7 +461,15 @@ function HUDController.BuildMinimap(self: any, venueId: string, mirror: boolean?
 			local a, b = prev :: Vector2, p2
 			local mid = (a + b) / 2
 			local len = (b - a).Magnitude
-			local seg = UIBuilder.Frame({ Size = UDim2.new(len * 0.9, 0, 0, 4), Position = UDim2.fromScale(mid.X * 0.9 + 0.05, mid.Y * 0.9 + 0.05), Anchor = Vector2.new(0.5, 0.5), Color = Theme.Colors.Accent2, Transparency = 0.2, Parent = e.MinimapPath, Corner = UDim.new(1, 0) })
+			local seg = UIBuilder.Frame({
+				Size = UDim2.new(len * 0.9, 0, 0, 4),
+				Position = UDim2.fromScale(mid.X * 0.9 + 0.05, mid.Y * 0.9 + 0.05),
+				Anchor = Vector2.new(0.5, 0.5),
+				Color = Theme.Colors.Accent2,
+				Transparency = 0.2,
+				Parent = e.MinimapPath,
+				Corner = UDim.new(1, 0),
+			})
 			seg.Rotation = math.deg(math.atan2(b.Y - a.Y, b.X - a.X))
 		end
 		prev = p2
@@ -311,7 +489,10 @@ function HUDController.Update(self: any)
 	local tiers = GameConfig.Physics.DriftTiers
 	local charge = if k.Drifting then math.clamp(k.DriftCharge / tiers[#tiers].Seconds, 0, 1) else 0
 	e.DriftFill.Size = UDim2.fromScale(charge, 1)
-	e.DriftFill.BackgroundColor3 = if k.DriftTier >= 3 then Color3.fromRGB(200, 120, 255) elseif k.DriftTier == 2 then Theme.Colors.Warning else Theme.Colors.Accent2
+	e.DriftFill.BackgroundColor3 = if k.DriftTier >= 3
+		then Color3.fromRGB(200, 120, 255)
+		elseif k.DriftTier == 2 then Theme.Colors.Warning
+		else Theme.Colors.Accent2
 	local race = ClientState.Race
 	local serverNow = Workspace:GetServerTimeNow()
 	if race and ClientState.RaceStateName == "Countdown" then
@@ -351,19 +532,24 @@ function HUDController.Update(self: any)
 			if race.Rules and race.Rules.Laps > 0 and race.ModeId ~= "CoreClash" and race.ModeId ~= "ShardRush" then
 				e.Lap.Text = Locale.T("RACE.LAP", math.min(mine.Lap + 1, race.Rules.Laps), race.Rules.Laps)
 			else
-				e.Lap.Text = if race.ModeId == "CoreClash" then Locale.T("RACE.CORES", mine.Cores or 0) else Locale.T("RACE.SHARDS", mine.Sh or 0)
+				e.Lap.Text = if race.ModeId == "CoreClash"
+					then Locale.T("RACE.CORES", mine.Cores or 0)
+					else Locale.T("RACE.SHARDS", mine.Sh or 0)
 			end
 		end
 		-- Time & gap
 		if ClientState.RaceStateName == "Racing" or ClientState.RaceStateName == "FinishWindow" then
 			if snap.BattleEndsAt and snap.BattleEndsAt > 0 then
-				e.Time.Text = Locale.T("RACE.TIME_LEFT", TimeUtil.FormatRaceTime(math.max(0, snap.BattleEndsAt - serverNow)))
+				e.Time.Text =
+					Locale.T("RACE.TIME_LEFT", TimeUtil.FormatRaceTime(math.max(0, snap.BattleEndsAt - serverNow)))
 			else
 				e.Time.Text = TimeUtil.FormatRaceTime(math.max(0, serverNow - race.GoAt))
 			end
 		end
 		if race.ModeId == "TimeTrial" then
-			local rec = ClientState.Profile and ClientState.Profile.TrackRecords and ClientState.Profile.TrackRecords[race.VenueId]
+			local rec = ClientState.Profile
+				and ClientState.Profile.TrackRecords
+				and ClientState.Profile.TrackRecords[race.VenueId]
 			e.Gap.Text = if rec then Locale.T("RACE.GAP", TimeUtil.FormatRaceTime(rec.BestTime)) else ""
 		else
 			e.Gap.Text = ""
@@ -392,12 +578,20 @@ function HUDController.Update(self: any)
 			for _, r in snap.Racers do
 				local dot = self._minimapDots[r.K]
 				if not dot then
-					dot = UIBuilder.Frame({ Size = UDim2.new(0, if r.K == myKey then 14 else 9, 0, if r.K == myKey then 14 else 9), Anchor = Vector2.new(0.5, 0.5), Color = if r.K == myKey then Theme.Colors.Warning else Theme.Colors.Text, Corner = UDim.new(1, 0), Parent = e.MinimapDots, ZIndex = if r.K == myKey then 5 else 4 })
+					dot = UIBuilder.Frame({
+						Size = UDim2.new(0, if r.K == myKey then 14 else 9, 0, if r.K == myKey then 14 else 9),
+						Anchor = Vector2.new(0.5, 0.5),
+						Color = if r.K == myKey then Theme.Colors.Warning else Theme.Colors.Text,
+						Corner = UDim.new(1, 0),
+						Parent = e.MinimapDots,
+						ZIndex = if r.K == myKey then 5 else 4,
+					})
 					self._minimapDots[r.K] = dot
 				end
 				local d = dot :: Frame
 				local pos = spline:PositionAt(spline.Length * (r.Pr or 0))
-				d.Position = UDim2.fromScale((pos.X - b.MinX) / b.Span * 0.9 + 0.05, (pos.Z - b.MinZ) / b.Span * 0.9 + 0.05)
+				d.Position =
+					UDim2.fromScale((pos.X - b.MinX) / b.Span * 0.9 + 0.05, (pos.Z - b.MinZ) / b.Span * 0.9 + 0.05)
 				d.Visible = r.Conn and not r.Elim
 			end
 		end
@@ -411,7 +605,16 @@ function HUDController.Update(self: any)
 		local ok, text = pcall(function()
 			local recv = Stats.DataReceiveKbps
 			local send = Stats.DataSendKbps
-			return string.format("ping %.0f ms | recv %.1f KB/s send %.1f KB/s | mem %.0f MB | speed %.0f | surf %s | state %s", Players.LocalPlayer:GetNetworkPing() * 1000, recv, send, Stats:GetTotalMemoryUsageMb(), k.Speed, tostring(k.Surface), tostring(k.State))
+			return string.format(
+				"ping %.0f ms | recv %.1f KB/s send %.1f KB/s | mem %.0f MB | speed %.0f | surf %s | state %s",
+				Players.LocalPlayer:GetNetworkPing() * 1000,
+				recv,
+				send,
+				Stats:GetTotalMemoryUsageMb(),
+				k.Speed,
+				tostring(k.Surface),
+				tostring(k.State)
+			)
 		end)
 		e.Diag.Text = if ok then text else "diag unavailable"
 	end

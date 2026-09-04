@@ -5,10 +5,25 @@ local RobloxEnv = require("./RobloxEnv")
 
 local FakeEnv = {}
 
-export type FakePlayer = { UserId: number, Name: string, DisplayName: string, Parent: any, Kicked: boolean, Kick: (self: any, reason: string?) -> (), Inbox: { { Name: string, Args: { any } } } }
+export type FakePlayer = {
+	UserId: number,
+	Name: string,
+	DisplayName: string,
+	Parent: any,
+	Kicked: boolean,
+	Kick: (self: any, reason: string?) -> (),
+	Inbox: { { Name: string, Args: { any } } },
+}
 
 function FakeEnv.Player(userId: number, name: string?): FakePlayer
-	local p: any = { UserId = userId, Name = name or ("Player" .. userId), DisplayName = name or ("Player" .. userId), Parent = true, Kicked = false, Inbox = {} }
+	local p: any = {
+		UserId = userId,
+		Name = name or ("Player" .. userId),
+		DisplayName = name or ("Player" .. userId),
+		Parent = true,
+		Kicked = false,
+		Inbox = {},
+	}
 	function p:Kick(_reason)
 		self.Kicked = true
 		self.Parent = nil
@@ -99,6 +114,7 @@ function FakeEnv.new(opts: { Seed: number?, HumanDriver: boolean? }?)
 		env._closeFn = fn
 	end
 	env.SessionId = "fake_server"
+	env.Sleep = function() end
 	env.Random = RandomShim.new(o.Seed or 42)
 	env.Logs = {} :: { string }
 	env.Log = function(level: string, tag: string, message: string)
@@ -106,7 +122,16 @@ function FakeEnv.new(opts: { Seed: number?, HumanDriver: boolean? }?)
 	end
 
 	-- FakeWorld ----------------------------------------------------------------------------------------------------
-	type Kart = { Key: string, Sim: any, IsBot: boolean, Stats: any, Memory: any?, Session: string, Attrs: { [string]: any }, Grounded: boolean }
+	type Kart = {
+		Key: string,
+		Sim: any,
+		IsBot: boolean,
+		Stats: any,
+		Memory: any?,
+		Session: string,
+		Attrs: { [string]: any },
+		Grounded: boolean,
+	}
 	local world: any = {}
 	local venues: { [string]: any } = {}
 	local karts: { [string]: Kart } = {}
@@ -131,14 +156,32 @@ function FakeEnv.new(opts: { Seed: number?, HumanDriver: boolean? }?)
 	world.SetGate = function(handle: any, id: string, open: boolean)
 		handle.Gates[id] = open
 	end
-	world.SpawnKart = function(sessionId: string, key: string, heroId: string, vehicleId: string, _cos: any, cframe: any, _player: any, isBot: boolean)
+	world.SpawnKart = function(
+		sessionId: string,
+		key: string,
+		heroId: string,
+		vehicleId: string,
+		_cos: any,
+		cframe: any,
+		_player: any,
+		isBot: boolean
+	)
 		local stats = VehicleStats.Compute(heroId, vehicleId)
 		local sim = KartSim.new(stats, cframe)
 		local venue = venues[sessionId]
 		if venue and not venue.IsArena then
 			sim.Progress = venue.Runtime:Locate(cframe.Position, venue.Runtime.Length - 30).Progress
 		end
-		karts[sessionId .. ":" .. key] = { Key = key, Sim = sim, IsBot = isBot, Stats = stats, Memory = if isBot then nil else BotBrain.NewMemory("Hard", 7 + #key), Session = sessionId, Attrs = {}, Grounded = true }
+		karts[sessionId .. ":" .. key] = {
+			Key = key,
+			Sim = sim,
+			IsBot = isBot,
+			Stats = stats,
+			Memory = if isBot then nil else BotBrain.NewMemory("Hard", 7 + #key),
+			Session = sessionId,
+			Attrs = {},
+			Grounded = true,
+		}
 		return karts[sessionId .. ":" .. key]
 	end
 	world.DestroyKart = function(sessionId: string, key: string)
@@ -149,7 +192,12 @@ function FakeEnv.new(opts: { Seed: number?, HumanDriver: boolean? }?)
 		if not k then
 			return nil
 		end
-		return { CFrame = k.Sim:CFrame(), Velocity = k.Sim:Velocity(), AngularVelocity = Vector3.new(), Grounded = not k.Sim.Airborne }
+		return {
+			CFrame = k.Sim:CFrame(),
+			Velocity = k.Sim:Velocity(),
+			AngularVelocity = Vector3.new(),
+			Grounded = not k.Sim.Airborne,
+		}
 	end
 	world.SetPose = function(sessionId: string, key: string, cframe: any, velocity: any?)
 		local k = karts[sessionId .. ":" .. key]
@@ -230,9 +278,20 @@ function FakeEnv.new(opts: { Seed: number?, HumanDriver: boolean? }?)
 			local input = { Steer = 0, Throttle = 0, Brake = 0, Drift = false, Trick = false }
 			if racing then
 				local obs = {
-					Position = k.Sim.Position, Forward = k.Sim:Forward(), Speed = k.Sim.Speed, TopSpeed = k.Stats.TopSpeed, Progress = k.Sim.Progress,
-					Grounded = not k.Sim.Airborne, HasItem = racer.Items.Active ~= nil, ItemKind = nil, RivalAhead = nil, RivalBehind = nil, Obstacles = {},
-					OnJump = venue.Runtime:JumpAt(k.Sim.Progress) ~= nil, Now = clock, RubberBand = 1,
+					Position = k.Sim.Position,
+					Forward = k.Sim:Forward(),
+					Speed = k.Sim.Speed,
+					TopSpeed = k.Stats.TopSpeed,
+					Progress = k.Sim.Progress,
+					Grounded = not k.Sim.Airborne,
+					HasItem = racer.Items.Active ~= nil,
+					ItemKind = nil,
+					RivalAhead = nil,
+					RivalBehind = nil,
+					Obstacles = {},
+					OnJump = venue.Runtime:JumpAt(k.Sim.Progress) ~= nil,
+					Now = clock,
+					RubberBand = 1,
 				}
 				local d = BotBrain.Think(k.Memory, venue.Runtime, obs)
 				input = { Steer = d.Steer, Throttle = d.Throttle, Brake = d.Brake, Drift = d.Drift, Trick = d.Trick }
@@ -322,7 +381,23 @@ function FakeEnv.Boot(env: any): any
 	local ServiceRegistry = RobloxEnv.Load("Server/ServiceRegistry")
 	local registry = ServiceRegistry.new()
 	registry:Set("Env", env)
-	for _, name in { "TelemetryService", "SecurityService", "ModeService", "ProfileService", "RewardService", "PartyService", "RaceProgressService", "KartValidationService", "ItemService", "BotRacerService", "RaceService", "MatchmakingService", "LobbyService" } do
+	for _, name in
+		{
+			"TelemetryService",
+			"SecurityService",
+			"ModeService",
+			"ProfileService",
+			"RewardService",
+			"PartyService",
+			"RaceProgressService",
+			"KartValidationService",
+			"ItemService",
+			"BotRacerService",
+			"RaceService",
+			"MatchmakingService",
+			"LobbyService",
+		}
+	do
 		local module = RobloxEnv.Load("Server/Services/" .. name)
 		registry:Add(module.new())
 	end

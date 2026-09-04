@@ -21,12 +21,50 @@ export type DifficultyProfile = {
 }
 
 local Profiles: { [string]: DifficultyProfile } = {
-	Easy = { ReactionSeconds = 0.45, LookAhead = 34, LineNoise = 5, MistakeChance = 0.08, DriftSkill = 0.15, ItemSkill = 0.4, CornerBrake = 1.3, ShortcutChance = 0.05, SpeedScale = 0.86 },
-	Normal = { ReactionSeconds = 0.25, LookAhead = 44, LineNoise = 2.5, MistakeChance = 0.03, DriftSkill = 0.5, ItemSkill = 0.65, CornerBrake = 1.0, ShortcutChance = 0.3, SpeedScale = 0.95 },
-	Hard = { ReactionSeconds = 0.12, LookAhead = 56, LineNoise = 1, MistakeChance = 0.008, DriftSkill = 0.85, ItemSkill = 0.85, CornerBrake = 0.8, ShortcutChance = 0.6, SpeedScale = 1.0 },
+	Easy = {
+		ReactionSeconds = 0.45,
+		LookAhead = 34,
+		LineNoise = 5,
+		MistakeChance = 0.08,
+		DriftSkill = 0.15,
+		ItemSkill = 0.4,
+		CornerBrake = 1.3,
+		ShortcutChance = 0.05,
+		SpeedScale = 0.86,
+	},
+	Normal = {
+		ReactionSeconds = 0.25,
+		LookAhead = 44,
+		LineNoise = 2.5,
+		MistakeChance = 0.03,
+		DriftSkill = 0.5,
+		ItemSkill = 0.65,
+		CornerBrake = 1.0,
+		ShortcutChance = 0.3,
+		SpeedScale = 0.95,
+	},
+	Hard = {
+		ReactionSeconds = 0.12,
+		LookAhead = 56,
+		LineNoise = 1,
+		MistakeChance = 0.008,
+		DriftSkill = 0.85,
+		ItemSkill = 0.85,
+		CornerBrake = 0.8,
+		ShortcutChance = 0.6,
+		SpeedScale = 1.0,
+	},
 }
 
-export type BotInput = { Steer: number, Throttle: number, Brake: number, Drift: boolean, UseItem: boolean, Trick: boolean, TargetLateral: number }
+export type BotInput = {
+	Steer: number,
+	Throttle: number,
+	Brake: number,
+	Drift: boolean,
+	UseItem: boolean,
+	Trick: boolean,
+	TargetLateral: number,
+}
 
 export type BotMemory = {
 	Difficulty: GameTypes.BotDifficulty,
@@ -63,7 +101,15 @@ function BotBrain.NewMemory(difficulty: GameTypes.BotDifficulty, seed: number): 
 		DriftingSince = nil,
 		LastItemAt = -100,
 		LastDecisionAt = -100,
-		LastInput = { Steer = 0, Throttle = 1, Brake = 0, Drift = false, UseItem = false, Trick = false, TargetLateral = 0 },
+		LastInput = {
+			Steer = 0,
+			Throttle = 1,
+			Brake = 0,
+			Drift = false,
+			UseItem = false,
+			Trick = false,
+			TargetLateral = 0,
+		},
 	}
 end
 
@@ -85,7 +131,13 @@ export type Observation = {
 }
 
 -- Chooses one of several racing lines (lateral offsets) periodically; Hard bots hug the inside of corners.
-local function chooseLine(mem: BotMemory, track: TrackRuntime.TrackRuntime, progress: number, prof: DifficultyProfile, now: number)
+local function chooseLine(
+	mem: BotMemory,
+	track: TrackRuntime.TrackRuntime,
+	progress: number,
+	prof: DifficultyProfile,
+	now: number
+)
 	if now < mem.NextLineChange then
 		return
 	end
@@ -175,7 +227,9 @@ function BotBrain.Think(mem: BotMemory, track: TrackRuntime.TrackRuntime, obs: O
 
 	-- Throttle / brake from upcoming curvature.
 	local curvature = track.Spline:Curvature(obs.Progress + lookAhead * 0.8)
-	local desiredSpeedFraction = math.clamp(1 - curvature * 28 * prof.CornerBrake, 0.45, 1) * prof.SpeedScale * obs.RubberBand
+	local desiredSpeedFraction = math.clamp(1 - curvature * 28 * prof.CornerBrake, 0.45, 1)
+		* prof.SpeedScale
+		* obs.RubberBand
 	local speedFraction = obs.Speed / math.max(1, obs.TopSpeed)
 	local throttle = if speedFraction < desiredSpeedFraction then 1 else 0.2
 	local brake = if speedFraction > desiredSpeedFraction + 0.18 then 1 else 0
@@ -210,7 +264,8 @@ function BotBrain.Think(mem: BotMemory, track: TrackRuntime.TrackRuntime, obs: O
 		elseif kind == "Shield" or kind == "Phase" then
 			useItem = obs.RivalBehind ~= nil and (obs.RivalBehind :: number) < 40
 		else
-			useItem = obs.RivalAhead ~= nil and (obs.RivalAhead :: number) < 30 or obs.RivalBehind ~= nil and (obs.RivalBehind :: number) < 20
+			useItem = obs.RivalAhead ~= nil and (obs.RivalAhead :: number) < 30
+				or obs.RivalBehind ~= nil and (obs.RivalBehind :: number) < 20
 		end
 		if useItem then
 			mem.LastItemAt = now
@@ -219,7 +274,15 @@ function BotBrain.Think(mem: BotMemory, track: TrackRuntime.TrackRuntime, obs: O
 
 	local trick = obs.OnJump and not obs.Grounded and mem.Rng:NextNumber() < prof.DriftSkill
 
-	local input: BotInput = { Steer = steer, Throttle = throttle, Brake = brake, Drift = drift, UseItem = useItem, Trick = trick, TargetLateral = targetLateral }
+	local input: BotInput = {
+		Steer = steer,
+		Throttle = throttle,
+		Brake = brake,
+		Drift = drift,
+		UseItem = useItem,
+		Trick = trick,
+		TargetLateral = targetLateral,
+	}
 	mem.LastInput = input
 	return input
 end

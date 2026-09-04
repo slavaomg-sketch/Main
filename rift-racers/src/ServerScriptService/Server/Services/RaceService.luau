@@ -134,7 +134,13 @@ function RaceService.Sessions(self: any): { any }
 end
 
 -- Creates a session for players (already validated as available) with mode and rule overrides.
-function RaceService.StartSession(self: any, modeId: string, players: { any }, rulesOverride: { [string]: any }?, options: { Venue: string?, BotCount: number?, BotDifficulty: string?, ForceStart: boolean? }?): any
+function RaceService.StartSession(
+	self: any,
+	modeId: string,
+	players: { any },
+	rulesOverride: { [string]: any }?,
+	options: { Venue: string?, BotCount: number?, BotDifficulty: string?, ForceStart: boolean? }?
+): any
 	local opts: { Venue: string?, BotCount: number?, BotDifficulty: string?, ForceStart: boolean? } = options or {}
 	local profileService = self._registry:Get("ProfileService")
 	local session = RaceSession.new(self._env, self._registry, modeId, players, rulesOverride, nil)
@@ -147,11 +153,29 @@ function RaceService.StartSession(self: any, modeId: string, players: { any }, r
 		end
 		self._byPlayer[player.UserId] = session.Id
 		local handle = profileService:GetByUserId(player.UserId)
-		local loadout: GameTypes.Loadout = if handle then { HeroId = handle.Data.SelectedHero, VehicleId = handle.Data.SelectedVehicle, Cosmetics = handle.Data.SelectedCosmetics } else { HeroId = "NovaVale", VehicleId = "CometMk1", Cosmetics = {} }
-		if handle and handle.Data.Settings.TrackAssist and session.Rules.AssistMode == false and modeId ~= "TimeTrial" then
+		local loadout: GameTypes.Loadout = if handle
+			then {
+				HeroId = handle.Data.SelectedHero,
+				VehicleId = handle.Data.SelectedVehicle,
+				Cosmetics = handle.Data.SelectedCosmetics,
+			}
+			else { HeroId = "NovaVale", VehicleId = "CometMk1", Cosmetics = {} }
+		if
+			handle
+			and handle.Data.Settings.TrackAssist
+			and session.Rules.AssistMode == false
+			and modeId ~= "TimeTrial"
+		then
 			-- Assist is per-player; the rule only matters for Time Trial record flags.
 		end
-		local identity: GameTypes.RacerIdentity = { Key = RaceSession.KeyFor(player.UserId), UserId = player.UserId, DisplayName = player.DisplayName, IsBot = false, BotDifficulty = nil, Team = 0 }
+		local identity: GameTypes.RacerIdentity = {
+			Key = RaceSession.KeyFor(player.UserId),
+			UserId = player.UserId,
+			DisplayName = player.DisplayName,
+			IsBot = false,
+			BotDifficulty = nil,
+			Team = 0,
+		}
 		session:AddRacer(identity, loadout, player)
 	end
 	local modeDef = ModeDefinitions.ById[modeId]
@@ -159,7 +183,9 @@ function RaceService.StartSession(self: any, modeId: string, players: { any }, r
 	if modeDef.BotsAllowed and botCount > 0 then
 		botCount = math.min(botCount, GameConfig.MaxRacers - #players)
 		session.Rules.BotCount = botCount
-		self._registry:Get("BotRacerService"):Fill(session, botCount, (opts.BotDifficulty or session.Rules.BotDifficulty) :: any)
+		self._registry
+			:Get("BotRacerService")
+			:Fill(session, botCount, (opts.BotDifficulty or session.Rules.BotDifficulty) :: any)
 	end
 	self._sessions[session.Id] = session
 	session:Transition("LoadingProfiles")
@@ -204,6 +230,9 @@ end
 function RaceService.OnPlayerRemoving(self: any, player: any)
 	local s = self:SessionOf(player)
 	if s then
+		if s.SM:Is("Racing", "FinishWindow", "Results", "Rewards") then
+			s:ApplyRewardsForLeaver(RaceSession.KeyFor(player.UserId))
+		end
 		s:RemovePlayer(player)
 		self._byPlayer[player.UserId] = nil
 		if s:HumanCount() == 0 then
@@ -357,7 +386,10 @@ function RaceService.TickSession(self: any, session: any, now: number, dt: numbe
 		self:EndSession(session, "Returning")
 	end
 	-- Snapshots to clients.
-	if now - session.SnapshotAt >= 1 / SNAPSHOT_HZ and session.SM:Is("GridSetup", "Countdown", "Racing", "FinishWindow") then
+	if
+		now - session.SnapshotAt >= 1 / SNAPSHOT_HZ
+		and session.SM:Is("GridSetup", "Countdown", "Racing", "FinishWindow")
+	then
 		session.SnapshotAt = now
 		local snap = session:Snapshot()
 		if session.ModeId == "Knockout" then

@@ -9,7 +9,13 @@ return function(T, Env)
 		for i = 1, n do
 			dists[i] = length * i / n
 		end
-		return { Length = length, CheckpointCount = n, CheckpointDists = dists, MinSectorTime = minSector or 0, Laps = laps }
+		return {
+			Length = length,
+			CheckpointCount = n,
+			CheckpointDists = dists,
+			MinSectorTime = minSector or 0,
+			Laps = laps,
+		}
 	end
 
 	local function drive(p, sh, from: number, to: number, step: number, t0: number, dt: number)
@@ -35,7 +41,16 @@ return function(T, Env)
 			for _, e in events do
 				table.insert(kinds, e.Kind .. (e.Index and tostring(e.Index) or ""))
 			end
-			expect(kinds).toEqual({ "Checkpoint1", "Checkpoint2", "Checkpoint3", "Lap1", "Checkpoint1", "Checkpoint2", "Checkpoint3", "Finish" })
+			expect(kinds).toEqual({
+				"Checkpoint1",
+				"Checkpoint2",
+				"Checkpoint3",
+				"Lap1",
+				"Checkpoint1",
+				"Checkpoint2",
+				"Checkpoint3",
+				"Finish",
+			})
 			expect(p.Lap).toBe(2)
 			expect(p.FinishedAt).toBeTruthy()
 			expect(#p.LapTimes).toBe(2)
@@ -126,7 +141,15 @@ return function(T, Env)
 			d.Lap = 0
 			d.Checkpoint = 3
 			d.Progress = 990
-			local ranked = PlacementSystem.Rank({ { Key = "d", Progress = d }, { Key = "c", Progress = c }, { Key = "b", Progress = b }, { Key = "a", Progress = a } }, sh)
+			local ranked = PlacementSystem.Rank(
+				{
+					{ Key = "d", Progress = d },
+					{ Key = "c", Progress = c },
+					{ Key = "b", Progress = b },
+					{ Key = "a", Progress = a },
+				},
+				sh
+			)
 			local keys = {}
 			for _, r in ranked do
 				table.insert(keys, r.Key)

@@ -11,7 +11,20 @@ local AudioController = { Name = "AudioController" }
 AudioController.__index = AudioController
 
 function AudioController.new()
-	return setmetatable({ _settings = nil :: any, _kart = nil :: any, _music = nil :: Sound?, _musicKey = "", _engine = nil :: Sound?, _pool = {} :: { Sound }, _active = 0, _group = nil :: SoundGroup?, _musicGroup = nil :: SoundGroup? }, AudioController)
+	return setmetatable(
+		{
+			_settings = nil :: any,
+			_kart = nil :: any,
+			_music = nil :: Sound?,
+			_musicKey = "",
+			_engine = nil :: Sound?,
+			_pool = {} :: { Sound },
+			_active = 0,
+			_group = nil :: SoundGroup?,
+			_musicGroup = nil :: SoundGroup?,
+		},
+		AudioController
+	)
 end
 
 local function makeSound(def: AudioConfig.SoundDef, parent: Instance, group: SoundGroup?): Sound
@@ -125,7 +138,9 @@ function AudioController.PlayMusic(self: any, key: string)
 		self._music:Destroy()
 		self._music = nil
 	end
-	local def = AudioConfig.Music.TrackOverrides[key] or (AudioConfig.Music :: any)[key] or AudioConfig.Music.TrackDefault
+	local def = AudioConfig.Music.TrackOverrides[key]
+		or (AudioConfig.Music :: any)[key]
+		or AudioConfig.Music.TrackDefault
 	if type(def) ~= "table" then
 		def = AudioConfig.Music.TrackDefault
 	end

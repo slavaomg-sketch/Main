@@ -7,7 +7,14 @@ local GameConfig = require(Shared.Config.GameConfig)
 local ModeDefinitions = require(Shared.Config.ModeDefinitions)
 local Signal = require(Shared.Utility.Signal)
 
-export type Ticket = { Id: string, ModeId: string, UserIds: { number }, CreatedAt: number, ExpiresAt: number, ServerId: string }
+export type Ticket = {
+	Id: string,
+	ModeId: string,
+	UserIds: { number },
+	CreatedAt: number,
+	ExpiresAt: number,
+	ServerId: string,
+}
 export type Match = { ModeId: string, Tickets: { Ticket }, UserIds: { number }, BotCount: number }
 
 local MatchmakingService = { Name = "MatchmakingService" }
@@ -138,7 +145,17 @@ function MatchmakingService.Broadcast(self: any)
 		for _, uid in t.UserIds do
 			local pl = self._env.Players.GetPlayerByUserId(uid)
 			if pl then
-				self._env.FireClient("QueueState", pl, { InQueue = true, ModeId = t.ModeId, Since = t.CreatedAt, Counts = counts, BotFillAt = t.CreatedAt + GameConfig.Matchmaking.BotFillAfterSeconds })
+				self._env.FireClient(
+					"QueueState",
+					pl,
+					{
+						InQueue = true,
+						ModeId = t.ModeId,
+						Since = t.CreatedAt,
+						Counts = counts,
+						BotFillAt = t.CreatedAt + GameConfig.Matchmaking.BotFillAfterSeconds,
+					}
+				)
 			end
 		end
 	end

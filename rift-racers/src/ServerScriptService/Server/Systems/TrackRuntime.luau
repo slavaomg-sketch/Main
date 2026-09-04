@@ -20,7 +20,15 @@ export type ShortcutRuntime = {
 	GateOpen: boolean,
 }
 
-export type Location = { Progress: number, Lateral: number, Offset: number, OnShortcut: string?, InCorridor: boolean, Surface: string, Width: number }
+export type Location = {
+	Progress: number,
+	Lateral: number,
+	Offset: number,
+	OnShortcut: string?,
+	InCorridor: boolean,
+	Surface: string,
+	Width: number,
+}
 
 export type TrackRuntime = {
 	Def: TrackDefinition,
@@ -75,7 +83,16 @@ function TrackRuntime.new(def: TrackDefinition, mirror: boolean?): TrackRuntime
 			table.insert(pts, p)
 		end
 		table.insert(pts, spline:PositionAt(exitDist) / def.Scale)
-		table.insert(shortcuts, { Def = sc, Spline = Spline.new(pts, def.Scale, false, 14), EntryDist = entryDist, ExitDist = exitDist, GateOpen = true })
+		table.insert(
+			shortcuts,
+			{
+				Def = sc,
+				Spline = Spline.new(pts, def.Scale, false, 14),
+				EntryDist = entryDist,
+				ExitDist = exitDist,
+				GateOpen = true,
+			}
+		)
 	end
 	local self = setmetatable({
 		Def = def,
@@ -154,7 +171,9 @@ function TrackRuntime.Locate(self: any, position: Vector3, hint: number?): Locat
 		-- Try shortcuts whose span covers this progress.
 		for _, sc in self.Shortcuts do
 			local spanStart, spanEnd = sc.EntryDist - 40, sc.ExitDist + 40
-			local inSpan = if spanStart <= spanEnd then progress >= spanStart and progress <= spanEnd else (progress >= spanStart or progress <= spanEnd)
+			local inSpan = if spanStart <= spanEnd
+				then progress >= spanStart and progress <= spanEnd
+				else (progress >= spanStart or progress <= spanEnd)
 			if inSpan or hint ~= nil then
 				local sp, sl, so = sc.Spline:ClosestProgress(position, nil)
 				if math.abs(sl) <= sc.Def.Width * 0.75 + 4 and so < sc.Def.Width * 1.5 then
@@ -164,7 +183,15 @@ function TrackRuntime.Locate(self: any, position: Vector3, hint: number?): Locat
 						span += self.Length
 					end
 					local mapped = self.Spline:Wrap(sc.EntryDist + span * frac)
-					return { Progress = mapped, Lateral = sl, Offset = so, OnShortcut = sc.Def.Id, InCorridor = true, Surface = sc.Def.Surface, Width = sc.Def.Width }
+					return {
+						Progress = mapped,
+						Lateral = sl,
+						Offset = so,
+						OnShortcut = sc.Def.Id,
+						InCorridor = true,
+						Surface = sc.Def.Surface,
+						Width = sc.Def.Width,
+					}
 				end
 			end
 		end

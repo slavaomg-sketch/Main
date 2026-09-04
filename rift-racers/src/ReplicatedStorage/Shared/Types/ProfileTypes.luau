@@ -1,7 +1,15 @@
 --!strict
 local GameTypes = require(script.Parent.GameTypes)
 
-export type TrackRecord = { BestTime: number, BestLap: number, Assist: boolean, VehicleId: string, HeroId: string, SetAt: number, Ghost: string? }
+export type TrackRecord = {
+	BestTime: number,
+	BestLap: number,
+	Assist: boolean,
+	VehicleId: string,
+	HeroId: string,
+	SetAt: number,
+	Ghost: string?,
+}
 
 export type Profile = {
 	SchemaVersion: number,
@@ -29,6 +37,13 @@ export type Profile = {
 
 export type ProfileStatus = "Loaded" | "Loading" | "Failed" | "Temporary" | "Released"
 
-export type ProfileHandle = { UserId: number, Data: Profile, Status: ProfileStatus, Dirty: boolean, LoadedAt: number, SessionId: string }
+export type ProfileHandle = {
+	UserId: number,
+	Data: Profile,
+	Status: ProfileStatus,
+	Dirty: boolean,
+	LoadedAt: number,
+	SessionId: string,
+}
 
 return nil

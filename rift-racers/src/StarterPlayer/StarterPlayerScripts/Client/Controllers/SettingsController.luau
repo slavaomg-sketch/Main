@@ -30,7 +30,15 @@ local DEFAULTS: GameTypes.PlayerSettings = {
 }
 
 function SettingsController.new()
-	return setmetatable({ Settings = table.clone(DEFAULTS) :: GameTypes.PlayerSettings, Changed = Signal.new() :: Signal.Signal<GameTypes.PlayerSettings>, _pending = {} :: { [string]: any }, _flushThread = nil :: thread? }, SettingsController)
+	return setmetatable(
+		{
+			Settings = table.clone(DEFAULTS) :: GameTypes.PlayerSettings,
+			Changed = Signal.new() :: Signal.Signal<GameTypes.PlayerSettings>,
+			_pending = {} :: { [string]: any },
+			_flushThread = nil :: thread?,
+		},
+		SettingsController
+	)
 end
 
 function SettingsController.Init(self: any, _registry: any)

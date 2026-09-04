@@ -19,7 +19,15 @@ function BaseMode.OnRaceStart(self: any, session: any, now: number) end
 -- Per tick during Racing/FinishWindow.
 function BaseMode.OnTick(self: any, session: any, now: number, dt: number) end
 function BaseMode.OnRacerFinished(self: any, session: any, key: string, now: number) end
-function BaseMode.OnHit(self: any, session: any, attackerKey: string?, targetKey: string, level: number, now: number) end
+function BaseMode.OnHit(
+	self: any,
+	session: any,
+	attackerKey: string?,
+	targetKey: string,
+	level: number,
+	now: number
+)
+end
 function BaseMode.OnShardPickup(self: any, session: any, key: string, now: number) end
 
 -- Whether the race should move to Results now.
@@ -74,7 +82,14 @@ function BaseMode.BuildResults(self: any, session: any): RaceTypes.RaceResults
 			teamScores[r.Team] = (teamScores[r.Team] or 0) + rec.Points
 		end
 	end
-	return { RaceId = session.RaceId, TrackId = session.VenueId, ModeId = session.ModeId, Records = records, TeamScores = teamScores, WinnerKey = ranked[1] }
+	return {
+		RaceId = session.RaceId,
+		TrackId = session.VenueId,
+		ModeId = session.ModeId,
+		Records = records,
+		TeamScores = teamScores,
+		WinnerKey = ranked[1],
+	}
 end
 
 -- What happens after rewards: "NextRace" (same session continues), "Lobby".

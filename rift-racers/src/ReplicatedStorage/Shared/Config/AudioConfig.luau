@@ -1,10 +1,24 @@
 --!strict
 -- Every sound/music asset id lives here. Placeholder ids are Roblox-provided library sounds (free to use inside Roblox)
 -- and must be swapped for original/licensed assets before public release. See docs/ASSET_MANIFEST.md.
-export type SoundDef = { AssetId: string, Volume: number, Looped: boolean, Pitch: number?, RollOff: number?, Is3D: boolean }
+export type SoundDef = {
+	AssetId: string,
+	Volume: number,
+	Looped: boolean,
+	Pitch: number?,
+	RollOff: number?,
+	Is3D: boolean,
+}
 
 local function s(assetId: string, volume: number, looped: boolean?, is3d: boolean?, pitch: number?): SoundDef
-	return { AssetId = assetId, Volume = volume, Looped = looped or false, Pitch = pitch, RollOff = if is3d then 80 else nil, Is3D = is3d or false }
+	return {
+		AssetId = assetId,
+		Volume = volume,
+		Looped = looped or false,
+		Pitch = pitch,
+		RollOff = if is3d then 80 else nil,
+		Is3D = is3d or false,
+	}
 end
 
 local PLACEHOLDER = "rbxassetid://0" -- silent until replaced; AudioController tolerates missing ids gracefully

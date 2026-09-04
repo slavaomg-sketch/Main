@@ -23,7 +23,8 @@ end
 table.sort(files)
 
 for _, file in files do
-	local spec = require(("./" .. file:gsub("^tests/", ""):gsub("%.luau$", "")) :: any) :: (typeof(TestRunner), typeof(RobloxEnv)) -> ()
+	local spec =
+		require(("./" .. file:gsub("^tests/", ""):gsub("%.luau$", "")) :: any) :: (typeof(TestRunner), typeof(RobloxEnv)) -> ()
 	spec(TestRunner, RobloxEnv)
 end
 

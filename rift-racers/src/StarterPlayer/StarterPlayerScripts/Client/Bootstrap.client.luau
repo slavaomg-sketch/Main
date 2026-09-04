@@ -10,21 +10,23 @@ local Controllers = (script :: any).Parent.Controllers
 local registry = ClientRegistry.new()
 ClientState.Start()
 
-for _, name in {
-	"SettingsController",
-	"InputController",
-	"KartController",
-	"CameraController",
-	"VenueController",
-	"AudioController",
-	"VFXController",
-	"SpectatorController",
-	"GhostController",
-	"GarageController",
-	"HUDController",
-	"MenuController",
-	"TutorialController",
-} do
+for _, name in
+	{
+		"SettingsController",
+		"InputController",
+		"KartController",
+		"CameraController",
+		"VenueController",
+		"AudioController",
+		"VFXController",
+		"SpectatorController",
+		"GhostController",
+		"GarageController",
+		"HUDController",
+		"MenuController",
+		"TutorialController",
+	}
+do
 	local module = require(Controllers:FindFirstChild(name)) :: any
 	registry:Add(module.new())
 end

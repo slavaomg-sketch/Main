@@ -45,7 +45,7 @@ end
 function CoreClash.OnTick(self: any, session: any, now: number, dt: number)
 	for _, key in session.Order do
 		local r = session.Racers[key]
-		if r.Cores == 0 and r.Effects.Recovery and r.Effects.Recovery.EndsAt <= now then
+		if r.Cores == 0 and (r.Effects.Recovery == nil or r.Effects.Recovery.EndsAt <= now) then
 			r.Cores = self.Def.CoreCount or 3
 			r.Effects.Recovery = nil
 		end

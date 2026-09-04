@@ -23,8 +23,8 @@ function TestRunner.it(name: string, fn: () -> ())
 end
 
 function TestRunner.beforeEach(fn: () -> ())
-	assert(current, "beforeEach() outside describe()")
-	;(current :: Suite).BeforeEach = fn
+	assert(current, "beforeEach() outside describe()");
+	(current :: Suite).BeforeEach = fn
 end
 
 local function fmt(v: any): string

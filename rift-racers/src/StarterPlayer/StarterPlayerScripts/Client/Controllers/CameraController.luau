@@ -136,7 +136,8 @@ function CameraController.Update(self: any, dt: number)
 		self._orbit += dt * 0.25
 		local pivot = self._garagePivot :: CFrame
 		local pos = pivot.Position + Vector3.new(math.sin(self._orbit) * 16, 6, math.cos(self._orbit) * 16)
-		cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(pos, pivot.Position + Vector3.new(0, 2, 0)), 1 - math.exp(-smoothing * dt))
+		cam.CFrame =
+			cam.CFrame:Lerp(CFrame.lookAt(pos, pivot.Position + Vector3.new(0, 2, 0)), 1 - math.exp(-smoothing * dt))
 		cam.FieldOfView = MathUtil.Damp(cam.FieldOfView, 60, 4, dt)
 		return
 	end
@@ -145,7 +146,8 @@ function CameraController.Update(self: any, dt: number)
 		self._orbit += dt * (if reduced then 0.05 else 0.12)
 		local pivot = lobbyPivot()
 		local pos = pivot.Position + Vector3.new(math.sin(self._orbit) * 60, 24, math.cos(self._orbit) * 60)
-		cam.CFrame = cam.CFrame:Lerp(CFrame.lookAt(pos, pivot.Position + Vector3.new(0, 14, -80)), 1 - math.exp(-2 * dt))
+		cam.CFrame =
+			cam.CFrame:Lerp(CFrame.lookAt(pos, pivot.Position + Vector3.new(0, 14, -80)), 1 - math.exp(-2 * dt))
 		cam.FieldOfView = MathUtil.Damp(cam.FieldOfView, 60, 4, dt)
 		return
 	end
@@ -192,7 +194,11 @@ function CameraController.Update(self: any, dt: number)
 	self._dip = MathUtil.Damp(self._dip, 0, 6, dt)
 	local shakeAmt = settings.CameraShake * (if reduced then 0.3 else 1)
 	self._shake = MathUtil.Damp(self._shake, 0, 5, dt)
-	local shakeOffset = Vector3.new(math.noise(os.clock() * 25, 0) * self._shake, math.noise(0, os.clock() * 25) * self._shake, 0) * shakeAmt
+	local shakeOffset = Vector3.new(
+		math.noise(os.clock() * 25, 0) * self._shake,
+		math.noise(0, os.clock() * 25) * self._shake,
+		0
+	) * shakeAmt
 	local focus = t.Position + flat * 8 + Vector3.new(0, 2 - self._dip * 2, 0)
 	cam.CFrame = CFrame.lookAt(self._pos + shakeOffset - Vector3.new(0, self._dip, 0), focus)
 	local fovTarget = C.FovBase + C.FovSpeedExtra * speedFrac * settings.SpeedFov * (if reduced then 0.4 else 1)

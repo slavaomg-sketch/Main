@@ -19,7 +19,19 @@ local GarageController = { Name = "GarageController" }
 GarageController.__index = GarageController
 
 function GarageController.new()
-	return setmetatable({ _camera = nil :: any, _audio = nil :: any, _menu = nil :: any, Tab = "Hero" :: string, SelectedHero = "NovaVale", SelectedVehicle = "CometMk1", _screen = nil :: any, _refresh = nil :: (() -> ())? }, GarageController)
+	return setmetatable(
+		{
+			_camera = nil :: any,
+			_audio = nil :: any,
+			_menu = nil :: any,
+			Tab = "Hero" :: string,
+			SelectedHero = "NovaVale",
+			SelectedVehicle = "CometMk1",
+			_screen = nil :: any,
+			_refresh = nil :: (() -> ())?,
+		},
+		GarageController
+	)
 end
 
 function GarageController.Init(self: any, registry: any)
@@ -33,7 +45,18 @@ function GarageController.Init(self: any, registry: any)
 	end)
 end
 
-local STAT_KEYS = { "TopSpeed", "Acceleration", "Handling", "Grip", "DriftControl", "Weight", "OffroadEfficiency", "BoostEfficiency", "AirControl", "Recovery" }
+local STAT_KEYS = {
+	"TopSpeed",
+	"Acceleration",
+	"Handling",
+	"Grip",
+	"DriftControl",
+	"Weight",
+	"OffroadEfficiency",
+	"BoostEfficiency",
+	"AirControl",
+	"Recovery",
+}
 
 local function unlockText(unlock: any, unlocked: boolean): string
 	if unlocked then
@@ -64,34 +87,99 @@ function GarageController.Build(self: any, menu: any)
 	self._menu = menu
 	local s = menu:NewScreen("Garage", 20, false)
 	self._screen = s
-	local root = UIBuilder.Frame({ Size = UDim2.new(0, 520, 1, -60), Position = UDim2.new(1, -30, 0, 30), Anchor = Vector2.new(1, 0), Color = Theme.Colors.Panel, Stroke = true, Parent = s.Root })
+	local root = UIBuilder.Frame({
+		Size = UDim2.new(0, 520, 1, -60),
+		Position = UDim2.new(1, -30, 0, 30),
+		Anchor = Vector2.new(1, 0),
+		Color = Theme.Colors.Panel,
+		Stroke = true,
+		Parent = s.Root,
+	})
 	UIBuilder.Padding(root, 18)
-	local title = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 44), TextSize = Theme.TextSize.Header, Parent = root })
-	local tabs = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.new(0, 0, 0, 50), Transparency = 1, Parent = root })
+	local title =
+		UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 44), TextSize = Theme.TextSize.Header, Parent = root })
+	local tabs = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 44),
+		Position = UDim2.new(0, 0, 0, 50),
+		Transparency = 1,
+		Parent = root,
+	})
 	UIBuilder.List(tabs, Enum.FillDirection.Horizontal, 8)
 	local tabButtons: { [string]: TextButton } = {}
 	for i, tab in { "Hero", "Vehicle", "Cosmetic" } do
-		tabButtons[tab] = UIBuilder.Button({ Text = "", Size = UDim2.new(0.32, 0, 1, 0), Parent = tabs, LayoutOrder = i, Color = Theme.Colors.PanelAlt, OnClick = function()
-			self.Tab = tab
-			self:Refresh()
-		end })
+		tabButtons[tab] = UIBuilder.Button({
+			Text = "",
+			Size = UDim2.new(0.32, 0, 1, 0),
+			Parent = tabs,
+			LayoutOrder = i,
+			Color = Theme.Colors.PanelAlt,
+			OnClick = function()
+				self.Tab = tab
+				self:Refresh()
+			end,
+		})
 	end
-	local grid = UIBuilder.Frame({ Size = UDim2.new(1, 0, 0, 250), Position = UDim2.new(0, 0, 0, 104), Transparency = 1, Parent = root })
+	local grid = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 0, 250),
+		Position = UDim2.new(0, 0, 0, 104),
+		Transparency = 1,
+		Parent = root,
+	})
 	UIBuilder.Grid(grid, UDim2.new(0, 112, 0, 56), 8)
-	local info = UIBuilder.Frame({ Size = UDim2.new(1, 0, 1, -430), Position = UDim2.new(0, 0, 0, 364), Color = Theme.Colors.PanelAlt, Parent = root })
+	local info = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 1, -430),
+		Position = UDim2.new(0, 0, 0, 364),
+		Color = Theme.Colors.PanelAlt,
+		Parent = root,
+	})
 	UIBuilder.Padding(info, 12)
-	local nameL = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 30), TextSize = Theme.TextSize.Header, Align = Enum.TextXAlignment.Left, Parent = info })
-	local descL = UIBuilder.Label({ Text = "", Size = UDim2.new(1, 0, 0, 40), Position = UDim2.new(0, 0, 0, 32), TextSize = Theme.TextSize.Small, Align = Enum.TextXAlignment.Left, Color = Theme.Colors.TextDim, Parent = info, Font = Theme.FontBody })
-	local stats = UIBuilder.Frame({ Size = UDim2.new(1, 0, 1, -130), Position = UDim2.new(0, 0, 0, 76), Transparency = 1, Parent = info })
+	local nameL = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 30),
+		TextSize = Theme.TextSize.Header,
+		Align = Enum.TextXAlignment.Left,
+		Parent = info,
+	})
+	local descL = UIBuilder.Label({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 40),
+		Position = UDim2.new(0, 0, 0, 32),
+		TextSize = Theme.TextSize.Small,
+		Align = Enum.TextXAlignment.Left,
+		Color = Theme.Colors.TextDim,
+		Parent = info,
+		Font = Theme.FontBody,
+	})
+	local stats = UIBuilder.Frame({
+		Size = UDim2.new(1, 0, 1, -130),
+		Position = UDim2.new(0, 0, 0, 76),
+		Transparency = 1,
+		Parent = info,
+	})
 	UIBuilder.List(stats, Enum.FillDirection.Vertical, 2, Enum.HorizontalAlignment.Left)
-	local action = UIBuilder.Button({ Text = "", Size = UDim2.new(1, 0, 0, 48), Position = UDim2.new(0, 0, 1, 0), Anchor = Vector2.new(0, 1), Parent = info, Color = Theme.Colors.Success })
-	local back = UIBuilder.Button({ Text = "", Size = UDim2.new(0, 200, 0, 50), Position = UDim2.new(0, 30, 1, -30), Anchor = Vector2.new(0, 1), Parent = s.Root, Color = Theme.Colors.PanelAlt, OnClick = function()
-		if ClientState.RaceStateName == "LoadoutLock" then
-			menu:Show("MatchLoading")
-		else
-			menu:Show("MainLobby")
-		end
-	end })
+	local action = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 48),
+		Position = UDim2.new(0, 0, 1, 0),
+		Anchor = Vector2.new(0, 1),
+		Parent = info,
+		Color = Theme.Colors.Success,
+	})
+	local back = UIBuilder.Button({
+		Text = "",
+		Size = UDim2.new(0, 200, 0, 50),
+		Position = UDim2.new(0, 30, 1, -30),
+		Anchor = Vector2.new(0, 1),
+		Parent = s.Root,
+		Color = Theme.Colors.PanelAlt,
+		OnClick = function()
+			if ClientState.RaceStateName == "LoadoutLock" then
+				menu:Show("MatchLoading")
+			else
+				menu:Show("MainLobby")
+			end
+		end,
+	})
 	local cards: { GuiObject } = {}
 	local focus: string? = nil
 	local statRows: { GuiObject } = {}
@@ -114,12 +202,23 @@ function GarageController.Build(self: any, menu: any)
 		if self.Tab == "Hero" then
 			for i, h in HeroDefinitions.List do
 				local unlocked = p and p.UnlockedHeroes[h.Id] == true
-				local b = UIBuilder.Button({ Text = Locale.T(h.NameKey), Size = UDim2.new(0, 112, 0, 56), Parent = grid, LayoutOrder = h.SortOrder, Color = if not unlocked then Theme.Colors.Locked elseif h.Id == self.SelectedHero then Theme.Colors.Accent2 else h.Cosmetics.PrimaryColor:Lerp(Theme.Colors.PanelAlt, 0.4), TextSize = 16, OnClick = function()
-					focus = h.Id
-					self._camera:SetGaragePivot(self:PedestalFor(h.Id))
-					self._audio:Horn(h.Id)
-					self:Refresh()
-				end })
+				local b = UIBuilder.Button({
+					Text = Locale.T(h.NameKey),
+					Size = UDim2.new(0, 112, 0, 56),
+					Parent = grid,
+					LayoutOrder = h.SortOrder,
+					Color = if not unlocked
+						then Theme.Colors.Locked
+						elseif h.Id == self.SelectedHero then Theme.Colors.Accent2
+						else h.Cosmetics.PrimaryColor:Lerp(Theme.Colors.PanelAlt, 0.4),
+					TextSize = 16,
+					OnClick = function()
+						focus = h.Id
+						self._camera:SetGaragePivot(self:PedestalFor(h.Id))
+						self._audio:Horn(h.Id)
+						self:Refresh()
+					end,
+				})
 				table.insert(cards, b)
 				firstCard = firstCard or b
 				local _ = i
@@ -139,16 +238,29 @@ function GarageController.Build(self: any, menu: any)
 				action.BackgroundColor3 = Theme.Colors.Success
 			else
 				action.Text = if h.Unlock.Kind == "Currency" then Locale.T("UI.BUY") else Locale.T("UI.LOCKED")
-				action.BackgroundColor3 = if h.Unlock.Kind == "Currency" then Theme.Colors.Warning else Theme.Colors.Locked
+				action.BackgroundColor3 = if h.Unlock.Kind == "Currency"
+					then Theme.Colors.Warning
+					else Theme.Colors.Locked
 			end
 			self._camera:SetGaragePivot(self:PedestalFor(h.Id))
 		elseif self.Tab == "Vehicle" then
 			for _, v in VehicleDefinitions.List do
 				local unlocked = p and p.UnlockedVehicles[v.Id] == true
-				local b = UIBuilder.Button({ Text = Locale.T(v.NameKey), Size = UDim2.new(0, 112, 0, 56), Parent = grid, LayoutOrder = v.SortOrder, Color = if not unlocked then Theme.Colors.Locked elseif v.Id == self.SelectedVehicle then Theme.Colors.Accent2 else v.Visual.PrimaryColor:Lerp(Theme.Colors.PanelAlt, 0.4), TextSize = 16, OnClick = function()
-					focus = v.Id
-					self:Refresh()
-				end })
+				local b = UIBuilder.Button({
+					Text = Locale.T(v.NameKey),
+					Size = UDim2.new(0, 112, 0, 56),
+					Parent = grid,
+					LayoutOrder = v.SortOrder,
+					Color = if not unlocked
+						then Theme.Colors.Locked
+						elseif v.Id == self.SelectedVehicle then Theme.Colors.Accent2
+						else v.Visual.PrimaryColor:Lerp(Theme.Colors.PanelAlt, 0.4),
+					TextSize = 16,
+					OnClick = function()
+						focus = v.Id
+						self:Refresh()
+					end,
+				})
 				table.insert(cards, b)
 				firstCard = firstCard or b
 			end
@@ -167,16 +279,29 @@ function GarageController.Build(self: any, menu: any)
 				action.BackgroundColor3 = Theme.Colors.Success
 			else
 				action.Text = if v.Unlock.Kind == "Currency" then Locale.T("UI.BUY") else Locale.T("UI.LOCKED")
-				action.BackgroundColor3 = if v.Unlock.Kind == "Currency" then Theme.Colors.Warning else Theme.Colors.Locked
+				action.BackgroundColor3 = if v.Unlock.Kind == "Currency"
+					then Theme.Colors.Warning
+					else Theme.Colors.Locked
 			end
 		else
 			for i, c in RewardConfig.Cosmetics do
 				local unlocked = p and p.UnlockedCosmetics[c.Id] == true
 				local equipped = p and p.SelectedCosmetics and p.SelectedCosmetics[c.Category] == c.Id
-				local b = UIBuilder.Button({ Text = Locale.T(c.NameKey), Size = UDim2.new(0, 112, 0, 56), Parent = grid, LayoutOrder = i, Color = if equipped then Theme.Colors.Accent2 elseif unlocked then Theme.Colors.Accent else Theme.Colors.Locked, TextSize = 13, OnClick = function()
-					focus = c.Id
-					self:Refresh()
-				end })
+				local b = UIBuilder.Button({
+					Text = Locale.T(c.NameKey),
+					Size = UDim2.new(0, 112, 0, 56),
+					Parent = grid,
+					LayoutOrder = i,
+					Color = if equipped
+						then Theme.Colors.Accent2
+						elseif unlocked then Theme.Colors.Accent
+						else Theme.Colors.Locked,
+					TextSize = 13,
+					OnClick = function()
+						focus = c.Id
+						self:Refresh()
+					end,
+				})
 				table.insert(cards, b)
 				firstCard = firstCard or b
 			end

@@ -15,7 +15,15 @@ local RobloxWorld = {}
 
 local SESSION_SPACING = 12000
 
-type SessionSpace = { Origin: Vector3, Folder: Folder, Karts: { [string]: VehicleBuilder.BuiltKart }, Pickups: { [string]: BasePart }, Projectiles: { [number]: BasePart }, Venue: any?, Collisions: boolean }
+type SessionSpace = {
+	Origin: Vector3,
+	Folder: Folder,
+	Karts: { [string]: VehicleBuilder.BuiltKart },
+	Pickups: { [string]: BasePart },
+	Projectiles: { [number]: BasePart },
+	Venue: any?,
+	Collisions: boolean,
+}
 
 local spaces: { [string]: SessionSpace } = {}
 local nextSlot = 1
@@ -53,7 +61,8 @@ local function space(sessionId: string): SessionSpace
 	local folder = PartUtil.Folder("Session_" .. sessionId, folderIn(root(), "Tracks"))
 	folder:SetAttribute("Slot", slot)
 	folder:SetAttribute("Origin", origin)
-	local s: SessionSpace = { Origin = origin, Folder = folder, Karts = {}, Pickups = {}, Projectiles = {}, Venue = nil, Collisions = true }
+	local s: SessionSpace =
+		{ Origin = origin, Folder = folder, Karts = {}, Pickups = {}, Projectiles = {}, Venue = nil, Collisions = true }
 	spaces[sessionId] = s
 	return s
 end
@@ -62,7 +71,13 @@ function RobloxWorld.Now(): number
 	return Workspace:GetServerTimeNow()
 end
 
-function RobloxWorld.BuildVenue(sessionId: string, venueId: string, runtime: any, isArena: boolean, mirror: boolean): any
+function RobloxWorld.BuildVenue(
+	sessionId: string,
+	venueId: string,
+	runtime: any,
+	isArena: boolean,
+	mirror: boolean
+): any
 	local s = space(sessionId)
 	if s.Venue then
 		RobloxWorld.DestroyVenue(s.Venue)
@@ -115,11 +130,21 @@ function RobloxWorld.SetCollisions(sessionId: string, enabled: boolean)
 	space(sessionId).Collisions = enabled
 end
 
-function RobloxWorld.SpawnKart(sessionId: string, key: string, heroId: string, vehicleId: string, cosmetics: any, cframe: CFrame, player: any?, isBot: boolean): any
+function RobloxWorld.SpawnKart(
+	sessionId: string,
+	key: string,
+	heroId: string,
+	vehicleId: string,
+	cosmetics: any,
+	cframe: CFrame,
+	player: any?,
+	isBot: boolean
+): any
 	local s = space(sessionId)
 	RobloxWorld.DestroyKart(sessionId, key)
 	local kartFolder = folderIn(s.Folder, "Karts")
-	local built = VehicleBuilder.Build(key, heroId, vehicleId, cosmetics, cframe + s.Origin, s.Collisions, isBot, kartFolder)
+	local built =
+		VehicleBuilder.Build(key, heroId, vehicleId, cosmetics, cframe + s.Origin, s.Collisions, isBot, kartFolder)
 	s.Karts[key] = built
 	built.Chassis:SetAttribute("SessionId", sessionId)
 	if player and typeof(player) == "Instance" then
@@ -156,7 +181,12 @@ function RobloxWorld.GetPose(sessionId: string, key: string): any?
 	end
 	local ch = k.Chassis
 	local grounded = ch:GetAttribute("Grounded")
-	return { CFrame = ch.CFrame - s.Origin, Velocity = ch.AssemblyLinearVelocity, AngularVelocity = ch.AssemblyAngularVelocity, Grounded = if grounded == nil then true else grounded == true }
+	return {
+		CFrame = ch.CFrame - s.Origin,
+		Velocity = ch.AssemblyLinearVelocity,
+		AngularVelocity = ch.AssemblyAngularVelocity,
+		Grounded = if grounded == nil then true else grounded == true,
+	}
 end
 
 function RobloxWorld.SetPose(sessionId: string, key: string, cframe: CFrame, velocity: Vector3?)
@@ -182,7 +212,9 @@ function RobloxWorld.SetKartAttributes(sessionId: string, key: string, attrs: { 
 		k.Chassis:SetAttribute(name, v)
 	end
 	if attrs.Phased ~= nil then
-		k.Chassis.CollisionGroup = if attrs.Phased then "KartsGhost" else (if s.Collisions then "Karts" else "KartsGhost")
+		k.Chassis.CollisionGroup = if attrs.Phased
+			then "KartsGhost"
+			else (if s.Collisions then "Karts" else "KartsGhost")
 	end
 end
 
@@ -239,8 +271,22 @@ function RobloxWorld.SpawnProjectileVisual(sessionId: string, id: number, itemId
 	local s = space(sessionId)
 	local def = ItemDefinitions.ById[itemId]
 	local folder = folderIn(folderIn(root(), "Projectiles"), "Session_" .. sessionId)
-	local size = if def.Kind == "Trap" then Vector3.new(3, 1.2, 3) elseif def.Kind == "Homing" then Vector3.new(2, 2, 2) else Vector3.new(3, 0.6, 3)
-	local p = PartUtil.Part({ Size = size, CFrame = CFrame.new(position + s.Origin), Color = def.Color, Material = Enum.Material.Neon, CanCollide = false, CanQuery = false, Name = "Proj_" .. id, Shape = if def.Kind == "Homing" then Enum.PartType.Ball else Enum.PartType.Cylinder, Tags = { "Projectile" }, Parent = folder })
+	local size = if def.Kind == "Trap"
+		then Vector3.new(3, 1.2, 3)
+		elseif def.Kind == "Homing" then Vector3.new(2, 2, 2)
+		else Vector3.new(3, 0.6, 3)
+	local p = PartUtil.Part({
+		Size = size,
+		CFrame = CFrame.new(position + s.Origin),
+		Color = def.Color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+		Name = "Proj_" .. id,
+		Shape = if def.Kind == "Homing" then Enum.PartType.Ball else Enum.PartType.Cylinder,
+		Tags = { "Projectile" },
+		Parent = folder,
+	})
 	p:SetAttribute("ItemId", itemId)
 	p:SetAttribute("Spin", if def.Kind == "Trap" then 1 else 6)
 	PartUtil.Light(p, def.Color, 14, 1)
@@ -266,8 +312,8 @@ end
 
 function RobloxWorld.SetSpectatorTarget(player: any, sessionId: string, key: string?)
 	if typeof(player) == "Instance" then
-		(player :: Player):SetAttribute("SpectateKey", key)
-		;(player :: Player):SetAttribute("SpectateSession", if key then sessionId else nil)
+		(player :: Player):SetAttribute("SpectateKey", key);
+		(player :: Player):SetAttribute("SpectateSession", if key then sessionId else nil)
 	end
 end
 

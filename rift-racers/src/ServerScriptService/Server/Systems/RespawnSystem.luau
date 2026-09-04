@@ -6,7 +6,13 @@ local GameConfig = require(Shared.Config.GameConfig)
 
 export type RespawnReason = "Fell" | "Stuck" | "Flipped" | "WrongWay" | "OffTrack" | "Requested"
 
-export type Watch = { OffTrackSince: number?, StuckSince: number?, FlippedSince: number?, WrongWaySince: number?, LastRespawnAt: number }
+export type Watch = {
+	OffTrackSince: number?,
+	StuckSince: number?,
+	FlippedSince: number?,
+	WrongWaySince: number?,
+	LastRespawnAt: number,
+}
 
 local RespawnSystem = {}
 
@@ -14,7 +20,14 @@ function RespawnSystem.NewWatch(): Watch
 	return { OffTrackSince = nil, StuckSince = nil, FlippedSince = nil, WrongWaySince = nil, LastRespawnAt = -100 }
 end
 
-export type Observation = { Y: number, Speed: number, UpDot: number, InCorridor: boolean, WrongWay: boolean, Racing: boolean }
+export type Observation = {
+	Y: number,
+	Speed: number,
+	UpDot: number,
+	InCorridor: boolean,
+	WrongWay: boolean,
+	Racing: boolean,
+}
 
 function RespawnSystem.Evaluate(w: Watch, o: Observation, now: number): RespawnReason?
 	if not o.Racing then

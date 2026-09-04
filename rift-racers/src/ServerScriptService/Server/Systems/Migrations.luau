@@ -47,7 +47,13 @@ function Migrations.Apply(data: { [string]: any }, now: number): ({ [string]: an
 	local applied = {}
 	local version = tonumber(data.SchemaVersion) or 1
 	if version > ProfileTemplate.SchemaVersion then
-		error(string.format("profile schema %d is newer than this server supports (%d)", version, ProfileTemplate.SchemaVersion))
+		error(
+			string.format(
+				"profile schema %d is newer than this server supports (%d)",
+				version,
+				ProfileTemplate.SchemaVersion
+			)
+		)
 	end
 	while version < ProfileTemplate.SchemaVersion do
 		local step = steps[version]

@@ -1,7 +1,19 @@
 --!strict
 local GameTypes = require(script.Parent.GameTypes)
 
-export type RaceState = "WaitingForPlayers" | "LoadingProfiles" | "TrackVote" | "LoadingTrack" | "LoadoutLock" | "GridSetup" | "Countdown" | "Racing" | "FinishWindow" | "Results" | "Rewards" | "Returning"
+export type RaceState =
+	"WaitingForPlayers"
+	| "LoadingProfiles"
+	| "TrackVote"
+	| "LoadingTrack"
+	| "LoadoutLock"
+	| "GridSetup"
+	| "Countdown"
+	| "Racing"
+	| "FinishWindow"
+	| "Results"
+	| "Rewards"
+	| "Returning"
 
 export type RaceRules = {
 	ModeId: string,
@@ -66,13 +78,49 @@ export type RacerRuntime = {
 	StartBoostResult: string?,
 }
 
-export type FinishRecord = { Key: string, Position: number, TimeSeconds: number?, BestLap: number?, Finished: boolean, Team: number, Points: number, Shards: number, Eliminated: boolean, StageReached: number, Score: number }
+export type FinishRecord = {
+	Key: string,
+	Position: number,
+	TimeSeconds: number?,
+	BestLap: number?,
+	Finished: boolean,
+	Team: number,
+	Points: number,
+	Shards: number,
+	Eliminated: boolean,
+	StageReached: number,
+	Score: number,
+}
 
-export type RaceResults = { RaceId: string, TrackId: string, ModeId: string, Records: { FinishRecord }, TeamScores: { [number]: number }?, WinnerKey: string? }
+export type RaceResults = {
+	RaceId: string,
+	TrackId: string,
+	ModeId: string,
+	Records: { FinishRecord },
+	TeamScores: { [number]: number }?,
+	WinnerKey: string?,
+}
 
-export type RewardBreakdown = { Currency: number, XP: number, Lines: { { Key: string, Amount: number } }, NewLevel: number?, NewRecord: boolean, Unlocks: { string } }
+export type RewardBreakdown = {
+	Currency: number,
+	XP: number,
+	Lines: { { Key: string, Amount: number } },
+	NewLevel: number?,
+	NewRecord: boolean,
+	Unlocks: { string },
+}
 
 export type GhostFrame = { T: number, P: Vector3, R: Vector3 } -- compact keyframe (time, position, rotation euler)
-export type GhostRecording = { Version: number, TrackId: string, VehicleId: string, HeroId: string, Laps: number, TimeSeconds: number, Assist: boolean, Frames: { GhostFrame }, SampleHz: number }
+export type GhostRecording = {
+	Version: number,
+	TrackId: string,
+	VehicleId: string,
+	HeroId: string,
+	Laps: number,
+	TimeSeconds: number,
+	Assist: boolean,
+	Frames: { GhostFrame },
+	SampleHz: number,
+}
 
 return nil
