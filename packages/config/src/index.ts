@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { loadDotEnv } from './load.js';
+import { loadDotEnv, REPO_ROOT } from './load.js';
+export { REPO_ROOT };
 
 loadDotEnv();
 

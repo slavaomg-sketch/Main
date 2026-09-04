@@ -33,6 +33,7 @@
     "@techmatch/config": "workspace:*"
   },
   "devDependencies": {
+    "@techmatch/domain": "workspace:*",
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.30.0",
     "prisma": "^6.19.0",

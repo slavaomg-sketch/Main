@@ -16,7 +16,7 @@ export function formatRub(minor: Minor, opts: { withKopecks?: boolean } = {}): s
   const abs = Math.abs(minor);
   const rub = Math.floor(abs / 100);
   const kop = abs % 100;
-  const rubStr = rub.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const rubStr = rub.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
   if (opts.withKopecks || kop !== 0) {
     return `${sign}${rubStr},${kop.toString().padStart(2, '0')} ₽`;
   }

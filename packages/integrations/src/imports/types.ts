@@ -135,7 +135,7 @@ export function applyMapping(raw: Record<string, string>, mapping: Record<string
         out[field] = splitList(v);
         break;
       default:
-        if (v !== '') out[field] = v;
+        if (v !== '') (out as Record<string, unknown>)[field] = v;
     }
   }
   if (!out.externalId || out.externalId.trim() === '') {

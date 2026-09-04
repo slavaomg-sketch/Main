@@ -29,6 +29,7 @@ export type ConnectorType =
   | 'SD'
   | 'MICRO_SD'
   | 'ETHERNET'
+  | 'SOCKET_12V'
   | 'PROPRIETARY';
 
 export type ChargingProtocol = 'USB_PD' | 'PPS' | 'QC3' | 'QC4' | 'AFC' | 'SUPERVOOC' | 'PROPRIETARY' | 'USB_BC';
@@ -135,6 +136,7 @@ export type ProductKind =
   | 'HEADPHONES'
   | 'CAR_MOUNT'
   | 'KEYBOARD_MOUSE'
+  | 'PERIPHERAL'
   | 'OTHER';
 
 export interface ProductOutput {

@@ -5,6 +5,15 @@ import { fileURLToPath } from 'node:url';
 
 let loaded = false;
 
+/** Корень монорепозитория (packages/config/src → ../../..). */
+export const REPO_ROOT: string = (() => {
+  try {
+    return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  } catch {
+    return process.cwd();
+  }
+})();
+
 /**
  * Загружает .env из корня монорепозитория (если есть) и из текущей директории.
  * Не переопределяет уже установленные переменные (приоритет у реального окружения).

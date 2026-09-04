@@ -36,7 +36,8 @@ export class YooKassaPaymentProvider implements PaymentProvider {
     const res = await fetch(`${this.base}/payments`, { method: 'POST', headers: this.headers(input.idempotencyKey), body: JSON.stringify(body) });
     if (!res.ok) throw new Error(`YooKassa createPayment: HTTP ${res.status}`);
     const data = (await res.json()) as { id: string; status: string; confirmation?: { confirmation_url?: string } };
-    return { providerPaymentId: data.id, status: mapStatus(data.status), confirmationUrl: data.confirmation?.confirmation_url ?? null, raw: data };
+    const st = mapStatus(data.status);
+    return { providerPaymentId: data.id, status: st === 'CANCELLED' ? 'FAILED' : st, confirmationUrl: data.confirmation?.confirmation_url ?? null, raw: data };
   }
 
   async parseWebhook(request: { headers: Record<string, string | undefined>; rawBody: string; ip?: string }): Promise<PaymentWebhookEvent | null> {

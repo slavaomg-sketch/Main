@@ -1,46 +1,53 @@
 import { transliterate } from './slug.js';
 
 /** Частые русские написания брендов и терминов → канонические английские. */
+const B_LEFT = '(?<![а-яёa-z0-9])';
+const B_RIGHT = '(?![а-яёa-z0-9])';
+/** Регулярка со «словесными» границами, работающими для кириллицы. */
+function cy(pattern: string): RegExp {
+  return new RegExp(B_LEFT + '(?:' + pattern + ')' + B_RIGHT, 'g');
+}
+
 const WORD_SYNONYMS: Array<[RegExp, string]> = [
-  [/\bайфон[а-я]*\b/g, 'iphone'],
-  [/\bэпл\b|\bэппл\b|\bапл\b/g, 'apple'],
-  [/\bмакбук[а-я]*\b/g, 'macbook'],
-  [/\bэйр\b|\bаир\b/g, 'air'],
-  [/\bпро\b/g, 'pro'],
-  [/\bмакс\b/g, 'max'],
-  [/\bмини\b/g, 'mini'],
-  [/\bплюс\b/g, 'plus'],
-  [/\bультра\b/g, 'ultra'],
-  [/\bайпад[а-я]*\b/g, 'ipad'],
-  [/\bайпод[а-я]*\b|\bэйрпод[а-я]*\b|\bаирпод[а-я]*\b/g, 'airpods'],
-  [/\bэпл\s*вотч\b|\bапл\s*вотч\b|\bвотч\b/g, 'watch'],
-  [/\bсамсунг[а-я]*\b/g, 'samsung'],
-  [/\bгалакси\b|\bгэлакси\b|\bгелакси\b/g, 'galaxy'],
-  [/\bсяоми\b|\bксиаоми\b|\bксяоми\b/g, 'xiaomi'],
-  [/\bредми\b/g, 'redmi'],
-  [/\bпиксель\b|\bпиксел\b/g, 'pixel'],
-  [/\bгугл\b/g, 'google'],
-  [/\bкэнон\b|\bканон\b/g, 'canon'],
-  [/\bпиксма\b/g, 'pixma'],
-  [/\bэпсон\b/g, 'epson'],
-  [/\bбразер\b/g, 'brother'],
-  [/\bсони\b/g, 'sony'],
-  [/\bплейстейшн\b|\bплейстейшен\b|\bплойка\b|\bпс\b/g, 'playstation'],
-  [/\bиксбокс\b|\bхбокс\b/g, 'xbox'],
-  [/\bнинтендо\b/g, 'nintendo'],
-  [/\bсвитч\b|\bсвич\b/g, 'switch'],
-  [/\bстим\s*дек\b/g, 'steam deck'],
-  [/\bделл\b/g, 'dell'],
-  [/\bленово\b/g, 'lenovo'],
-  [/\bтинкпад\b/g, 'thinkpad'],
-  [/\bгопро\b/g, 'gopro'],
-  [/\bхуавей\b/g, 'huawei'],
-  [/\bпринтер\b/g, 'printer'],
-  [/\bноутбук\b/g, 'laptop'],
-  [/\bтелефон\b|\bсмартфон\b/g, 'phone'],
-  [/\bнаушники\b/g, 'headphones'],
-  [/\bчасы\b/g, 'watch'],
-  [/\bпланшет\b/g, 'tablet'],
+  [cy(String.raw`айфон[а-я]*`), 'iphone'],
+  [cy(String.raw`эпл|эппл|апл`), 'apple'],
+  [cy(String.raw`макбук[а-я]*`), 'macbook'],
+  [cy(String.raw`эйр|аир`), 'air'],
+  [cy(String.raw`про`), 'pro'],
+  [cy(String.raw`макс`), 'max'],
+  [cy(String.raw`мини`), 'mini'],
+  [cy(String.raw`плюс`), 'plus'],
+  [cy(String.raw`ультра`), 'ultra'],
+  [cy(String.raw`айпад[а-я]*`), 'ipad'],
+  [cy(String.raw`айпод[а-я]*|эйрпод[а-я]*|аирпод[а-я]*`), 'airpods'],
+  [cy(String.raw`эпл\s*вотч|апл\s*вотч|вотч`), 'watch'],
+  [cy(String.raw`самсунг[а-я]*`), 'samsung'],
+  [cy(String.raw`галакси|гэлакси|гелакси`), 'galaxy'],
+  [cy(String.raw`сяоми|ксиаоми|ксяоми`), 'xiaomi'],
+  [cy(String.raw`редми`), 'redmi'],
+  [cy(String.raw`пиксель|пиксел`), 'pixel'],
+  [cy(String.raw`гугл`), 'google'],
+  [cy(String.raw`кэнон|канон`), 'canon'],
+  [cy(String.raw`пиксма`), 'pixma'],
+  [cy(String.raw`эпсон`), 'epson'],
+  [cy(String.raw`бразер`), 'brother'],
+  [cy(String.raw`сони`), 'sony'],
+  [cy(String.raw`плейстейшн|плейстейшен|плойка|пс`), 'playstation'],
+  [cy(String.raw`иксбокс|хбокс`), 'xbox'],
+  [cy(String.raw`нинтендо`), 'nintendo'],
+  [cy(String.raw`свитч|свич`), 'switch'],
+  [cy(String.raw`стим\s*дек`), 'steam deck'],
+  [cy(String.raw`делл`), 'dell'],
+  [cy(String.raw`леново`), 'lenovo'],
+  [cy(String.raw`тинкпад`), 'thinkpad'],
+  [cy(String.raw`гопро`), 'gopro'],
+  [cy(String.raw`хуавей`), 'huawei'],
+  [cy(String.raw`принтер`), 'printer'],
+  [cy(String.raw`ноутбук`), 'laptop'],
+  [cy(String.raw`телефон|смартфон`), 'phone'],
+  [cy(String.raw`наушники`), 'headphones'],
+  [cy(String.raw`часы`), 'watch'],
+  [cy(String.raw`планшет`), 'tablet'],
 ];
 
 const LATIN_ALIASES: Array<[RegExp, string]> = [
@@ -67,9 +74,9 @@ export function normalizeDeviceQuery(input: string): string {
   let s = input.toLowerCase().replace(/ё/g, 'е').replace(/[«»"'`]/g, ' ');
   for (const [re, rep] of WORD_SYNONYMS) s = s.replace(re, rep);
   s = s.replace(/[-_/\\.,()+]/g, ' ');
+  s = transliterate(s);
   s = s.replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2');
   for (const [re, rep] of LATIN_ALIASES) s = s.replace(re, rep);
-  s = transliterate(s);
   s = s.replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   // "iphone 15 pro max" — стабилизируем известные последовательности
   s = s.replace(/\bpro max\b/g, 'pro max');

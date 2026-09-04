@@ -24,6 +24,7 @@ const CONNECTOR_LABEL: Record<ConnectorType, string> = {
   SD: 'SD',
   MICRO_SD: 'microSD',
   ETHERNET: 'Ethernet',
+  SOCKET_12V: 'гнездо прикуривателя 12 В',
   PROPRIETARY: 'фирменный разъём',
 };
 
@@ -88,10 +89,17 @@ export const connectorMatchRule: CompatibilityRule = {
   description: 'Товар должен подключаться к одному из портов устройства.',
   priority: 10,
   appliesTo: (p) =>
-    ['CABLE', 'ADAPTER', 'HUB', 'DOCK', 'VIDEO_CABLE', 'STORAGE', 'KEYBOARD_MOUSE', 'HEADPHONES'].includes(p.kind) &&
+    ['CABLE', 'ADAPTER', 'HUB', 'DOCK', 'VIDEO_CABLE', 'STORAGE', 'KEYBOARD_MOUSE', 'HEADPHONES', 'PERIPHERAL', 'CAR_CHARGER', 'CAR_MOUNT'].includes(p.kind) &&
     Boolean(p.connectorA || p.connectorB || p.requiresPort),
   evaluate(device, product) {
     const code = 'CONNECTOR_MATCH';
+    // Автомобильные товары: разъём проверяется только со стороны автомобиля
+    if (product.kind === 'CAR_CHARGER' || product.kind === 'CAR_MOUNT') {
+      if (device.categorySlug !== 'cars') return notApplicable(code);
+      const need = product.requiresPort ?? 'SOCKET_12V';
+      if (hasPort(device, need)) return outcome(code, 'PASS', 0.9, [`В автомобиле есть ${connectorLabel(need)}`]);
+      return outcome(code, 'FAIL', 0.9, [`В автомобиле нет разъёма ${connectorLabel(need)}`]);
+    }
     const candidates: ConnectorType[] = [];
     if (product.requiresPort) candidates.push(product.requiresPort);
     else {
@@ -115,6 +123,12 @@ export const connectorMatchRule: CompatibilityRule = {
         return outcome(code, 'PASS', 0.85, [`Подключается к порту ${connectorLabel(other)} устройства`]);
       }
     }
+    // Периферия и накопители с USB-A на устройстве только с USB-C: работает через переходник
+    if (['STORAGE', 'PERIPHERAL', 'KEYBOARD_MOUSE', 'HEADPHONES'].includes(product.kind) && candidates.includes('USB_A') && deviceHasUsbC(device)) {
+      return outcome(code, 'LIMITED', 0.85, ['У устройства нет порта USB-A'], ['Понадобится переходник USB-C → USB-A'], [
+        { kind: 'REQUIRES_ADAPTER', description: 'Переходник USB-C → USB-A' },
+      ]);
+    }
     const devicePorts = Array.from(new Set(device.ports.map((p) => connectorLabel(p.type)))).join(', ');
     return outcome(code, 'FAIL', 0.9, [
       `Разъёмы товара (${candidates.map(connectorLabel).join(' / ')}) не совпадают с портами устройства (${devicePorts})`,
@@ -133,6 +147,7 @@ export const powerDeliveryRule: CompatibilityRule = {
   appliesTo: (p) => ['CHARGER', 'CAR_CHARGER', 'POWER_BANK', 'CABLE', 'DOCK', 'HUB'].includes(p.kind),
   evaluate(device, product) {
     const code = 'POWER_DELIVERY';
+    if (device.categorySlug === 'cars') return notApplicable(code);
     const charging = device.charging;
     const isLaptop = device.categorySlug === 'laptops';
     const productWatts = product.powerWatts ?? product.outputs?.reduce((m, o) => Math.max(m, o.maxWatts ?? 0), 0);
@@ -211,17 +226,16 @@ export const powerDeliveryRule: CompatibilityRule = {
       } else {
         reasons.push(`Мощность ${productWatts} Вт покрывает потребность устройства (${devMax} Вт)`);
       }
-      // Профили напряжения
-      if (charging.pdVoltages?.length && product.pdVoltages?.length) {
-        const missing = charging.pdVoltages.filter((v) => !product.pdVoltages!.includes(v));
-        if (missing.length) {
-          verdict = 'LIMITED';
-          limitations.push(`Зарядка не поддерживает профиль ${missing.join(' / ')} В, необходимый ноутбуку для полной мощности`);
-        }
-      }
     } else if (productWatts !== undefined && devMax > 0) {
       // Смартфоны, планшеты, часы, наушники
-      if (onlyUsbA && !protocols.has('QC3') && !protocols.has('QC4')) {
+      const basicOnly = !deviceProtocols.has('USB_PD') && !deviceProtocols.has('PPS') && !deviceProtocols.has('QC3') && !deviceProtocols.has('QC4');
+      if (basicOnly) {
+        if (productWatts >= devMax) reasons.push(`Устройство заряжается стандартным USB-питанием (до ${devMax} Вт) — мощности ${productWatts} Вт достаточно`);
+        else {
+          verdict = 'LIMITED';
+          limitations.push(`Мощность ${productWatts} Вт ниже потребляемых устройством ${devMax} Вт`);
+        }
+      } else if (onlyUsbA && !protocols.has('QC3') && !protocols.has('QC4')) {
         verdict = 'LIMITED';
         reasons.push(`Только порт USB-A, ${productWatts} Вт`);
         limitations.push('Через USB-A без Quick Charge устройство будет заряжаться на базовой скорости (до 12 Вт)');
@@ -246,6 +260,15 @@ export const powerDeliveryRule: CompatibilityRule = {
       confidence = 0.7;
     }
 
+    // Профили напряжения USB PD (ноутбуки 20 В, Nintendo Switch 15 В и т.п.)
+    if (charging.pdVoltages?.length && product.pdVoltages?.length && protocols.has('USB_PD')) {
+      const missing = charging.pdVoltages.filter((v) => !product.pdVoltages!.includes(v));
+      if (missing.length) {
+        if (verdict === 'PASS') verdict = 'LIMITED';
+        limitations.push(`Зарядка не поддерживает профиль ${missing.join(' / ')} В, необходимый устройству для полной мощности`);
+        constraints.push({ kind: 'REDUCED_POWER', description: `Нет профиля ${missing.join('/')} В` });
+      }
+    }
     // Разъём зарядки и кабель
     const devicePortForCharge = device.ports.find((p) => p.pdIn || ['USB_C', 'LIGHTNING', 'MICRO_USB'].includes(p.type));
     if (devicePortForCharge && !product.connectorA && !product.connectorB) {
@@ -514,6 +537,7 @@ export const physicalFitRule: CompatibilityRule = {
       return outcome(code, 'FAIL', 0.9, [`Рассчитан на ${min}–${max}″, у устройства ${inches}″`]);
     }
     if (product.kind === 'CAR_MOUNT') {
+      if (device.categorySlug === 'cars') return outcome(code, 'PASS', 0.85, ['Устанавливается в любой автомобиль']);
       if (device.categorySlug !== 'phones') return outcome(code, 'FAIL', 0.9, ['Автодержатель предназначен для смартфонов']);
       if (product.wireless?.magsafe && !device.wireless?.magsafe) {
         return outcome(code, 'LIMITED', 0.85, ['Магнитный держатель MagSafe'], ['Для надёжного крепления понадобится чехол с магнитным кольцом'], [
@@ -602,13 +626,20 @@ export const categoryScopeRule: CompatibilityRule = {
     const cat = device.categorySlug;
     const kind = product.kind;
     const deny: Array<[string[], string[], string]> = [
-      [['printers', 'monitors', 'cars'], ['CASE', 'SCREEN_PROTECTOR', 'WATCH_BAND', 'WIRELESS_CHARGER', 'POWER_BANK', 'CAR_MOUNT', 'CHARGER', 'CAR_CHARGER'], 'Аксессуар этого типа не применим к устройству'],
-      [['phones', 'tablets', 'laptops', 'watches', 'headphones', 'gaming', 'cameras'], ['CONSUMABLE'], 'Устройство не использует расходные материалы принтера'],
+      [['printers', 'monitors'], ['CASE', 'SCREEN_PROTECTOR', 'WATCH_BAND', 'WIRELESS_CHARGER', 'POWER_BANK', 'CAR_MOUNT', 'CHARGER', 'CAR_CHARGER', 'MEMORY_CARD', 'BATTERY', 'HEADPHONES'], 'Аксессуар этого типа не применим к устройству'],
+      [['cars'], ['CASE', 'SCREEN_PROTECTOR', 'WATCH_BAND', 'WIRELESS_CHARGER', 'CHARGER', 'CONSUMABLE', 'BATTERY', 'HUB', 'DOCK', 'STAND', 'MOUNT', 'HEADPHONES', 'KEYBOARD_MOUSE', 'PERIPHERAL', 'STORAGE', 'CABLE', 'ADAPTER', 'VIDEO_CABLE'], 'Аксессуар этого типа не относится к автомобилю'],
+      [['phones', 'tablets', 'laptops', 'watches', 'headphones', 'gaming', 'monitors'], ['CONSUMABLE'], 'Устройство не использует расходные материалы'],
+      [['phones', 'tablets', 'laptops', 'watches', 'headphones', 'gaming', 'printers', 'monitors', 'cars'], ['BATTERY'], 'Устройство не использует сменные аккумуляторы этого типа'],
       [['phones', 'tablets', 'watches', 'headphones', 'printers', 'monitors', 'cameras', 'cars'], ['CONTROLLER', 'GAMING_ACCESSORY'], 'Игровой аксессуар не применим к устройству'],
+      [['watches', 'headphones', 'printers', 'cameras', 'cars'], ['CASE', 'SCREEN_PROTECTOR'], 'Для этого устройства нет чехлов и стёкол'],
+      [['phones', 'tablets', 'laptops', 'headphones', 'printers', 'monitors', 'gaming', 'cameras', 'cars'], ['WATCH_BAND'], 'Ремешки подходят только для часов'],
+      [['laptops', 'printers', 'monitors', 'gaming'], ['CAR_MOUNT'], 'Автодержатель предназначен для смартфонов'],
     ];
     for (const [cats, kinds, msg] of deny) {
       if (cats.includes(cat) && kinds.includes(kind)) {
         if (kind === 'CONTROLLER' && product.platforms?.some((p) => ['android', 'apple', 'windows'].includes(p)) && ['phones', 'tablets'].includes(cat)) continue;
+        if (kind === 'CAR_MOUNT' && cat === 'cars') continue;
+        if (kind === 'MEMORY_CARD' && cat === 'cars') continue;
         return outcome(code, 'FAIL', 0.95, [msg]);
       }
     }

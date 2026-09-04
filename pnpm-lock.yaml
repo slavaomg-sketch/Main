@@ -153,6 +153,9 @@ importers:
         specifier: workspace:*
         version: link:../config
     devDependencies:
+      '@techmatch/domain':
+        specifier: workspace:*
+        version: link:../domain
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
@@ -183,6 +186,12 @@ importers:
       '@techmatch/validation':
         specifier: workspace:*
         version: link:../validation
+      csv-stringify:
+        specifier: ^6.8.3
+        version: 6.8.3
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       zod:
         specifier: ^4.0.0
         version: 4.5.4
