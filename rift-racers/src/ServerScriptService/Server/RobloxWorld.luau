@@ -170,6 +170,16 @@ function RobloxWorld.DestroyKart(sessionId: string, key: string)
 	end
 end
 
+-- Ground probe for server-side airborne detection (client attributes do not replicate).
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function isGrounded(s: SessionSpace, ch: BasePart): boolean
+	local kartsFolder = s.Folder:FindFirstChild("Karts")
+	groundParams.FilterDescendantsInstances = if kartsFolder then { kartsFolder } else {}
+	return Workspace:Raycast(ch.Position, -ch.CFrame.UpVector * 3.8, groundParams) ~= nil
+end
+
 function RobloxWorld.GetPose(sessionId: string, key: string): any?
 	local s = spaces[sessionId]
 	if not s then
@@ -180,12 +190,12 @@ function RobloxWorld.GetPose(sessionId: string, key: string): any?
 		return nil
 	end
 	local ch = k.Chassis
-	local grounded = ch:GetAttribute("Grounded")
+	local grounded = if ch.Anchored then true else isGrounded(s, ch)
 	return {
 		CFrame = ch.CFrame - s.Origin,
 		Velocity = ch.AssemblyLinearVelocity,
 		AngularVelocity = ch.AssemblyAngularVelocity,
-		Grounded = if grounded == nil then true else grounded == true,
+		Grounded = grounded,
 	}
 end
 

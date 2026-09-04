@@ -339,6 +339,16 @@ local function makeEnvironment(scriptNode: any): { [string]: any }
 		PhysicalProperties = roblox.PhysicalProperties,
 		Instance = roblox.Instance,
 		Random = RandomShim,
+		RaycastParams = {
+			new = function()
+				return { FilterType = nil, FilterDescendantsInstances = {}, IgnoreWater = false, RespectCanCollide = false }
+			end,
+		},
+		OverlapParams = {
+			new = function()
+				return { FilterType = nil, FilterDescendantsInstances = {} }
+			end,
+		},
 		tick = function()
 			return os.clock()
 		end,

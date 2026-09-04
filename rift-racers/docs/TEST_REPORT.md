@@ -1,6 +1,6 @@
 # Test Report
 
-Запуск: `lune run tests/run.luau` (Lune 0.10.5, Linux). Итог последнего прогона: **91 passed, 0 failed, 13 spec-файлов, 61.8 s**.
+Запуск: `lune run tests/run.luau` (Lune 0.10.5, Linux). Итог последнего прогона: **112 passed, 0 failed, 14 spec-файлов, 62.8 s**.
 Полный вывод: `build/test_output.txt` (генерируется локально).
 
 ## Unit (tests/Unit)
@@ -17,6 +17,9 @@
   перезаписи, retry/backoff и temporary без записи default; награды идемпотентны, кривая уровней, unlock по уровню.
 - Matchmaking: FormMatches (ожидание/bot fill, полное лобби, неделимые группы, TTL, режимы не смешиваются),
   Party/Queue (invite/accept/kick/leave, max 4, только лидер ставит группу, приватные режимы не в очереди).
+
+- ClientModules: все 22 клиентских модуля (контроллеры, UI, state, registry) загружаются и конструируются в
+  клиентском fake DataModel (module-scope ошибки и битые require исключены).
 
 ## Security (tests/Security) — 11 сценариев, все безопасный отказ
 Использование отсутствующего предмета, 100 uses/s, поддельная цель, телепорт на километр, финиш без чекпоинтов,

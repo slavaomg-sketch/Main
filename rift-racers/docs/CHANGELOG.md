@@ -6,4 +6,4 @@
 - Клиент: KartController (raycast-подвеска, дрифт, трюки), камера, HUD с миникартой, тач/геймпад/клавиатура,
   меню, гараж, настройки, обучение, результаты, комнаты.
 - Контент: 8 героев, 8 машин, 6 трасс, 2 арены, 12 предметов, EN/RU.
-- Тесты: 91 headless-тест (unit, security, content, integration, multiplayer load 2–24).
+- Тесты: 112 headless-тестов (unit, security, content, client module smoke, integration, multiplayer load 2–24).

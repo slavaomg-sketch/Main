@@ -223,7 +223,7 @@ function VehicleBuilder.Build(
 
 	-- Wheels (visual only; hover vehicles get glowing pads instead)
 	local wheels: { { Part: BasePart, Weld: Weld, Offset: Vector3, Steer: boolean } } = {}
-	local wheelY = -0.9
+	local wheelY = -0.6
 	local positions: { { Pos: Vector3, Steer: boolean } } = {}
 	if v.WheelCount == 3 then
 		positions = {

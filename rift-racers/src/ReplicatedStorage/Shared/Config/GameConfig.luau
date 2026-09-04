@@ -46,10 +46,11 @@ local GameConfig = {
 	},
 
 	Physics = {
-		SuspensionRestLength = 2.2,
-		SuspensionStiffness = 55,
-		SuspensionDamping = 6,
-		RayLength = 3.4,
+		-- Per-corner spring: stiffness * compression * (mass / 4). Equilibrium compression ≈ 0.8 of 2.4 studs at g = 196.2.
+		SuspensionRestLength = 2.4,
+		SuspensionStiffness = 240,
+		SuspensionDamping = 18,
+		RayLength = 3.6,
 		BaseMass = 100,
 		Gravity = 196.2,
 		AirControlTorque = 0.6,
