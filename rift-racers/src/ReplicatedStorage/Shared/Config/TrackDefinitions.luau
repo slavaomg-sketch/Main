@@ -379,7 +379,7 @@ table.insert(Tracks, {
 		{ Id = "GeyserA", At = 0.18, Kind = "Geyser", Period = 6, Duration = 1.4, StunLevel = 1, Lateral = -8 },
 		{ Id = "GeyserB", At = 0.42, Kind = "Geyser", Period = 7, Duration = 1.4, StunLevel = 1, Lateral = 9 },
 		{ Id = "Bridge", At = 0.58, To = 0.62, Kind = "Collapse", Period = 12, Duration = 4 },
-		{ Id = "LavaEdge", At = 0.3, To = 0.34, Kind = "LavaPool", StunLevel = 1 },
+		{ Id = "LavaEdge", At = 0.3, To = 0.34, Kind = "LavaPool", StunLevel = 1, Lateral = 10 },
 	},
 	Jumps = { { Id = "CalderaLip", At = 0.68, GapLength = 40, LaunchPitch = 12, Trick = true } },
 	Shortcuts = {
