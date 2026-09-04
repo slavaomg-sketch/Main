@@ -1,0 +1,43 @@
+{
+  "name": "@techmatch/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@techmatch/config": "workspace:*",
+    "@techmatch/database": "workspace:*",
+    "@techmatch/domain": "workspace:*",
+    "@techmatch/integrations": "workspace:*",
+    "@techmatch/ui": "workspace:*",
+    "@techmatch/validation": "workspace:*",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.540.0",
+    "next": "^16.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.34.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@tailwindcss/postcss": "^4.1.0",
+    "@techmatch/testing": "workspace:*",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.30.0",
+    "eslint-config-next": "^16.3.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

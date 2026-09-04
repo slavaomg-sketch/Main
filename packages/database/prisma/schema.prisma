@@ -1,0 +1,1588 @@
+// TechMatch — единая доменная модель (модульный монолит).
+// Деньги хранятся целыми числами в минимальных единицах валюты (копейки).
+// Всё время — UTC (Prisma DateTime хранится как timestamptz в UTC).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm, unaccent]
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum CompatibilityStatus {
+  VERIFIED
+  COMPATIBLE
+  COMPATIBLE_WITH_LIMITATIONS
+  UNKNOWN
+  INCOMPATIBLE
+}
+
+enum CompatibilitySource {
+  EXPLICIT
+  RULE
+  IMPORT
+  MANUFACTURER
+  ADMIN_OVERRIDE
+}
+
+enum CompatibilityRuleType {
+  CONNECTOR_MATCH
+  POWER_DELIVERY
+  WIRELESS_CHARGING
+  CONSUMABLE_MATCH
+  FIT_MODEL_LIST
+  DISPLAY_OUTPUT
+  DATA_TRANSFER
+  BAND_SIZE
+  PHYSICAL_FIT
+  PLATFORM_MATCH
+  CUSTOM
+}
+
+enum CompatibilityEvidenceType {
+  MANUFACTURER_DOC
+  SPEC_MATCH
+  ADMIN_CONFIRMED
+  CUSTOMER_REPORT
+  IMPORT_SOURCE
+  LAB_TEST
+}
+
+enum CompatibilityConstraintKind {
+  REQUIRES_ADAPTER
+  REDUCED_POWER
+  ONLY_VARIANT
+  REGION_SPECIFIC
+  REQUIRES_PRODUCT
+  NO_DATA_TRANSFER
+  NO_VIDEO_OUTPUT
+  OTHER
+}
+
+enum DeviceAliasKind {
+  SYNONYM
+  TYPO
+  TRANSLIT
+  SHORT
+  MARKETING
+}
+
+enum DeviceIdentifierType {
+  MODEL_NUMBER
+  PART_NUMBER
+  EAN
+  MARKETING_CODE
+  ORDER_CODE
+}
+
+enum SpecSource {
+  MANUFACTURER
+  ADMIN
+  IMPORT
+  DEMO
+}
+
+enum AttributeType {
+  STRING
+  NUMBER
+  BOOLEAN
+  ENUM
+  LIST
+  JSON
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum MediaSource {
+  UPLOAD
+  IMPORT
+  SEED
+  EXTERNAL_URL
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  CONSUMED
+  EXPIRED
+}
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  READY_FOR_SHIPMENT
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  CANCELLED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum ActorType {
+  SYSTEM
+  ADMIN
+  CUSTOMER
+}
+
+enum ExternalSourceType {
+  CSV
+  XLSX
+  YML
+  WILDBERRIES
+  OZON
+  YANDEX_MARKET
+  API
+}
+
+enum ExternalListingStatus {
+  NEW
+  LINKED
+  UPDATED
+  ERROR
+  ARCHIVED
+}
+
+enum FieldOwner {
+  MANUAL
+  SOURCE
+}
+
+enum ImportJobStatus {
+  UPLOADED
+  ANALYZED
+  MAPPED
+  VALIDATED
+  DRY_RUN_COMPLETE
+  APPLYING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ImportRowAction {
+  PENDING
+  CREATE
+  UPDATE
+  SKIP
+  CONFLICT
+  ERROR
+}
+
+enum ImportIssueLevel {
+  ERROR
+  WARNING
+  INFO
+}
+
+enum SyncRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  PARTIAL
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum PromotionScope {
+  ALL
+  CATEGORY
+  PRODUCT
+  BRAND
+  BUNDLE
+}
+
+enum BannerPlacement {
+  HOME_HERO
+  HOME_PROMO
+  HOME_WIDE
+  CATALOG_TOP
+  DEVICE_PAGE
+}
+
+enum BannerTheme {
+  LIGHT
+  DARK
+  BLUE
+  GREEN
+  ORANGE
+  MINT
+}
+
+enum CollectionType {
+  MANUAL
+  FEATURED
+  NEW
+  SALE
+}
+
+enum SearchScope {
+  DEVICE
+  PRODUCT
+  GLOBAL
+}
+
+// ============================================================
+// DEVICES
+// ============================================================
+
+model DeviceCategory {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  name           String
+  namePlural     String?
+  icon           String // код иконки из единого набора (lucide)
+  description    String?
+  sortOrder      Int            @default(0)
+  isActive       Boolean        @default(true)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  families       DeviceFamily[]
+  models         DeviceModel[]
+  rules          CompatibilityRule[]
+
+  @@index([sortOrder])
+}
+
+model DeviceBrand {
+  id        String         @id @default(cuid())
+  slug      String         @unique
+  name      String
+  logoUrl   String?
+  website   String?
+  sortOrder Int            @default(0)
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  families  DeviceFamily[]
+  models    DeviceModel[]
+}
+
+model DeviceFamily {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  brandId     String
+  categoryId  String
+  description String?
+  sortOrder   Int            @default(0)
+  brand       DeviceBrand    @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category    DeviceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  models      DeviceModel[]
+
+  @@index([brandId])
+  @@index([categoryId])
+}
+
+model DeviceModel {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String // "iPhone 15 Pro"
+  fullName       String // "Apple iPhone 15 Pro (2023)"
+  brandId        String
+  categoryId     String
+  familyId       String?
+  generation     String?
+  releaseYear    Int?
+  primaryModelNumber String?
+  description    String?
+  imageAssetId   String?
+  imageUrl       String?
+  popularity     Int      @default(0)
+  isActive       Boolean  @default(true)
+  specsAreDemo   Boolean  @default(false) // характеристики помечены как демонстрационные
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  brand          DeviceBrand          @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category       DeviceCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  family         DeviceFamily?        @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  imageAsset     MediaAsset?          @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  variants       DeviceVariant[]
+  aliases        DeviceAlias[]
+  identifiers    DeviceIdentifier[]
+  specifications DeviceSpecification[]
+  relations      CompatibilityRelation[]
+  overrides      CompatibilityOverride[]
+  checkLogs      CompatibilityCheckLog[]
+  customerDevices CustomerDevice[]
+  bundleDevices  BundleDevice[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  carts          Cart[]
+  searchLogs     SearchQueryLog[]
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([familyId])
+  @@index([popularity])
+  @@index([name])
+}
+
+model DeviceVariant {
+  id            String   @id @default(cuid())
+  deviceModelId String
+  slug          String
+  name          String // "13\", M2, 2022"
+  region        String?
+  storage       String?
+  color         String?
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  deviceModel    DeviceModel           @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  aliases        DeviceAlias[]
+  identifiers    DeviceIdentifier[]
+  specifications DeviceSpecification[]
+  relations      CompatibilityRelation[]
+  overrides      CompatibilityOverride[]
+  checkLogs      CompatibilityCheckLog[]
+  customerDevices CustomerDevice[]
+
+  @@unique([deviceModelId, slug])
+  @@index([deviceModelId])
+}
+
+model DeviceAlias {
+  id            String          @id @default(cuid())
+  deviceModelId String
+  variantId     String?
+  alias         String
+  normalized    String // нормализованная форма для поиска
+  kind          DeviceAliasKind @default(SYNONYM)
+  locale        String          @default("ru")
+  weight        Int             @default(1)
+  createdAt     DateTime        @default(now())
+
+  deviceModel DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  variant     DeviceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceModelId, normalized])
+  @@index([normalized])
+}
+
+model DeviceIdentifier {
+  id            String               @id @default(cuid())
+  deviceModelId String
+  variantId     String?
+  type          DeviceIdentifierType
+  value         String
+  normalized    String
+  region        String?
+  note          String?
+
+  deviceModel DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  variant     DeviceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([type, normalized, deviceModelId])
+  @@index([normalized])
+}
+
+model DeviceSpecification {
+  id            String     @id @default(cuid())
+  deviceModelId String
+  variantId     String?
+  key           String // например: ports, charging.usbPdMaxWatts, wireless.magsafe
+  value         Json
+  unit          String?
+  source        SpecSource @default(ADMIN)
+  isDemo        Boolean    @default(false)
+  verifiedAt    DateTime?
+  sourceUrl     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  deviceModel DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  variant     DeviceVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([deviceModelId, key])
+  @@index([variantId])
+}
+
+// ============================================================
+// CATALOG
+// ============================================================
+
+model AccessoryCategory {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  parentId       String?
+  icon           String?
+  description    String?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  parent   AccessoryCategory?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children AccessoryCategory[] @relation("CategoryTree")
+  products Product[]
+  rules    CompatibilityRule[]
+  promotions Promotion[]
+
+  @@index([parentId])
+  @@index([sortOrder])
+}
+
+model ProductBrand {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  logoUrl   String?
+  logoAssetId String?
+  website   String?
+  description String?
+  isPopular Boolean   @default(false)
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  logoAsset MediaAsset? @relation(fields: [logoAssetId], references: [id], onDelete: SetNull)
+  products  Product[]
+  promotions Promotion[]
+}
+
+model AttributeDefinition {
+  id                      String        @id @default(cuid())
+  code                    String        @unique // connector_a, pd_max_watts, ...
+  name                    String
+  type                    AttributeType @default(STRING)
+  unit                    String?
+  options                 Json? // допустимые значения для ENUM/LIST
+  group                   String? // "Питание", "Разъёмы", "Совместимость"
+  isCompatibilityRelevant Boolean       @default(false)
+  isFilterable            Boolean       @default(false)
+  isVisible               Boolean       @default(true)
+  sortOrder               Int           @default(0)
+  createdAt               DateTime      @default(now())
+  attributes              ProductAttribute[]
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  name             String
+  brandId          String?
+  categoryId       String
+  status           ProductStatus @default(DRAFT)
+  shortDescription String?
+  description      String?
+  baseSku          String?
+  rating           Float         @default(0)
+  reviewCount      Int           @default(0)
+  badges           String[]      @default([])
+  packageContents  String[]      @default([])
+  warrantyMonths   Int           @default(12)
+  isFeatured       Boolean       @default(false)
+  isNew            Boolean       @default(false)
+  popularity       Int           @default(0)
+  sortOrder        Int           @default(0)
+  seoTitle         String?
+  seoDescription   String?
+  searchText       String? // нормализованный текст для поиска
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  archivedAt       DateTime?
+
+  brand      ProductBrand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  category   AccessoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants   ProductVariant[]
+  images     ProductImage[]
+  attributes ProductAttribute[]
+  relations  CompatibilityRelation[]
+  overrides  CompatibilityOverride[]
+  checkLogs  CompatibilityCheckLog[]
+  requiredIn CompatibilityConstraint[] @relation("RequiredProduct")
+  reviews    Review[]
+  externalListings ExternalListing[]
+  fieldOwnerships  ExternalFieldOwnership[]
+  collectionItems  CollectionItem[]
+  orderItems       OrderItem[]
+  promotions       Promotion[]
+  importRows       ImportRow[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([status])
+  @@index([popularity])
+  @@index([isFeatured])
+  @@index([isNew])
+}
+
+model ProductVariant {
+  id           String        @id @default(cuid())
+  productId    String
+  sku          String        @unique
+  name         String
+  optionValues Json          @default("{}") // {"color":"Чёрный","length":"2 м"}
+  gtin         String?
+  isDefault    Boolean       @default(false)
+  status       ProductStatus @default(ACTIVE)
+  weightGrams  Int?
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  product      Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  prices       Price[]
+  inventory    Inventory[]
+  reservations StockReservation[]
+  images       ProductImage[]
+  attributes   ProductAttribute[]
+  relations    CompatibilityRelation[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  bundleItems  BundleItem[]
+  externalListings ExternalListing[]
+  fieldOwnerships  ExternalFieldOwnership[]
+  importRows       ImportRow[]
+
+  @@index([productId])
+  @@index([gtin])
+}
+
+model MediaAsset {
+  id          String      @id @default(cuid())
+  storageKey  String      @unique // относительный путь в хранилище
+  publicUrl   String
+  originalUrl String?
+  mimeType    String
+  width       Int?
+  height      Int?
+  sizeBytes   Int
+  sha256      String      @unique // дедупликация
+  variants    Json        @default("{}") // {"thumb":"/media/x-thumb.webp","card":..., "large":...}
+  source      MediaSource @default(UPLOAD)
+  license     String?
+  attribution String?
+  createdAt   DateTime    @default(now())
+
+  productImages ProductImage[]
+  deviceModels  DeviceModel[]
+  banners       Banner[]
+  bundles       Bundle[]
+  brands        ProductBrand[]
+  collections   Collection[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  variantId String?
+  assetId   String
+  alt       String?
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  asset   MediaAsset      @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([productId, sortOrder])
+}
+
+model ProductAttribute {
+  id          String @id @default(cuid())
+  productId   String
+  variantId   String?
+  attributeId String
+  value       Json
+  scopeKey    String @default("") // variantId или "" — для уникальности
+
+  product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant?     @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attribute AttributeDefinition @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeId, scopeKey])
+  @@index([attributeId])
+}
+
+model Price {
+  id             String    @id @default(cuid())
+  variantId      String
+  priceList      String    @default("retail")
+  currency       String    @default("RUB")
+  amountMinor    Int // копейки
+  compareAtMinor Int?
+  validFrom      DateTime  @default(now())
+  validTo        DateTime?
+  createdAt      DateTime  @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId, priceList, validFrom])
+}
+
+model Warehouse {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  name      String
+  address   String?
+  isDefault Boolean     @default(false)
+  isActive  Boolean     @default(true)
+  inventory Inventory[]
+  reservations StockReservation[]
+}
+
+model Inventory {
+  id               String   @id @default(cuid())
+  variantId        String
+  warehouseId      String
+  quantity         Int      @default(0)
+  reservedQuantity Int      @default(0)
+  updatedAt        DateTime @updatedAt
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([variantId, warehouseId])
+}
+
+model StockReservation {
+  id          String            @id @default(cuid())
+  variantId   String
+  warehouseId String
+  orderId     String?
+  quantity    Int
+  status      ReservationStatus @default(ACTIVE)
+  expiresAt   DateTime
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  order     Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([status, expiresAt])
+  @@index([orderId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  customerId String?
+  authorName String
+  rating     Int
+  title      String?
+  body       String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([productId, isApproved])
+}
+
+// ============================================================
+// COMPATIBILITY
+// ============================================================
+
+model CompatibilityRule {
+  id                  String                @id @default(cuid())
+  code                String                @unique
+  name                String
+  description         String?
+  ruleType            CompatibilityRuleType
+  accessoryCategoryId String?
+  deviceCategoryId    String?
+  config              Json                  @default("{}")
+  priority            Int                   @default(100)
+  version             Int                   @default(1)
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  accessoryCategory AccessoryCategory? @relation(fields: [accessoryCategoryId], references: [id], onDelete: SetNull)
+  deviceCategory    DeviceCategory?    @relation(fields: [deviceCategoryId], references: [id], onDelete: SetNull)
+
+  @@index([ruleType, isActive])
+}
+
+model CompatibilityRelation {
+  id              String              @id @default(cuid())
+  productId       String
+  variantId       String?
+  deviceModelId   String
+  deviceVariantId String?
+  scopeKey        String              @default("*:*") // `${variantId|*}:${deviceVariantId|*}`
+  status          CompatibilityStatus
+  confidence      Float               @default(0)
+  source          CompatibilitySource
+  reasons         Json                @default("[]")
+  limitations     Json                @default("[]")
+  rulesApplied    String[]            @default([])
+  explanation     String?
+  verifiedAt      DateTime?
+  verifiedById    String?
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant       ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  deviceModel   DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  deviceVariant DeviceVariant? @relation(fields: [deviceVariantId], references: [id], onDelete: Cascade)
+  verifiedBy    AdminUser?     @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+  evidence      CompatibilityEvidence[]
+  constraints   CompatibilityConstraint[]
+
+  @@unique([productId, deviceModelId, scopeKey])
+  @@index([deviceModelId, status])
+  @@index([productId, status])
+}
+
+model CompatibilityEvidence {
+  id         String                    @id @default(cuid())
+  relationId String
+  type       CompatibilityEvidenceType
+  url        String?
+  note       String?
+  createdById String?
+  createdAt  DateTime                  @default(now())
+
+  relation  CompatibilityRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
+  createdBy AdminUser?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([relationId])
+}
+
+model CompatibilityConstraint {
+  id                String                      @id @default(cuid())
+  relationId        String
+  kind              CompatibilityConstraintKind
+  description       String
+  requiredProductId String?
+  params            Json                        @default("{}")
+
+  relation        CompatibilityRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
+  requiredProduct Product?              @relation("RequiredProduct", fields: [requiredProductId], references: [id], onDelete: SetNull)
+
+  @@index([relationId])
+}
+
+model CompatibilityOverride {
+  id              String              @id @default(cuid())
+  productId       String
+  deviceModelId   String
+  deviceVariantId String?
+  scopeKey        String              @default("*")
+  status          CompatibilityStatus
+  reason          String
+  adminId         String?
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  deviceModel   DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  deviceVariant DeviceVariant? @relation(fields: [deviceVariantId], references: [id], onDelete: Cascade)
+  admin         AdminUser?     @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@unique([productId, deviceModelId, scopeKey])
+}
+
+model CompatibilityCheckLog {
+  id              String              @id @default(cuid())
+  productId       String
+  deviceModelId   String
+  deviceVariantId String?
+  status          CompatibilityStatus
+  confidence      Float
+  source          CompatibilitySource
+  reasons         Json                @default("[]")
+  rulesApplied    String[]            @default([])
+  durationMs      Int                 @default(0)
+  createdAt       DateTime            @default(now())
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  deviceModel   DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  deviceVariant DeviceVariant? @relation(fields: [deviceVariantId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([productId, deviceModelId])
+}
+
+model SearchQueryLog {
+  id                   String      @id @default(cuid())
+  query                String
+  normalized           String
+  scope                SearchScope @default(DEVICE)
+  resultCount          Int         @default(0)
+  matchedDeviceModelId String?
+  sessionKey           String?
+  createdAt            DateTime    @default(now())
+
+  matchedDeviceModel DeviceModel? @relation(fields: [matchedDeviceModelId], references: [id], onDelete: SetNull)
+
+  @@index([normalized])
+  @@index([createdAt])
+  @@index([resultCount])
+}
+
+// ============================================================
+// EXTERNAL SOURCES & IMPORTS
+// ============================================================
+
+model ExternalSource {
+  id         String             @id @default(cuid())
+  code       String             @unique // wildberries, ozon, yandex-market, csv-main
+  type       ExternalSourceType
+  name       String
+  config     Json               @default("{}") // без секретов
+  isActive   Boolean            @default(true)
+  lastSyncAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  listings   ExternalListing[]
+  ownerships ExternalFieldOwnership[]
+  importJobs ImportJob[]
+  syncRuns   SyncRun[]
+}
+
+model ExternalListing {
+  id           String                @id @default(cuid())
+  sourceId     String
+  externalId   String
+  offerId      String?
+  sku          String?
+  gtin         String?
+  externalUrl  String?
+  rawPayload   Json
+  status       ExternalListingStatus @default(NEW)
+  errors       Json                  @default("[]")
+  productId    String?
+  variantId    String?
+  lastSyncedAt DateTime              @default(now())
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  source  ExternalSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, externalId])
+  @@index([sku])
+  @@index([productId])
+}
+
+model ExternalFieldOwnership {
+  id        String     @id @default(cuid())
+  productId String
+  variantId String?
+  scopeKey  String     @default("")
+  field     String // name, description, price, stock, images, compatibility
+  owner     FieldOwner
+  sourceId  String?
+  updatedAt DateTime   @updatedAt
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  source  ExternalSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@unique([productId, scopeKey, field])
+}
+
+model ImportJob {
+  id          String             @id @default(cuid())
+  sourceId    String?
+  type        ExternalSourceType
+  fileName    String?
+  storageKey  String?
+  fileHash    String?
+  status      ImportJobStatus    @default(UPLOADED)
+  mapping     Json               @default("{}")
+  options     Json               @default("{}")
+  analysis    Json               @default("{}")
+  summary     Json               @default("{}")
+  error       String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  source    ExternalSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  createdBy AdminUser?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  rows      ImportRow[]
+  issues    ImportIssue[]
+  syncRuns  SyncRun[]
+
+  @@index([status, createdAt])
+  @@index([fileHash])
+}
+
+model ImportRow {
+  id               String          @id @default(cuid())
+  jobId            String
+  rowNumber        Int
+  rawData          Json
+  normalizedData   Json?
+  action           ImportRowAction @default(PENDING)
+  externalId       String?
+  matchedProductId String?
+  matchedVariantId String?
+  diff             Json?
+  message          String?
+  appliedAt        DateTime?
+
+  job            ImportJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  matchedProduct Product?        @relation(fields: [matchedProductId], references: [id], onDelete: SetNull)
+  matchedVariant ProductVariant? @relation(fields: [matchedVariantId], references: [id], onDelete: SetNull)
+  issues         ImportIssue[]
+
+  @@unique([jobId, rowNumber])
+  @@index([jobId, action])
+}
+
+model ImportIssue {
+  id        String           @id @default(cuid())
+  jobId     String
+  rowId     String?
+  level     ImportIssueLevel
+  code      String
+  field     String?
+  message   String
+  createdAt DateTime         @default(now())
+
+  job ImportJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  row ImportRow? @relation(fields: [rowId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, level])
+}
+
+model SyncRun {
+  id         String        @id @default(cuid())
+  sourceId   String
+  jobId      String?
+  status     SyncRunStatus @default(RUNNING)
+  stats      Json          @default("{}")
+  error      String?
+  startedAt  DateTime      @default(now())
+  finishedAt DateTime?
+
+  source ExternalSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  job    ImportJob?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId, startedAt])
+}
+
+// ============================================================
+// CUSTOMERS, CART, ORDERS
+// ============================================================
+
+model Customer {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  phone           String?
+  passwordHash    String?
+  firstName       String?
+  lastName        String?
+  isEmailVerified Boolean   @default(false)
+  marketingOptIn  Boolean   @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions  CustomerSession[]
+  devices   CustomerDevice[]
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+  reviews   Review[]
+  favorites Favorite[]
+  couponUsages CouponUsage[]
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  customerId String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model CustomerDevice {
+  id              String   @id @default(cuid())
+  customerId      String
+  deviceModelId   String
+  deviceVariantId String?
+  scopeKey        String   @default("*")
+  nickname        String?
+  isPrimary       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deviceModel   DeviceModel    @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+  deviceVariant DeviceVariant? @relation(fields: [deviceVariantId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, deviceModelId, scopeKey])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  customerId String
+  productId  String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String?
+  fullName   String
+  phone      String
+  country    String   @default("RU")
+  region     String?
+  city       String
+  street     String
+  building   String
+  apartment  String?
+  postalCode String?
+  comment    String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model Cart {
+  id                  String     @id @default(cuid())
+  customerId          String?
+  sessionToken        String?    @unique
+  status              CartStatus @default(ACTIVE)
+  currency            String     @default("RUB")
+  couponCode          String?
+  activeDeviceModelId String?
+  expiresAt           DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  customer          Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  activeDeviceModel DeviceModel? @relation(fields: [activeDeviceModelId], references: [id], onDelete: SetNull)
+  items             CartItem[]
+  orders            Order[]
+
+  @@index([customerId, status])
+}
+
+model CartItem {
+  id                 String   @id @default(cuid())
+  cartId             String
+  variantId          String
+  quantity           Int
+  addedForDeviceModelId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  cart                Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant             ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  addedForDeviceModel DeviceModel?    @relation(fields: [addedForDeviceModelId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id                    String      @id @default(cuid())
+  publicId              String      @unique // TM-XXXXXX
+  number                Int         @unique @default(autoincrement())
+  customerId            String?
+  cartId                String?
+  status                OrderStatus @default(DRAFT)
+  email                 String
+  phone                 String
+  fullName              String
+  shippingAddress       Json
+  deliveryMethodCode    String
+  deliveryProviderCode  String
+  deliveryCostMinor     Int         @default(0)
+  subtotalMinor         Int
+  discountMinor         Int         @default(0)
+  totalMinor            Int
+  currency              String      @default("RUB")
+  couponId              String?
+  couponCode            String?
+  comment               String?
+  managerNotes          String?
+  idempotencyKey        String?     @unique
+  reservationExpiresAt  DateTime?
+  paidAt                DateTime?
+  cancelledAt           DateTime?
+  cancelReason          String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  customer      Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cart          Cart?              @relation(fields: [cartId], references: [id], onDelete: SetNull)
+  coupon        Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  payments      Payment[]
+  shipments     Shipment[]
+  statusHistory OrderStatusHistory[]
+  refunds       Refund[]
+  reservations  StockReservation[]
+  couponUsages  CouponUsage[]
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model OrderItem {
+  id                  String               @id @default(cuid())
+  orderId             String
+  productId           String?
+  variantId           String?
+  name                String
+  sku                 String
+  imageUrl            String?
+  quantity            Int
+  unitPriceMinor      Int
+  totalMinor          Int
+  deviceModelId       String?
+  compatibilityStatus CompatibilityStatus?
+
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  deviceModel DeviceModel?    @relation(fields: [deviceModelId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  provider          String // mock, yookassa
+  providerPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  amountMinor       Int
+  currency          String        @default("RUB")
+  confirmationUrl   String?
+  idempotencyKey    String        @unique
+  metadata          Json          @default("{}")
+  failureReason     String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events  PaymentEvent[]
+  refunds Refund[]
+
+  @@unique([provider, providerPaymentId])
+  @@index([orderId])
+}
+
+model PaymentEvent {
+  id              String    @id @default(cuid())
+  paymentId       String?
+  provider        String
+  providerEventId String
+  type            String
+  payload         Json
+  processedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+}
+
+model Shipment {
+  id                 String         @id @default(cuid())
+  orderId            String
+  provider           String
+  providerShipmentId String?
+  trackingNumber     String?
+  status             ShipmentStatus @default(PENDING)
+  methodCode         String
+  costMinor          Int            @default(0)
+  estimatedAt        DateTime?
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  events             Json           @default("[]")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(cuid())
+  orderId    String
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  comment    String?
+  actorType  ActorType    @default(SYSTEM)
+  actorId    String?
+  createdAt  DateTime     @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+model Refund {
+  id               String       @id @default(cuid())
+  orderId          String
+  paymentId        String?
+  amountMinor      Int
+  reason           String?
+  status           RefundStatus @default(PENDING)
+  providerRefundId String?
+  createdAt        DateTime     @default(now())
+  processedAt      DateTime?
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// ============================================================
+// CONTENT & MARKETING
+// ============================================================
+
+model Banner {
+  id              String          @id @default(cuid())
+  placement       BannerPlacement
+  title           String
+  subtitle        String?
+  eyebrow         String?
+  ctaLabel        String?
+  ctaUrl          String?
+  imageAssetId    String?
+  imageUrl        String?
+  handwrittenNote String?
+  theme           BannerTheme     @default(LIGHT)
+  sortOrder       Int             @default(0)
+  isActive        Boolean         @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  imageAsset MediaAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+
+  @@index([placement, isActive, sortOrder])
+}
+
+model Collection {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String?
+  type        CollectionType @default(MANUAL)
+  imageAssetId String?
+  isActive    Boolean        @default(true)
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  imageAsset MediaAsset?      @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  items      CollectionItem[]
+}
+
+model CollectionItem {
+  collectionId String
+  productId    String
+  sortOrder    Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, productId])
+}
+
+model Bundle {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  description     String?
+  imageAssetId    String?
+  discountPercent Int      @default(0)
+  fixedPriceMinor Int?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  imageAsset MediaAsset?    @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  items      BundleItem[]
+  devices    BundleDevice[]
+}
+
+model BundleItem {
+  bundleId  String
+  variantId String
+  quantity  Int    @default(1)
+  sortOrder Int    @default(0)
+
+  bundle  Bundle         @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@id([bundleId, variantId])
+}
+
+model BundleDevice {
+  bundleId      String
+  deviceModelId String
+
+  bundle      Bundle      @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  deviceModel DeviceModel @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+
+  @@id([bundleId, deviceModelId])
+}
+
+model Promotion {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  name         String
+  description  String?
+  discountType DiscountType   @default(PERCENT)
+  value        Int // проценты или копейки
+  scope        PromotionScope @default(ALL)
+  categoryId   String?
+  brandId      String?
+  badgeLabel   String?
+  startsAt     DateTime?
+  endsAt       DateTime?
+  isActive     Boolean        @default(true)
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  category AccessoryCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand    ProductBrand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  products Product[]
+  coupons  Coupon[]
+}
+
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique
+  promotionId      String?
+  discountType     DiscountType @default(PERCENT)
+  value            Int
+  minSubtotalMinor Int          @default(0)
+  maxDiscountMinor Int?
+  usageLimit       Int?
+  usedCount        Int          @default(0)
+  perCustomerLimit Int?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+
+  promotion Promotion?    @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  orders    Order[]
+  usages    CouponUsage[]
+}
+
+model CouponUsage {
+  id         String   @id @default(cuid())
+  couponId   String
+  orderId    String
+  customerId String?
+  createdAt  DateTime @default(now())
+
+  coupon   Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([couponId, orderId])
+}
+
+model ContentPage {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  body           String // markdown
+  seoTitle       String?
+  seoDescription String?
+  isPublished    Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FaqItem {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  category  String  @default("Общие")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+// ============================================================
+// ADMIN & AUDIT
+// ============================================================
+
+model Role {
+  id          String           @id @default(cuid())
+  code        String           @unique // owner, admin, content_manager, catalog_manager, order_manager, support
+  name        String
+  description String?
+  permissions RolePermission[]
+  users       AdminUser[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique // products.write, orders.read ...
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model AdminUser {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  name               String
+  roleId             String
+  isActive           Boolean   @default(true)
+  mfaEnabled         Boolean   @default(false)
+  mfaSecretEncrypted String?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  role      Role           @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions  AdminSession[]
+  verifiedRelations CompatibilityRelation[]
+  evidence  CompatibilityEvidence[]
+  overrides CompatibilityOverride[]
+  importJobs ImportJob[]
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  adminId   String
+  tokenHash String   @unique
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  actorEmail String?
+  action     String // product.update, order.status_change ...
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime
+}

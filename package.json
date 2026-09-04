@@ -1,0 +1,36 @@
+{
+  "name": "techmatch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TechMatch — интернет-магазин аксессуаров с подбором по устройству",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @techmatch/web dev",
+    "dev:worker": "pnpm --filter @techmatch/worker dev",
+    "build": "pnpm --filter @techmatch/database generate && pnpm --filter @techmatch/web build",
+    "start": "pnpm --filter @techmatch/web start",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "pnpm -r --parallel lint",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "pnpm --filter @techmatch/web test:e2e",
+    "db:generate": "pnpm --filter @techmatch/database generate",
+    "db:migrate": "pnpm --filter @techmatch/database migrate:deploy",
+    "db:migrate:dev": "pnpm --filter @techmatch/database migrate:dev",
+    "db:seed": "pnpm --filter @techmatch/database seed",
+    "db:reset": "pnpm --filter @techmatch/database reset",
+    "db:studio": "pnpm --filter @techmatch/database studio",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css}\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

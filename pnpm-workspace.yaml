@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+onlyBuiltDependencies:
+  - sharp
+  - prisma
+  - '@prisma/client'
+  - '@prisma/engines'
+  - esbuild
+  - '@tailwindcss/oxide'
+  - unrs-resolver
