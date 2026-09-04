@@ -1,0 +1,41 @@
+{
+  "name": "RiftRacersTest",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": { "$path": "src/ReplicatedStorage/Shared" },
+      "Tests": { "$path": "tests" }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Server": { "$path": "src/ServerScriptService/Server" }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Content": { "$path": "src/ServerStorage/Content" }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$properties": { "CharacterAutoLoads": false },
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": { "$path": "src/StarterPlayer/StarterPlayerScripts/Client" }
+      }
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "RiftRacersUI": { "$path": "src/StarterGui/RiftRacersUI" }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "RiftRacers": {
+        "$className": "Folder",
+        "Tracks": { "$className": "Folder" },
+        "Vehicles": { "$className": "Folder" },
+        "Projectiles": { "$className": "Folder" },
+        "Lobby": { "$className": "Folder" }
+      }
+    }
+  }
+}
