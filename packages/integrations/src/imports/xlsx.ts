@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { ImportFileAdapter, ParsedTable } from './types.js';
+import type { ImportFileAdapter, ParsedTable } from './types';
 
 export class XlsxImportAdapter implements ImportFileAdapter {
   readonly code = 'xlsx' as const;

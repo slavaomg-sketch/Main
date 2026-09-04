@@ -1,5 +1,5 @@
 import { parse } from 'csv-parse/sync';
-import type { ImportFileAdapter, ParsedTable } from './types.js';
+import type { ImportFileAdapter, ParsedTable } from './types';
 
 export class CsvImportAdapter implements ImportFileAdapter {
   readonly code = 'csv' as const;

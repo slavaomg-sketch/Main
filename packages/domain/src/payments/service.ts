@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@techmatch/database';
 import type { PaymentWebhookEvent } from '@techmatch/integrations';
-import { getPaymentProvider, getFiscalProvider } from '../providers.js';
-import { transitionOrder } from '../orders/service.js';
+import { getPaymentProvider, getFiscalProvider } from '../providers';
+import { transitionOrder } from '../orders/service';
 
 export interface WebhookOutcome {
   accepted: boolean;

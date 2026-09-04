@@ -1,4 +1,4 @@
-import type { ChargingProtocol, ConnectorType, DevicePort, DeviceSpecProfile, Ecosystem, ProductKind, ProductSpecProfile } from './types.js';
+import type { ChargingProtocol, ConnectorType, DevicePort, DeviceSpecProfile, Ecosystem, ProductKind, ProductSpecProfile } from './types';
 
 /**
  * Построение профилей из строк БД.

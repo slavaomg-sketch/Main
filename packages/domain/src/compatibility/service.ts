@@ -1,7 +1,7 @@
 import type { DbClient } from '@techmatch/database';
-import { NotFoundError } from '../shared/errors.js';
-import { evaluateCompatibility, isPositiveStatus } from './engine.js';
-import { buildDeviceProfile, buildProductProfile } from './profiles.js';
+import { NotFoundError } from '../shared/errors';
+import { evaluateCompatibility, isPositiveStatus } from './engine';
+import { buildDeviceProfile, buildProductProfile } from './profiles';
 import type {
   CompatibilityResult,
   CompatibilityStatus,
@@ -10,8 +10,8 @@ import type {
   ExplicitRelationInput,
   OverrideInput,
   ProductSpecProfile,
-} from './types.js';
-import { ENGINE_VERSION } from './types.js';
+} from './types';
+import { ENGINE_VERSION } from './types';
 
 const CACHE_TTL_MS = 60_000;
 const catalogCache = new Map<string, { at: number; results: Map<string, CompatibilityResult> }>();

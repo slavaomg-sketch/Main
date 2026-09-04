@@ -1,9 +1,9 @@
 import type { DbClient, Prisma, PrismaClient } from '@techmatch/database';
-import { ConflictError, NotFoundError } from '../shared/errors.js';
-import { consumeReservations, releaseReservations, restock } from '../inventory/service.js';
-import { canTransition, CANCELLABLE_BY_CUSTOMER, CONSUMED_STATUSES, RESERVING_STATUSES, type OrderStatus } from './state.js';
-import { getDeliveryProvider } from '../providers.js';
-import { sendOrderStatusChanged } from '../notifications/service.js';
+import { ConflictError, NotFoundError } from '../shared/errors';
+import { consumeReservations, releaseReservations, restock } from '../inventory/service';
+import { canTransition, CANCELLABLE_BY_CUSTOMER, CONSUMED_STATUSES, RESERVING_STATUSES, type OrderStatus } from './state';
+import { getDeliveryProvider } from '../providers';
+import { sendOrderStatusChanged } from '../notifications/service';
 
 export const orderInclude = {
   items: true,

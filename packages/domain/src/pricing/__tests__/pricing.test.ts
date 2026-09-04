@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { calculateBundlePrice, calculateDiscount, calculateTotals, discountPercent } from '../service.js';
-import { formatRub, percentOf } from '../../shared/money.js';
+import { calculateBundlePrice, calculateDiscount, calculateTotals, discountPercent } from '../service';
+import { formatRub, percentOf } from '../../shared/money';
 
 describe('pricing', () => {
   it('итоги без скидки', () => {
@@ -30,5 +30,24 @@ describe('pricing', () => {
   });
   it('отклоняет нецелые суммы', () => {
     expect(() => calculateTotals([{ variantId: 'a', productId: 'p', quantity: 1, unitPriceMinor: 10.5 }])).toThrow();
+  });
+});
+
+import { calculateBundleDiscounts } from '../service';
+
+describe('bundle discounts in cart', () => {
+  const bundles = [{ id: 'b1', name: 'Набор', discountPercent: 10, items: [{ variantId: 'a', quantity: 1 }, { variantId: 'b', quantity: 1 }] }];
+  it('полный комплект даёт скидку', () => {
+    const r = calculateBundleDiscounts([{ variantId: 'a', quantity: 1, unitPriceMinor: 100000 }, { variantId: 'b', quantity: 2, unitPriceMinor: 50000 }], bundles);
+    expect(r.totalMinor).toBe(15000);
+    expect(r.applied[0]?.name).toBe('Набор');
+  });
+  it('неполный комплект — без скидки', () => {
+    expect(calculateBundleDiscounts([{ variantId: 'a', quantity: 1, unitPriceMinor: 100000 }], bundles).totalMinor).toBe(0);
+  });
+  it('скидка комплекта уменьшает базу промокода', () => {
+    const t = calculateTotals([{ variantId: 'a', productId: 'p', quantity: 1, unitPriceMinor: 100000 }], { promotionDiscountMinor: 10000, discount: { type: 'PERCENT', value: 10 } });
+    expect(t.discountMinor).toBe(9000);
+    expect(t.totalMinor).toBe(81000);
   });
 });

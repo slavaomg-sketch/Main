@@ -1,4 +1,4 @@
-import { transliterate } from './slug.js';
+import { transliterate } from './slug';
 
 /** Частые русские написания брендов и терминов → канонические английские. */
 const B_LEFT = '(?<![а-яёa-z0-9])';

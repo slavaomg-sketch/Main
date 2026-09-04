@@ -1,5 +1,5 @@
 import type { DbClient } from '@techmatch/database';
-import { ConflictError } from '../shared/errors.js';
+import { ConflictError } from '../shared/errors';
 
 export async function getDefaultWarehouse(db: DbClient) {
   const wh = (await db.warehouse.findFirst({ where: { isDefault: true, isActive: true } })) ?? (await db.warehouse.findFirst({ where: { isActive: true } }));

@@ -1,4 +1,4 @@
-import type { CreateShipmentInput, CreateShipmentResult, DeliveryProvider, DeliveryQuote, TrackingEvent } from './types.js';
+import type { CreateShipmentInput, CreateShipmentResult, DeliveryProvider, DeliveryQuote, TrackingEvent } from './types';
 
 /**
  * Заготовка адаптера СДЭК (API v2, OAuth client_credentials).

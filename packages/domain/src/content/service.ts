@@ -1,5 +1,5 @@
 import type { DbClient, Prisma } from '@techmatch/database';
-import { NotFoundError } from '../shared/errors.js';
+import { NotFoundError } from '../shared/errors';
 
 /** Настройки главной страницы (управляются из админки, раздел «Контент»). */
 export interface HomepageSettings {
@@ -49,6 +49,7 @@ export const DEFAULT_HOMEPAGE: HomepageSettings = {
 export async function getSetting<T>(db: DbClient, key: string, fallback: T): Promise<T> {
   const row = await db.siteSetting.findUnique({ where: { key } });
   if (!row) return fallback;
+  if (Array.isArray(fallback) || Array.isArray(row.value) || typeof fallback !== 'object' || fallback === null) return row.value as T;
   return { ...(fallback as object), ...(row.value as object) } as T;
 }
 

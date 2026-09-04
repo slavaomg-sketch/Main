@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDeviceQuery, normalizeIdentifier } from '../../shared/normalize.js';
+import { normalizeDeviceQuery, normalizeIdentifier } from '../../shared/normalize';
 
 describe('normalizeDeviceQuery', () => {
   it('русские написания брендов', () => {

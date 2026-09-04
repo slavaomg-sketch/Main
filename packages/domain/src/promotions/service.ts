@@ -1,6 +1,6 @@
 import type { DbClient } from '@techmatch/database';
-import { ValidationError } from '../shared/errors.js';
-import type { DiscountRule } from '../pricing/service.js';
+import { ValidationError } from '../shared/errors';
+import type { DiscountRule } from '../pricing/service';
 
 export interface CouponCheck {
   valid: boolean;

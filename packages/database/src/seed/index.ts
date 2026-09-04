@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getEnv } from '@techmatch/config';
-import { prisma, type Prisma } from '../index.js';
+import { prisma, type Prisma } from '../index';
 import {
   buildProductSearchText,
   DEFAULT_HOMEPAGE,
@@ -18,9 +18,9 @@ import {
   evaluateDeviceCatalog,
   generateOrderPublicId,
 } from '@techmatch/domain';
-import { DEVICES, DEVICE_BRANDS, DEVICE_CATEGORIES } from './data/devices.js';
-import { ACCESSORY_CATEGORIES, EXPLICIT_RELATIONS, OVERRIDES, PRODUCTS, PRODUCT_BRANDS } from './data/products.js';
-import { BANNERS, BUNDLES, COLLECTIONS, FAQ, PAGES, PROMOTIONS } from './data/content.js';
+import { DEVICES, DEVICE_BRANDS, DEVICE_CATEGORIES } from './data/devices';
+import { ACCESSORY_CATEGORIES, EXPLICIT_RELATIONS, OVERRIDES, PRODUCTS, PRODUCT_BRANDS } from './data/products';
+import { BANNERS, BUNDLES, COLLECTIONS, FAQ, PAGES, PROMOTIONS } from './data/content';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ASSETS = join(here, '..', '..', 'seed-assets', 'images');
@@ -111,7 +111,7 @@ async function seedDevices() {
     };
     const model = await prisma.deviceModel.upsert({ where: { slug: d.slug }, create: { slug: d.slug, ...data }, update: data });
     // алиасы
-    await prisma.deviceAlias.deleteMany({ where: { deviceModelId: model.id, variantId: null } });
+    await prisma.deviceAlias.deleteMany({ where: { deviceModelId: model.id } });
     const aliasSet = new Map<string, { alias: string; kind: 'SYNONYM' | 'TYPO' | 'TRANSLIT' | 'SHORT' | 'MARKETING'; weight: number }>();
     const add = (alias: string, kind: 'SYNONYM' | 'TYPO' | 'TRANSLIT' | 'SHORT' | 'MARKETING', weight: number) => {
       const n = normalizeDeviceQuery(alias);
@@ -250,6 +250,13 @@ async function seedCompatibility() {
 async function seedContent() {
   console.log('→ Контент и маркетинг');
   await prisma.siteSetting.upsert({ where: { key: 'homepage' }, create: { key: 'homepage', value: DEFAULT_HOMEPAGE as unknown as Prisma.InputJsonValue }, update: {} });
+  const heroImages: Array<{ key: string; url: string; alt: string }> = [];
+  for (const [key, alt] of [['hero-laptop', 'Ноутбук'], ['hero-tablet', 'Планшет'], ['hero-phone', 'Смартфон'], ['hero-watch', 'Смарт-часы'], ['hero-earbuds', 'Наушники'], ['hero-controller', 'Геймпад'], ['hero-camera', 'Камера'], ['hero-printer', 'Принтер']] as const) {
+    const id = await image(key);
+    const asset = id ? await prisma.mediaAsset.findUnique({ where: { id } }) : null;
+    if (asset) heroImages.push({ key, url: (asset.variants as Record<string, string>).card ?? asset.publicUrl, alt });
+  }
+  await prisma.siteSetting.upsert({ where: { key: 'hero_images' }, create: { key: 'hero_images', value: heroImages }, update: { value: heroImages } });
   for (const b of BANNERS) {
     const imageAssetId = await image(b.image);
     const existing = await prisma.banner.findFirst({ where: { placement: b.placement, title: b.title } });

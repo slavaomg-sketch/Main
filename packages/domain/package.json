@@ -11,6 +11,10 @@
     "./*": {
       "types": "./src/*/index.ts",
       "default": "./src/*/index.ts"
+    },
+    "./shared/*": {
+      "types": "./src/shared/*.ts",
+      "default": "./src/shared/*.ts"
     }
   },
   "scripts": {

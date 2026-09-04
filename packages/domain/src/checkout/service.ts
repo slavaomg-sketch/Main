@@ -1,15 +1,15 @@
 import { getEnv } from '@techmatch/config';
 import type { DbClient, PrismaClient } from '@techmatch/database';
 import type { DeliveryQuote } from '@techmatch/integrations';
-import { ConflictError, NotFoundError, ValidationError } from '../shared/errors.js';
-import { generateOrderPublicId } from '../shared/ids.js';
-import { calculateTotals } from '../pricing/service.js';
-import { validateCoupon, recordCouponUsage } from '../promotions/service.js';
-import { reserveStock } from '../inventory/service.js';
-import { assertCartReady, cartInclude, loadCartDTO, type CartDTO } from '../cart/service.js';
-import { getDeliveryProvider, getPaymentProvider } from '../providers.js';
-import { evaluateDeviceCatalog } from '../compatibility/service.js';
-import { sendOrderCreated } from '../notifications/service.js';
+import { ConflictError, NotFoundError, ValidationError } from '../shared/errors';
+import { generateOrderPublicId } from '../shared/ids';
+import { calculateTotals } from '../pricing/service';
+import { validateCoupon, recordCouponUsage } from '../promotions/service';
+import { reserveStock } from '../inventory/service';
+import { assertCartReady, cartInclude, loadCartDTO, type CartDTO } from '../cart/service';
+import { getDeliveryProvider, getPaymentProvider } from '../providers';
+import { evaluateDeviceCatalog } from '../compatibility/service';
+import { sendOrderCreated } from '../notifications/service';
 
 export interface ShippingAddressInput {
   fullName: string;
@@ -72,7 +72,7 @@ export async function createOrderFromCart(db: PrismaClient, input: CheckoutInput
   const couponCheck = cart.couponCode ? await validateCoupon(db, cart.couponCode, { subtotalMinor: dto.totals.subtotalMinor, customerId: input.customerId }) : null;
   const totals = calculateTotals(
     dto.lines.map((l) => ({ variantId: l.variantId, productId: l.productId, quantity: l.quantity, unitPriceMinor: l.unitPriceMinor })),
-    { discount: couponCheck?.valid ? couponCheck.coupon!.rule : null, deliveryMinor: quote.costMinor },
+    { discount: couponCheck?.valid ? couponCheck.coupon!.rule : null, deliveryMinor: quote.costMinor, promotionDiscountMinor: dto.totals.promotionDiscountMinor },
   );
 
   const compat = cart.activeDeviceModelId ? (await evaluateDeviceCatalog(db, cart.activeDeviceModelId)).results : null;
@@ -94,7 +94,7 @@ export async function createOrderFromCart(db: PrismaClient, input: CheckoutInput
           deliveryProviderCode: quote.providerCode,
           deliveryCostMinor: quote.costMinor,
           subtotalMinor: totals.subtotalMinor,
-          discountMinor: totals.discountMinor,
+          discountMinor: totals.discountMinor + totals.promotionDiscountMinor,
           totalMinor: totals.totalMinor,
           couponId: couponCheck?.valid ? couponCheck.coupon!.id : null,
           couponCode: couponCheck?.valid ? couponCheck.coupon!.code : null,

@@ -1,4 +1,4 @@
-import type { CreatePaymentInput, CreatePaymentResult, PaymentProvider, PaymentWebhookEvent, RefundInput, RefundResult } from './types.js';
+import type { CreatePaymentInput, CreatePaymentResult, PaymentProvider, PaymentWebhookEvent, RefundInput, RefundResult } from './types';
 
 /**
  * Адаптер ЮKassa (API v3). Включается только при наличии YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY.

@@ -1,6 +1,6 @@
 import { Prisma, type DbClient } from '@techmatch/database';
-import { normalizeDeviceQuery, normalizeIdentifier, tokenize } from '../shared/normalize.js';
-import { NotFoundError } from '../shared/errors.js';
+import { normalizeDeviceQuery, normalizeIdentifier, tokenize } from '../shared/normalize';
+import { NotFoundError } from '../shared/errors';
 
 export interface DeviceCandidate {
   id: string;

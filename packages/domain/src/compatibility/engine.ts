@@ -1,4 +1,4 @@
-import { ALL_RULES } from './rules.js';
+import { ALL_RULES } from './rules';
 import type {
   CompatibilityResult,
   CompatibilityRule,
@@ -9,7 +9,7 @@ import type {
   OverrideInput,
   ProductSpecProfile,
   RuleOutcome,
-} from './types.js';
+} from './types';
 
 export interface EvaluateOptions {
   rules?: CompatibilityRule[];
@@ -56,7 +56,7 @@ export function evaluateCompatibility(
 
   let result = ruleResult;
   if (options.explicit && options.explicit.status !== 'UNKNOWN') {
-    result = mergeExplicit(ruleResult, options.explicit);
+    result = mergeExplicit(ruleResult, options.explicit, device, product);
   }
   if (options.override) {
     result = {
@@ -119,7 +119,7 @@ function combineOutcomes(outcomes: RuleOutcome[], device: DeviceSpecProfile, pro
   return { status, confidence: round2(confidence), source: 'RULE', reasons, limitations, constraints, rulesApplied, explanation };
 }
 
-function mergeExplicit(ruleResult: CompatibilityResult, explicit: ExplicitRelationInput): CompatibilityResult {
+function mergeExplicit(ruleResult: CompatibilityResult, explicit: ExplicitRelationInput, device: DeviceSpecProfile, product: ProductSpecProfile): CompatibilityResult {
   const reasons = uniq([...(explicit.reasons ?? []), ...ruleResult.reasons]);
   const limitations = explicit.status === 'COMPATIBLE_WITH_LIMITATIONS'
     ? uniq([...(explicit.limitations ?? []), ...ruleResult.limitations])
@@ -137,7 +137,7 @@ function mergeExplicit(ruleResult: CompatibilityResult, explicit: ExplicitRelati
     limitations,
     constraints: dedupeConstraints([...(explicit.constraints ?? []), ...ruleResult.constraints]),
     rulesApplied: ruleResult.rulesApplied,
-    explanation: '',
+    explanation: buildExplanation(status, reasons, limitations, device, product),
     verifiedAt: explicit.verifiedAt ?? null,
     evidence: explicit.evidence ?? [],
   };

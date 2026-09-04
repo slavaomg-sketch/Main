@@ -1,3 +1,3 @@
-export * from './types.js';
-export * from './mock.js';
-export * from './yookassa.js';
+export * from './types';
+export * from './mock';
+export * from './yookassa';

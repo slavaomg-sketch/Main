@@ -1,5 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import type { CreatePaymentInput, CreatePaymentResult, PaymentProvider, PaymentWebhookEvent, RefundInput, RefundResult } from './types.js';
+import type { CreatePaymentInput, CreatePaymentResult, PaymentProvider, PaymentWebhookEvent, RefundInput, RefundResult } from './types';
 
 /**
  * MockPaymentProvider — тестовая оплата для разработки.

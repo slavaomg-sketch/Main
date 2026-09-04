@@ -1,2 +1,2 @@
-export * from './rbac.js';
-export * from './service.js';
+export * from './rbac';
+export * from './service';

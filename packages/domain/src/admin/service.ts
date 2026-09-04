@@ -1,10 +1,10 @@
 import { getEnv } from '@techmatch/config';
 import type { DbClient, PrismaClient } from '@techmatch/database';
-import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '../shared/errors.js';
-import { hashPassword, sha256, verifyPassword } from '../shared/password.js';
-import { randomToken } from '../shared/ids.js';
-import { PERMISSIONS, ROLES, roleHasPermission, type Permission } from './rbac.js';
-import { writeAudit } from '../audit/service.js';
+import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from '../shared/errors';
+import { hashPassword, sha256, verifyPassword } from '../shared/password';
+import { randomToken } from '../shared/ids';
+import { PERMISSIONS, ROLES, roleHasPermission, type Permission } from './rbac';
+import { writeAudit } from '../audit/service';
 
 export interface AdminContext {
   id: string;

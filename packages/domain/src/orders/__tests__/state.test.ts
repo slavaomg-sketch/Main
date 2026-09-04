@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ORDER_TRANSITIONS, allowedTransitions, canTransition } from '../state.js';
+import { ORDER_TRANSITIONS, allowedTransitions, canTransition } from '../state';
 
 describe('order state machine', () => {
   it('основной путь', () => {

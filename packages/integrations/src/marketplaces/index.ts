@@ -1,4 +1,4 @@
-import type { CanonicalImportRow } from '../imports/types.js';
+import type { CanonicalImportRow } from '../imports/types';
 
 /**
  * MarketplaceAdapter — единый интерфейс для официальных API маркетплейсов.

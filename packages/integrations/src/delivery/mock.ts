@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { CreateShipmentInput, CreateShipmentResult, DeliveryProvider, DeliveryQuote, TrackingEvent } from './types.js';
+import type { CreateShipmentInput, CreateShipmentResult, DeliveryProvider, DeliveryQuote, TrackingEvent } from './types';
 
 const FREE_FROM = 300_000; // 3 000 ₽
 

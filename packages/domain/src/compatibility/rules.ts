@@ -6,7 +6,7 @@ import type {
   RuleOutcome,
   RuleVerdict,
   ConstraintSpec,
-} from './types.js';
+} from './types';
 
 const CONNECTOR_LABEL: Record<ConnectorType, string> = {
   USB_C: 'USB-C',

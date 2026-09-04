@@ -1,8 +1,8 @@
 import type { DbClient } from '@techmatch/database';
 import { getEnv } from '@techmatch/config';
-import { getNotificationProvider } from '../providers.js';
-import { formatRub } from '../shared/money.js';
-import { ORDER_STATUS_LABEL, type OrderStatus } from '../orders/state.js';
+import { getNotificationProvider } from '../providers';
+import { formatRub } from '../shared/money';
+import { ORDER_STATUS_LABEL, type OrderStatus } from '../orders/state';
 
 export async function sendOrderCreated(db: DbClient, orderId: string) {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });

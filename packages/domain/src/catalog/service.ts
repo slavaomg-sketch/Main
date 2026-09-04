@@ -1,9 +1,9 @@
 import type { DbClient, Prisma } from '@techmatch/database';
-import { NotFoundError } from '../shared/errors.js';
-import { normalizeSearchText } from '../shared/normalize.js';
-import type { CompatibilityResult } from '../compatibility/types.js';
-import { evaluateDeviceCatalog } from '../compatibility/service.js';
-import { isPositiveStatus } from '../compatibility/engine.js';
+import { NotFoundError } from '../shared/errors';
+import { normalizeSearchText } from '../shared/normalize';
+import type { CompatibilityResult } from '../compatibility/types';
+import { evaluateDeviceCatalog } from '../compatibility/service';
+import { isPositiveStatus } from '../compatibility/engine';
 
 export interface ProductCardDTO {
   id: string;

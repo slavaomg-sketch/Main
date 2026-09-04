@@ -1,7 +1,7 @@
 import type { DbClient } from '@techmatch/database';
-import { searchDevices, type DeviceCandidate } from '../devices/service.js';
-import { suggestProducts } from '../catalog/service.js';
-import type { ProductCardDTO } from '../catalog/service.js';
+import { searchDevices, type DeviceCandidate } from '../devices/service';
+import { suggestProducts } from '../catalog/service';
+import type { ProductCardDTO } from '../catalog/service';
 
 /**
  * SearchProvider — абстракция для будущего перехода на внешний поисковый движок.

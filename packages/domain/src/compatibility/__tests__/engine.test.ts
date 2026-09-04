@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCompatibility } from '../engine.js';
-import type { DeviceSpecProfile, ProductSpecProfile } from '../types.js';
+import { evaluateCompatibility } from '../engine';
+import type { DeviceSpecProfile, ProductSpecProfile } from '../types';
 
 const iphone15pro: DeviceSpecProfile = {
   slug: 'apple-iphone-15-pro',

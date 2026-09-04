@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CsvImportAdapter } from '../csv.js';
-import { XlsxImportAdapter, buildXlsx } from '../xlsx.js';
-import { YmlImportAdapter, buildYmlFeed } from '../yml.js';
-import { applyMapping, guessMapping, parseMoneyToMinor } from '../types.js';
+import { CsvImportAdapter } from '../csv';
+import { XlsxImportAdapter, buildXlsx } from '../xlsx';
+import { YmlImportAdapter, buildYmlFeed } from '../yml';
+import { applyMapping, guessMapping, parseMoneyToMinor } from '../types';
 
 describe('import adapters', () => {
   it('CSV с «;» и русскими заголовками', async () => {

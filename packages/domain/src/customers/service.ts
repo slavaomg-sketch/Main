@@ -1,9 +1,9 @@
 import { getEnv } from '@techmatch/config';
 import type { DbClient, PrismaClient } from '@techmatch/database';
-import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from '../shared/errors.js';
-import { hashPassword, sha256, verifyPassword } from '../shared/password.js';
-import { randomToken } from '../shared/ids.js';
-import { mergeGuestCart } from '../cart/service.js';
+import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from '../shared/errors';
+import { hashPassword, sha256, verifyPassword } from '../shared/password';
+import { randomToken } from '../shared/ids';
+import { mergeGuestCart } from '../cart/service';
 
 export interface CustomerSessionInfo {
   customer: { id: string; email: string; firstName: string | null; lastName: string | null; phone: string | null };

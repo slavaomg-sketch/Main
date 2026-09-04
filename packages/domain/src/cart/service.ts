@@ -1,11 +1,11 @@
 import type { DbClient, Prisma } from '@techmatch/database';
-import { ConflictError, NotFoundError, ValidationError } from '../shared/errors.js';
-import { calculateTotals, type Totals } from '../pricing/service.js';
-import { availableQuantity } from '../catalog/service.js';
-import { validateCoupon } from '../promotions/service.js';
-import { randomToken } from '../shared/ids.js';
-import { evaluateDeviceCatalog } from '../compatibility/service.js';
-import type { CompatibilityResult } from '../compatibility/types.js';
+import { ConflictError, NotFoundError, ValidationError } from '../shared/errors';
+import { calculateBundleDiscounts, calculateTotals, type Totals } from '../pricing/service';
+import { availableQuantity } from '../catalog/service';
+import { validateCoupon } from '../promotions/service';
+import { randomToken } from '../shared/ids';
+import { evaluateDeviceCatalog } from '../compatibility/service';
+import type { CompatibilityResult } from '../compatibility/types';
 
 export const cartInclude = {
   items: {
@@ -54,19 +54,28 @@ export interface CartDTO {
   couponCode: string | null;
   couponDescription: string | null;
   couponError: string | null;
+  bundleDiscounts: Array<{ bundleId: string; name: string; discountMinor: number }>;
   activeDevice: { id: string; name: string; slug: string } | null;
   weightGrams: number;
 }
 
-export async function getOrCreateCart(db: DbClient, key: { sessionToken?: string | null; customerId?: string | null }): Promise<{ cart: CartRow; sessionToken: string }> {
+/** Активная корзина без побочных эффектов (для чтения в layout/страницах). */
+export async function findActiveCart(db: DbClient, key: { sessionToken?: string | null; customerId?: string | null }): Promise<CartRow | null> {
   let cart: CartRow | null = null;
   if (key.customerId) cart = await db.cart.findFirst({ where: { customerId: key.customerId, status: 'ACTIVE' }, include: cartInclude, orderBy: { updatedAt: 'desc' } });
   if (!cart && key.sessionToken) cart = await db.cart.findFirst({ where: { sessionToken: key.sessionToken, status: 'ACTIVE' }, include: cartInclude });
+  return cart;
+}
+
+export async function getOrCreateCart(db: DbClient, key: { sessionToken?: string | null; customerId?: string | null }): Promise<{ cart: CartRow; sessionToken: string }> {
+  let cart = await findActiveCart(db, key);
   if (cart) {
     if (key.customerId && !cart.customerId) cart = await db.cart.update({ where: { id: cart.id }, data: { customerId: key.customerId }, include: cartInclude });
     return { cart, sessionToken: cart.sessionToken ?? key.sessionToken ?? randomToken(24) };
   }
-  const sessionToken = key.sessionToken ?? randomToken(24);
+  // Токен из cookie мог принадлежать уже оформленной (CONVERTED) корзине — выдаём новый
+  const tokenTaken = key.sessionToken ? await db.cart.findUnique({ where: { sessionToken: key.sessionToken }, select: { id: true } }) : null;
+  const sessionToken = key.sessionToken && !tokenTaken ? key.sessionToken : randomToken(24);
   cart = await db.cart.create({ data: { sessionToken, customerId: key.customerId ?? null, expiresAt: new Date(Date.now() + 30 * 86_400_000) }, include: cartInclude });
   return { cart, sessionToken };
 }
@@ -136,7 +145,7 @@ export async function setActiveDevice(db: DbClient, cartId: string, deviceModelI
   await db.cart.update({ where: { id: cartId }, data: { activeDeviceModelId: deviceModelId } });
 }
 
-export function buildCartDTO(cart: CartRow, opts: { couponRule?: { rule: { type: 'PERCENT' | 'FIXED'; value: number; minSubtotalMinor?: number; maxDiscountMinor?: number | null }; description: string } | null; couponError?: string | null; compat?: Map<string, CompatibilityResult> | null } = {}): CartDTO {
+export function buildCartDTO(cart: CartRow, opts: { couponRule?: { rule: { type: 'PERCENT' | 'FIXED'; value: number; minSubtotalMinor?: number; maxDiscountMinor?: number | null }; description: string } | null; couponError?: string | null; compat?: Map<string, CompatibilityResult> | null; bundles?: Array<{ id: string; name: string; discountPercent: number; items: Array<{ variantId: string; quantity: number }> }> } = {}): CartDTO {
   const lines: CartLineDTO[] = cart.items
     .filter((i) => i.variant.prices.length > 0)
     .map((i) => {
@@ -163,11 +172,13 @@ export function buildCartDTO(cart: CartRow, opts: { couponRule?: { rule: { type:
         weightGrams: i.variant.weightGrams ?? 150,
       };
     });
+  const bundleDiscounts = calculateBundleDiscounts(lines, opts.bundles ?? []);
   const totals = calculateTotals(
     lines.map((l) => ({ variantId: l.variantId, productId: l.productId, quantity: l.quantity, unitPriceMinor: l.unitPriceMinor })),
-    { discount: opts.couponRule?.rule ?? null },
+    { discount: opts.couponRule?.rule ?? null, promotionDiscountMinor: bundleDiscounts.totalMinor },
   );
   return {
+    bundleDiscounts: bundleDiscounts.applied,
     id: cart.id,
     lines,
     itemCount: lines.reduce((s, l) => s + l.quantity, 0),
@@ -190,6 +201,7 @@ export async function loadCartDTO(db: DbClient, cart: CartRow): Promise<CartDTO>
     if (check.valid) couponRule = { rule: check.coupon!.rule, description: check.coupon!.description };
     else couponError = check.reason ?? null;
   }
+  const bundles = cart.items.length ? await db.bundle.findMany({ where: { isActive: true, items: { some: { variantId: { in: cart.items.map((i) => i.variantId) } } } }, select: { id: true, name: true, discountPercent: true, items: { select: { variantId: true, quantity: true } } } }) : [];
   let compat: Map<string, CompatibilityResult> | null = null;
   if (cart.activeDeviceModelId && cart.items.length) {
     try {
@@ -198,7 +210,7 @@ export async function loadCartDTO(db: DbClient, cart: CartRow): Promise<CartDTO>
       compat = null;
     }
   }
-  return buildCartDTO(cart, { couponRule, couponError, compat });
+  return buildCartDTO(cart, { couponRule, couponError, compat, bundles });
 }
 
 export function assertCartReady(dto: CartDTO): void {

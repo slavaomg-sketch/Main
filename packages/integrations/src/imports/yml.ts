@@ -1,5 +1,5 @@
 import { XMLBuilder, XMLParser } from 'fast-xml-parser';
-import type { ImportFileAdapter, ParsedTable } from './types.js';
+import type { ImportFileAdapter, ParsedTable } from './types';
 
 /** YML (Яндекс.Маркет) — разбор <offer> в табличную форму и сборка фида каталога. */
 export class YmlImportAdapter implements ImportFileAdapter {

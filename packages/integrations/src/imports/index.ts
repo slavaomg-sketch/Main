@@ -1,11 +1,11 @@
-export * from './types.js';
-export * from './csv.js';
-export * from './xlsx.js';
-export * from './yml.js';
-import { CsvImportAdapter } from './csv.js';
-import { XlsxImportAdapter } from './xlsx.js';
-import { YmlImportAdapter } from './yml.js';
-import type { ImportFileAdapter } from './types.js';
+export * from './types';
+export * from './csv';
+export * from './xlsx';
+export * from './yml';
+import { CsvImportAdapter } from './csv';
+import { XlsxImportAdapter } from './xlsx';
+import { YmlImportAdapter } from './yml';
+import type { ImportFileAdapter } from './types';
 
 export const IMPORT_FILE_ADAPTERS: ImportFileAdapter[] = [new CsvImportAdapter(), new XlsxImportAdapter(), new YmlImportAdapter()];
 

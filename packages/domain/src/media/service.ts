@@ -3,7 +3,7 @@ import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { getEnv, REPO_ROOT } from '@techmatch/config';
 import type { DbClient } from '@techmatch/database';
-import { ValidationError } from '../shared/errors.js';
+import { ValidationError } from '../shared/errors';
 
 export const IMAGE_VARIANTS: Record<string, { width: number; height?: number; fit: 'inside' | 'cover' }> = {
   thumb: { width: 160, height: 160, fit: 'inside' },
