@@ -20,14 +20,10 @@ function TimeUtil.FormatRaceTime(seconds: number?): string
 	if seconds == nil or seconds ~= seconds or seconds == math.huge or seconds < 0 then
 		return "--:--.---"
 	end
-	local s = seconds :: number
-	local minutes = math.floor(s / 60)
-	local rem = s - minutes * 60
-	local whole = math.floor(rem)
-	local ms = math.floor((rem - whole) * 1000 + 0.5)
-	if ms >= 1000 then
-		ms = 999
-	end
+	local totalMs = math.floor((seconds :: number) * 1000 + 0.5 + 1e-6)
+	local minutes = totalMs // 60000
+	local whole = (totalMs // 1000) % 60
+	local ms = totalMs % 1000
 	return string.format("%02d:%02d.%03d", minutes, whole, ms)
 end
 

@@ -35,5 +35,6 @@ if failed > 0 then
 	for _, f in failures do
 		print("  - " .. f)
 	end
-	process.exit(1)
 end
+-- Exit explicitly: service threads (autosave/matchmaking loops) must never keep the runner alive.
+process.exit(if failed > 0 then 1 else 0)

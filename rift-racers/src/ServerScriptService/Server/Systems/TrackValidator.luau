@@ -217,7 +217,8 @@ function TrackValidator.ValidateArena(def: TrackDefinitions.ArenaDefinition): Re
 		issue(issues, "Error", "UnknownSurface", def.FloorSurface)
 	end
 	for _, sp in def.SpawnPoints do
-		if Vector3.new(sp.X, 0, sp.Z).Magnitude > def.Radius then
+		local outside = if def.Shape == "Bowl" then Vector3.new(sp.X, 0, sp.Z).Magnitude > def.Radius else (math.abs(sp.X) > def.Radius or math.abs(sp.Z) > def.Radius)
+		if outside then
 			issue(issues, "Error", "SpawnOutside", tostring(sp))
 		end
 		for _, ob in def.Obstacles do
