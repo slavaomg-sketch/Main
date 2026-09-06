@@ -1,0 +1,45 @@
+# Шаблон systemd-юнита конвейера карточек. Плейсхолдеры подставляет deploy/install-pipeline.sh.
+
+[Unit]
+Description=Product cards pipeline (Claude + Codex)
+Documentation=https://github.com/slavaomg-sketch/Main
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__/repo
+EnvironmentFile=__APP_DIR__/.env
+# claude и codex хранят вход в $HOME/.claude и $HOME/.codex
+Environment=HOME=__APP_HOME__
+Environment=PIPELINE_REPO_DIR=__APP_DIR__/repo
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=__APP_DIR__/.venv/bin/python -m pipeline.run
+
+Restart=always
+RestartSec=30
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+# Плавная остановка: дождаться конца текущей карточки (картинки идут по 5 минут)
+KillSignal=SIGTERM
+TimeoutStopSec=1200
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cards-pipeline
+
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectSystem=full
+ReadWritePaths=__APP_DIR__ __APP_HOME__ /tmp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
