@@ -312,6 +312,14 @@ sudo systemctl start cards-pipeline
 
 Код конвейера обновляется сам: сервис делает `git pull` перед каждым проходом. Зависимости обновляет повторный запуск установщика.
 
+**Без sudo.** Если `claude` и `codex` уже установлены и вход выполнен под твоим пользователем, ставь от него через user-systemd:
+
+```bash
+bash deploy/install-pipeline-user.sh
+```
+
+Скрипт клонирует репозиторий в `~/cards-pipeline/repo`, создаёт venv и `.env`, генерирует SSH-ключ и печатает публичную часть: её нужно добавить как Deploy key с правом записи в Settings → Deploy keys. Уведомления: впиши `BOT_TOKEN` и `ADMIN_IDS` в `~/cards-pipeline/.env`. Команды: `systemctl --user status cards-pipeline`, `journalctl --user -u cards-pipeline -f`.
+
 | Задача | Команда |
 |---|---|
 | Состояние | `sudo systemctl status cards-pipeline` |

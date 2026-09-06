@@ -1,0 +1,22 @@
+# Юнит конвейера для user-systemd (без sudo). Ставит deploy/install-pipeline-user.sh.
+# Плейсхолдер __APP_DIR__ — папка с .env, .venv и repo/.
+
+[Unit]
+Description=Конвейер карточек товара (Claude + Codex)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__APP_DIR__/repo
+EnvironmentFile=__APP_DIR__/.env
+Environment=PIPELINE_REPO_DIR=__APP_DIR__/repo
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=__APP_DIR__/.venv/bin/python -m pipeline.run
+Restart=always
+RestartSec=30
+# Дождаться конца текущей карточки: картинки идут по 5 минут
+KillSignal=SIGTERM
+TimeoutStopSec=1200
+
+[Install]
+WantedBy=default.target
