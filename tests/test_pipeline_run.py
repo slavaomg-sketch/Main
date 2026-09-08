@@ -82,6 +82,8 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(learn, "run_claude", fake_claude)
     monkeypatch.setattr(images, "codex_generate", fake_codex)
     monkeypatch.setattr(run.notify, "send", lambda cfg, text: calls["notify"].append(text) or True)
+    calls["photos"] = []
+    monkeypatch.setattr(run.notify, "send_photos", lambda cfg, paths, caption="": calls["photos"].append(([p.name for p in paths], caption)) or True)
 
     cfg = PipelineConfig(repo_dir=tmp_path, push=False, notify=True, image_text_mode="both")
     return tmp_path, cfg, calls
@@ -120,8 +122,13 @@ def test_full_cycle_new_idea(repo):
     assert any("No reference photos" in p for p, _ in calls["codex"])
     # уведомление с вопросами и ссылкой
     assert calls["notify"] and "Готово" in calls["notify"][0]
-    assert "уточнить: состав подкладки" in calls["notify"][0]
+    assert "Уточнить: состав подкладки" in calls["notify"][0]
     assert "КОНЦЕПТ" in calls["notify"][0]
+    assert "Заголовок: Шапка бини женская зимняя с помпоном" in calls["notify"][0]
+    assert "Тёплая шапка" in calls["notify"][0]
+    # альбомы: итоговые картинки и вариант native
+    assert calls["photos"][0] == (["main.png", "slide1.png", "slide2.png", "slide3.png"], "Шапка-бини с помпоном")
+    assert "надписями от модели" in calls["photos"][1][1]
     log = _git_log(root)
     assert "текст" in log and "картинки" in log
     # повторный проход ничего нового не делает
