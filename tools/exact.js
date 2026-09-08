@@ -193,7 +193,11 @@ function deadEnds(level, moves, opts) {
   opts = opts || {};
   var e = new Engine(level), a = parseMoves(moves);
   var dead = 0, stuck = 0, unknown = 0, all = 0;
+  // stride — проверять не каждый такт, а каждый k-й: охотнику хватает
+  // грубой оценки, а полный разбор длинного решения стоит минут.
+  var stride = Math.max(1, opts.stride || 1);
   for (var i = 0; i < a.length; i++) {
+    if (i % stride) { e.step(a[i]); continue; }
     for (var k = 0; k < ACTS.length; k++) {
       if (ACTS[k] === a[i]) continue;
       all++;

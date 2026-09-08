@@ -78,9 +78,10 @@ var PLAN_ORDER_CHAPTERS = 2;
 levels.sort(function (a, b) {
   if (a.chapter !== b.chapter) return a.chapter - b.chapter;
   if (a.chapter > PLAN_ORDER_CHAPTERS) {
-    var ra = (difficulty[String(a.id)] || {}).rating || 0;
-    var rb = (difficulty[String(b.id)] || {}).rating || 0;
-    if (ra !== rb) return ra - rb;
+    var da = difficulty[String(a.id)] || {}, db = difficulty[String(b.id)] || {};
+    if ((da.rating || 0) !== (db.rating || 0)) return (da.rating || 0) - (db.rating || 0);
+    // оценка обрезана десяткой; внутри одной оценки различаем по сырой сумме
+    if ((da.score || 0) !== (db.score || 0)) return (da.score || 0) - (db.score || 0);
   }
   return a.id - b.id;
 });
@@ -114,7 +115,8 @@ var chapterDefs = plan.chapters.map(function (c) {
   return { n: c.n, title: c.title, planned: c.levels.length };
 });
 // уровни за пределами плана получают свою главу; у некоторых глав название задано вручную
-var EXTRA_TITLES = { 12: 'Десять из десяти', 13: 'Расчёт', 14: 'Живой механизм', 15: 'Вдвоём' };
+var EXTRA_TITLES = { 12: 'Десять из десяти', 13: 'Расчёт', 14: 'Живой механизм', 15: 'Вдвоём',
+                     16: 'Две палаты', 17: 'Ярусы вдвоём', 18: 'Такт на двоих', 19: 'Сторожа', 20: 'Подпорки' };
 levels.forEach(function (l) {
   if (l.chapter > chapterDefs.length && !chapterDefs.some(function (c) { return c.n === l.chapter; })) {
     chapterDefs.push({ n: l.chapter, title: EXTRA_TITLES[l.chapter] || 'Проба · вариант ChatGPT', planned: 10 });
