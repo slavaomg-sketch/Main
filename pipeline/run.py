@@ -59,17 +59,44 @@ def _images_report_text(report: dict[str, Any]) -> str:
     return text
 
 
+def _card_digest(card: Card) -> str:
+    """Короткая выжимка карточки для Telegram: заголовок, характеристики, первый абзац, вопросы."""
+    parts = []
+    title = card.section("Заголовок").strip()
+    if title:
+        parts.append(f"Заголовок: {title}")
+    chars = [ln for ln in card.section("Ключевые характеристики").splitlines() if ln.strip()][:6]
+    if chars:
+        parts.append("\n".join(chars))
+    desc = [p for p in card.section("Описание").split("\n\n") if p.strip()]
+    if desc:
+        parts.append(desc[0].strip()[:600])
+    keys = card.section("Ключевые слова").strip()
+    if keys:
+        parts.append(f"Ключи: {keys[:300]}")
+    return "\n\n".join(parts)
+
+
 def _notify_card(cfg: PipelineConfig, card: Card, images_report: dict[str, Any] | None, what: str) -> None:
     questions = open_questions(card)
-    lines = [f"{what}: {card.meta.get('title', card.slug)}"]
+    head = [f"{what}: {card.meta.get('title', card.slug)}"]
     if images_report is not None:
-        lines.append(_images_report_text(images_report))
+        head.append(_images_report_text(images_report))
     if card.meta.get("concept"):
-        lines.append("КОНЦЕПТ: реальных фото нет, картинки помечены")
+        head.append("КОНЦЕПТ: реальных фото нет, картинки помечены")
     if questions:
-        lines.append("уточнить: " + "; ".join(questions[:5]))
-    lines.append(notify.card_link(cfg, card.slug))
-    notify.send(cfg, "\n".join(lines))
+        head.append("Уточнить: " + "; ".join(questions[:5]))
+    head.append(notify.card_link(cfg, card.slug))
+    digest = _card_digest(card)
+    notify.send(cfg, "\n".join(head) + ("\n\n" + digest if digest else ""))
+    photos = [card.images_dir / f"{n}.png" for n in ("main", "slide1", "slide2", "slide3", "slide4", "slide5")]
+    photos = [p for p in photos if p.is_file()]
+    if photos:
+        notify.send_photos(cfg, photos, caption=str(card.meta.get("title", card.slug)))
+    native = [card.images_dir / "native" / p.name for p in photos]
+    native = [p for p in native if p.is_file()]
+    if native:
+        notify.send_photos(cfg, native, caption=f"{card.meta.get('title', card.slug)} — вариант с надписями от модели")
 
 
 def _day_counter_path(cfg: PipelineConfig) -> Path:

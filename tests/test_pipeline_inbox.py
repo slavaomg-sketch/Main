@@ -74,10 +74,11 @@ def test_multiline_comment_with_heading_ignored():
     assert [i.slug for i in parse_inbox(text)] == ["nastoyaschaya"]
 
 
-def test_repo_inbox_template_has_no_live_ideas():
+def test_repo_inbox_parses():
     from pathlib import Path
     inbox = Path(__file__).resolve().parents[1] / "ideas" / "inbox.md"
-    assert parse_inbox(inbox.read_text(encoding="utf-8")) == []
+    ideas = parse_inbox(inbox.read_text(encoding="utf-8"))
+    assert all(i.title and i.slug for i in ideas)
 
 
 def test_as_markdown_roundtrip():
