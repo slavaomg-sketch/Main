@@ -99,11 +99,18 @@
     try { global.localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* приватный режим — переживём */ }
   }
   var progress = loadProgress();
+  var player = new SP.Player((function () { try { return global.localStorage; } catch (e) { return null; } })());
+  var tries = { deaths: 0, rewinds: 0 };   // во что обошлась нынешняя попытка
 
   // Пробные главы (за пределами основного плана) открыты всегда: они не часть
   // прохождения, а площадка для сравнения вариантов.
   var PLAN_CHAPTERS = 10;
   function isTrial(ch) { return ch > PLAN_CHAPTERS; }
+
+  /** Открыт ли уровень с этим индексом — то же правило, что у кнопок меню. */
+  function isOpen(i) {
+    return progress.all || isTrial(SP.LEVELS[i].chapter) || i + 1 <= unlockedUpTo();
+  }
 
   function unlockedUpTo() {
     var n = 1;
@@ -189,6 +196,7 @@
     engine = new SP.Engine(lv);
     history = new SP.History(engine);
     usedHelp = false;
+    tries = { deaths: 0, rewinds: 0 };
     // Подсказку ставим ДО замера сцены: строка подсказки — часть колонки, и
     // длинная подсказка сцену ужимает. Замерив сцену раньше, холст получался
     // выше неё и закрывал собой первую строку.
@@ -233,25 +241,38 @@
 
     var best = progress.done[lv.id];
     var isLast = levelIndex >= SP.LEVELS.length - 1;
+    player.noteWin(lv.id, tries.deaths + tries.rewinds);
+    // Тяжёлая полоса, а следующий уровень резче — предлагаем передышку.
+    // Только кнопкой: решает игрок.
+    var rest = isLast ? -1 : player.easier(SP.LEVELS, levelIndex, isOpen,
+      function (id) { return !!progress.done[id]; });
     overlay(isLast ? 'Игра пройдена!' : 'Уровень пройден',
       'Ходов: <b>' + engine.moves + '</b> · время: <b>' + (engine.ticks * TICK_MS / 1000).toFixed(1) + ' с</b>' +
       (best && best.moves < engine.moves ? '<br>Лучший результат: ' + best.moves + ' ходов' : '') +
       (isLast ? '<br><br>Все уровни позади. ' + heroName() + ' благодарит.' : ''),
       isLast
         ? [{ label: 'К списку уровней', primary: true, action: showMenu }]
-        : [{ label: 'Следующий уровень →', primary: true, action: function () { startLevel(levelIndex + 1); } },
-           { label: 'Заново', action: function () { startLevel(levelIndex); } },
-           { label: 'К списку', action: showMenu }]);
+        : [{ label: 'Следующий уровень →', primary: true, action: function () { startLevel(levelIndex + 1); } }]
+          .concat(rest >= 0 ? [{ label: 'Сперва полегче: №' + SP.LEVELS[rest].id + ' ' + SP.LEVELS[rest].name,
+                                 action: function () { startLevel(rest); } }] : [])
+          .concat([{ label: 'Заново', action: function () { startLevel(levelIndex); } },
+                   { label: 'К списку', action: showMenu }]));
   }
 
   function onDead() {
     state = 'dead';
+    tries.deaths++;
+    var fallen = engine.heroes.filter(function (m) { return !m.alive; })[0] || engine.murphy;
+    var times = player.noteDeath(SP.LEVELS[levelIndex].id, fallen.x, fallen.y);
+    var offer = player.offerHint(times);
     overlay(heroName() + ' погиб',
-      'Зонк, монстр или взрыв — но результат один.<br>' +
+      (offer ? 'На этом месте уже ' + times + '-й раз.<br>' : 'Зонк, монстр или взрыв — но результат один.<br>') +
       'Можно не начинать заново: отмотай время назад и попробуй иначе.',
-      [{ label: 'Отмотать назад', primary: true, action: function () { rewindBy(DEATH_REWIND); } },
-       { label: 'Заново (R)', action: function () { startLevel(levelIndex); } },
-       { label: 'К списку', action: showMenu }]);
+      [{ label: 'Отмотать назад', primary: true, action: function () { rewindBy(DEATH_REWIND); } }]
+        .concat(offer ? [{ label: 'Отмотать и показать смертельные ходы',
+                           action: function () { rewindBy(DEATH_REWIND); showHint(); } }] : [])
+        .concat([{ label: 'Заново (R)', action: function () { startLevel(levelIndex); } },
+                 { label: 'К списку', action: showMenu }]));
   }
 
   /* ---------- советчик ---------- */
@@ -322,6 +343,7 @@
   }
   function enterRewind() {
     if (state === 'rewinding') return;
+    tries.rewinds++;
     state = 'rewinding';
     acc = 0;
     input.held.length = 0;
