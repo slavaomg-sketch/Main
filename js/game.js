@@ -129,6 +129,10 @@
     el.hint.textContent = 'Выбери уровень.';
     el['hud-level'].textContent = '—';
     renderGrid();
+    // Список длинный — открываем его там, где игроку играть дальше: на первом
+    // открытом и непройденном уровне. У новичка это самое начало.
+    var next = el['level-grid'].querySelector('.lv:not(.done):not([disabled])');
+    el['level-grid'].scrollTop = next ? Math.max(0, next.offsetTop - 60) : 0;
   }
 
   function renderGrid() {

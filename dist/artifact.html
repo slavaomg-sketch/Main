@@ -25,6 +25,10 @@ html, body {
 }
 
 #app {
+  /* старые браузеры не знают dvh и выбрасывают объявление целиком — тогда
+     колонка без высоты растягивается по содержимому и всё едет; vh их держит */
+  height: 100vh;
+  max-height: 100vh;
   height: 100dvh;
   max-height: 100dvh;
   display: flex;
@@ -84,10 +88,16 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 /* ---------- панели поверх ---------- */
 #overlay, #menu {
   position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  /* Центруем полями auto у панели, а не align-items: center. Если панель выше
+     окна, центровка флексом срезает её верх — и срезанное не прокрутить: так
+     на старом браузере меню начиналось с десятой главы. Поля auto при нехватке
+     места схлопываются в ноль, и лишнее уходит вниз, в прокрутку. */
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow-y: auto;
   background: rgba(4, 6, 12, .82);
   backdrop-filter: blur(3px);
   padding: 16px;
@@ -100,11 +110,13 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 20px 22px;
+  margin: auto;
+  max-width: 560px;
   max-width: min(560px, 92vw);
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
 }
-.panel.wide { max-width: min(760px, 94vw); }
+.panel.wide { max-width: 760px; max-width: min(760px, 94vw); }
 .panel h1 { margin: 0 0 4px; font-size: 30px; letter-spacing: .22em; color: var(--accent); }
 .panel h2 { margin: 0 0 8px; font-size: 21px; }
 .panel p { margin: 0 0 14px; color: var(--dim); }
@@ -129,7 +141,9 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   flex-direction: column;
   gap: 6px;
   margin-bottom: 16px;
+  max-height: 420px;
   max-height: min(52vh, 420px);
+  position: relative;          /* offsetTop карточек — от начала списка, для прокрутки к следующему */
   overflow: auto;
   text-align: left;
 }
@@ -272,6 +286,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 /* ---------- приветствие ---------- */
 #welcome {
   position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
   inset: 0;
   z-index: 20;
   display: flex;
@@ -285,15 +300,17 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 @keyframes wake { from { opacity: 0; } to { opacity: 1; } }
 @keyframes bye { to { opacity: 0; transform: scale(1.04); } }
 
-#welcome-canvas { position: absolute; inset: 0; }
+#welcome-canvas { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; }
 
 .welcome-card {
   position: relative;
   text-align: center;
   padding: 24px 28px;
+  max-width: 560px;
   max-width: min(560px, 90vw);
 }
 .welcome-card .hi {
+  font-size: 22px;
   font-size: clamp(18px, 4vw, 26px);
   letter-spacing: .34em;
   text-transform: uppercase;
@@ -303,6 +320,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 }
 .welcome-card .mom {
   margin: 2px 0 14px;
+  font-size: 80px;
   font-size: clamp(46px, 13vw, 104px);
   line-height: .95;
   letter-spacing: .02em;
@@ -318,6 +336,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   margin: 0 auto 20px;
   max-width: 34ch;
   color: #e7dcf2;
+  font-size: 15px;
   font-size: clamp(14px, 2.6vw, 16px);
   opacity: 0;
   animation: rise .6s .6s ease both;
@@ -331,6 +350,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 }
 .play {
   font: inherit;
+  font-size: 18px;
   font-size: clamp(16px, 3.4vw, 20px);
   font-weight: 700;
   letter-spacing: .04em;
@@ -7940,6 +7960,10 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
     el.hint.textContent = 'Выбери уровень.';
     el['hud-level'].textContent = '—';
     renderGrid();
+    // Список длинный — открываем его там, где игроку играть дальше: на первом
+    // открытом и непройденном уровне. У новичка это самое начало.
+    var next = el['level-grid'].querySelector('.lv:not(.done):not([disabled])');
+    el['level-grid'].scrollTop = next ? Math.max(0, next.offsetTop - 60) : 0;
   }
 
   function renderGrid() {
