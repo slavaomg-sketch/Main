@@ -170,6 +170,7 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .chapter-levels {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-gap: 6px;
   gap: 6px;
   margin-bottom: 6px;
 }
@@ -451,6 +452,18 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
 .sub.small { font-size: .82em; opacity: .72; margin-top: -.4em; }
 
 #hint.warn { color: #ffb0b0; }
+
+/* ---------- старые браузеры без gap у флекса ----------
+   Chromium до 84 не знает gap во флексе: надписи в шапке слипаются, кнопки
+   экранов стоят вплотную. Проверка в index.html ставит классу no-flex-gap,
+   и только тогда промежутки делаются полями. Новые браузеры это не трогает. */
+.no-flex-gap .hud-left > * + *,
+.no-flex-gap .hud-right > * + * { margin-left: 10px; }
+.no-flex-gap #ov-buttons button { margin: 5px; }
+.no-flex-gap #level-grid > * + * { margin-top: 6px; }
+.no-flex-gap .chapter-head > * + * { margin-left: 10px; }
+.no-flex-gap .skins-row > * + * { margin-left: 10px; }
+.no-flex-gap .skin > * + * { margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -539,6 +552,17 @@ body.in-menu .stat, body.in-menu #btn-restart { visibility: hidden; }
   <div id="hint"></div>
 </div>
 
+<script>
+  // Знает ли браузер gap во флексе. Не знает — пометим, и CSS заменит gap полями.
+  (function () {
+    var d = document.createElement('div');
+    d.style.cssText = 'display:flex;flex-direction:column;gap:1px;position:absolute;visibility:hidden';
+    d.appendChild(document.createElement('div')); d.appendChild(document.createElement('div'));
+    document.body.appendChild(d);
+    if (d.scrollHeight !== 1) document.documentElement.className += ' no-flex-gap';
+    document.body.removeChild(d);
+  })();
+</script>
 <script>
 /*
  * Tiles — базовый словарь элементов мира.
