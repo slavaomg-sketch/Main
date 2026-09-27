@@ -95,6 +95,17 @@
   <div id="hint"></div>
 </div>
 
+<script>
+  // Знает ли браузер gap во флексе. Не знает — пометим, и CSS заменит gap полями.
+  (function () {
+    var d = document.createElement('div');
+    d.style.cssText = 'display:flex;flex-direction:column;gap:1px;position:absolute;visibility:hidden';
+    d.appendChild(document.createElement('div')); d.appendChild(document.createElement('div'));
+    document.body.appendChild(d);
+    if (d.scrollHeight !== 1) document.documentElement.className += ' no-flex-gap';
+    document.body.removeChild(d);
+  })();
+</script>
 <script src="js/tiles.js"></script>
 <script src="js/levels.js"></script>
 <script src="js/engine.js"></script>
